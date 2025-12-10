@@ -228,7 +228,7 @@ export default function ContributionForm() {
                                 </Select>
                               </div>
                               <div className="space-y-1.5">
-                                <Label className="text-xs">التكلفة (ر.ع)</Label>
+                                <Label className="text-xs">التكلفة (ر.ق)</Label>
                                 <Input
                                   type="number"
                                   placeholder="0.000"
