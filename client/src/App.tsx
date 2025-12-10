@@ -20,6 +20,7 @@ import History from "@/pages/history";
 import Statement from "@/pages/statement";
 import Debt from "@/pages/debt";
 import DebtDetail from "@/pages/debt-detail";
+import SettlementLog from "@/pages/settlement-log";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/statement" component={Statement} />
       <Route path="/debt" component={Debt} />
       <Route path="/debt/:participantId" component={DebtDetail} />
+      <Route path="/settlement-log" component={SettlementLog} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

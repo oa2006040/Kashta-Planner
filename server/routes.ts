@@ -308,6 +308,13 @@ export async function registerRoutes(
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      // Check if event can be deleted (no non-zero cost contributions)
+      const { canDelete, reason } = await storage.canDeleteEvent(eventId);
+      if (!canDelete) {
+        return res.status(400).json({ error: reason });
+      }
+      
       const event = await storage.getEvent(eventId);
       if (event) {
         await storage.createActivityLog({
@@ -320,6 +327,21 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting event:", error);
       res.status(500).json({ error: "Failed to delete event" });
+    }
+  });
+  
+  // Check if event can be deleted
+  app.get("/api/events/:id/can-delete", async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      const result = await storage.canDeleteEvent(eventId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking event deletion:", error);
+      res.status(500).json({ error: "Failed to check event deletion status" });
     }
   });
 
@@ -546,6 +568,18 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching debt portfolio:", error);
       res.status(500).json({ error: "Failed to fetch debt portfolio" });
+    }
+  });
+
+  // Settlement Activity Log - immutable audit trail
+  app.get("/api/settlement-activity-log", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const logs = await storage.getSettlementActivityLogs(limit);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching settlement activity logs:", error);
+      res.status(500).json({ error: "Failed to fetch settlement activity logs" });
     }
   });
 

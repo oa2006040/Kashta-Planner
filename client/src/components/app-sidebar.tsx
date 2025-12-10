@@ -7,6 +7,7 @@ import {
   History,
   Receipt,
   Wallet,
+  FileText,
   Settings,
   Flame,
   Star,
@@ -59,6 +60,11 @@ const mainNavItems = [
     title: "محفظة الديون",
     url: "/debt",
     icon: Wallet,
+  },
+  {
+    title: "سجل التسويات",
+    url: "/settlement-log",
+    icon: FileText,
   },
 ];
 

@@ -8,6 +8,7 @@ import {
   activityLogs,
   users,
   settlementRecords,
+  settlementActivityLog,
   type Category,
   type InsertCategory,
   type Item,
@@ -32,6 +33,7 @@ import {
   type SettlementRecordWithDetails,
   type ParticipantDebtSummary,
   type ParticipantDebtPortfolio,
+  type SettlementActivityLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
@@ -798,6 +800,13 @@ export class DatabaseStorage implements IStorage {
     
     if (!record) return undefined;
     
+    // Get event and participant details for the activity log
+    const [event] = await db.select().from(events).where(eq(events.id, eventId));
+    const [debtor] = await db.select().from(participants).where(eq(participants.id, debtorId));
+    const [creditor] = await db.select().from(participants).where(eq(participants.id, creditorId));
+    
+    if (!event || !debtor || !creditor) return undefined;
+    
     const newStatus = !record.isSettled;
     
     const [updated] = await db.update(settlementRecords)
@@ -809,7 +818,51 @@ export class DatabaseStorage implements IStorage {
       .where(eq(settlementRecords.id, record.id))
       .returning();
     
+    // Log the activity (immutable record)
+    await db.insert(settlementActivityLog).values({
+      eventId: event.id,
+      eventTitle: event.title,
+      debtorId: debtor.id,
+      debtorName: debtor.name,
+      creditorId: creditor.id,
+      creditorName: creditor.name,
+      amount: record.amount,
+      action: newStatus ? 'payment' : 'cancellation',
+    });
+    
     return updated;
+  }
+  
+  // Settlement Activity Log Methods
+  
+  async getSettlementActivityLogs(limit: number = 100): Promise<SettlementActivityLog[]> {
+    return await db.select()
+      .from(settlementActivityLog)
+      .orderBy(desc(settlementActivityLog.createdAt))
+      .limit(limit);
+  }
+  
+  // Event deletion protection
+  
+  async canDeleteEvent(eventId: number): Promise<{ canDelete: boolean; reason?: string }> {
+    // Get all contributions for this event with non-zero costs
+    const eventContributions = await db.select()
+      .from(contributions)
+      .where(eq(contributions.eventId, eventId));
+    
+    const hasNonZeroCosts = eventContributions.some(c => {
+      const cost = parseFloat(c.cost || "0");
+      return cost > 0;
+    });
+    
+    if (hasNonZeroCosts) {
+      return { 
+        canDelete: false, 
+        reason: "لا يمكن حذف الفعالية لأنها تحتوي على مساهمات بتكاليف. يرجى إزالة جميع التكاليف أولاً." 
+      };
+    }
+    
+    return { canDelete: true };
   }
   
   // Debt Portfolio Methods

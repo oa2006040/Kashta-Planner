@@ -196,6 +196,25 @@ export const insertSettlementRecordSchema = createInsertSchema(settlementRecords
 export type InsertSettlementRecord = z.infer<typeof insertSettlementRecordSchema>;
 export type SettlementRecord = typeof settlementRecords.$inferSelect;
 
+// Settlement Activity Log - immutable audit trail for all payment activities
+// This table never deletes records even if events/participants are deleted
+export const settlementActivityLog = pgTable("settlement_activity_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: integer("event_id"), // Reference only, no FK constraint to preserve history
+  eventTitle: text("event_title").notNull(), // Snapshot of event title at time of action
+  debtorId: varchar("debtor_id"), // Reference only, no FK constraint
+  debtorName: text("debtor_name").notNull(), // Snapshot of debtor name
+  creditorId: varchar("creditor_id"), // Reference only, no FK constraint
+  creditorName: text("creditor_name").notNull(), // Snapshot of creditor name
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  action: text("action").notNull(), // 'payment' or 'cancellation'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSettlementActivityLogSchema = createInsertSchema(settlementActivityLog).omit({ id: true, createdAt: true });
+export type InsertSettlementActivityLog = z.infer<typeof insertSettlementActivityLogSchema>;
+export type SettlementActivityLog = typeof settlementActivityLog.$inferSelect;
+
 // Users table (keep existing)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
