@@ -6,6 +6,7 @@ import {
   Package,
   History,
   Receipt,
+  Wallet,
   Settings,
   Flame,
   Star,
@@ -53,6 +54,11 @@ const mainNavItems = [
     title: "كشف الحساب",
     url: "/statement",
     icon: Receipt,
+  },
+  {
+    title: "محفظة الديون",
+    url: "/debt",
+    icon: Wallet,
   },
 ];
 
