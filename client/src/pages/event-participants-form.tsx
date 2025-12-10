@@ -220,7 +220,7 @@ export default function EventParticipantsForm() {
                       {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                     </div>
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                      <AvatarIcon avatar={participant.avatar} size="md" />
+                      <AvatarIcon icon={participant.avatar} className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <Label className="font-medium cursor-pointer">
@@ -280,7 +280,7 @@ export default function EventParticipantsForm() {
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover-elevate">
                       <div className="flex items-center gap-3">
-                        <CategoryIcon category={category.icon} size="sm" />
+                        <CategoryIcon icon={category.icon} className="h-4 w-4" />
                         <span className="font-medium">{category.nameAr}</span>
                         {selectedInCategory > 0 && (
                           <Badge className="bg-primary/10 text-primary">
@@ -317,7 +317,7 @@ export default function EventParticipantsForm() {
                               data-testid={`checkbox-item-${item.id}`}
                             />
                             <Label htmlFor={item.id} className="flex-1 cursor-pointer">
-                              {item.nameAr}
+                              {item.name}
                             </Label>
                             {isSelected && (
                               <div className="flex items-center gap-2">
@@ -351,7 +351,7 @@ export default function EventParticipantsForm() {
             <CardContent className="flex items-center justify-between gap-4 py-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-foreground/20">
-                  <AvatarIcon avatar={selectedParticipant?.avatar} size="sm" />
+                  <AvatarIcon icon={selectedParticipant?.avatar} className="h-4 w-4" />
                 </div>
                 <span>{selectedParticipant?.name}</span>
                 <Badge variant="secondary" className="bg-primary-foreground/20 text-primary-foreground">
