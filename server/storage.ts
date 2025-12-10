@@ -202,7 +202,7 @@ export class DatabaseStorage implements IStorage {
       .from(contributions)
       .where(eq(contributions.eventId, id));
     
-    const itemIds = [...new Set(contributionsList.map(c => c.itemId))];
+    const itemIds = Array.from(new Set(contributionsList.map(c => c.itemId)));
     const itemsList = itemIds.length > 0 
       ? await db.select().from(items).where(inArray(items.id, itemIds))
       : [];
