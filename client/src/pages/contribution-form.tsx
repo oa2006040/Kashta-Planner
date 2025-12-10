@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { CategoryIcon } from "@/components/category-icon";
 import { AvatarIcon } from "@/components/avatar-icon";
-import type { Category, Item, Participant, EventWithDetails } from "@shared/schema";
+import type { CategoryWithItems, Item, Participant, EventWithDetails } from "@shared/schema";
 
 export default function ContributionForm() {
   const [, params] = useRoute("/events/:id/items");
@@ -38,7 +38,7 @@ export default function ContributionForm() {
     enabled: !!eventId,
   });
 
-  const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
+  const { data: categories, isLoading: categoriesLoading } = useQuery<CategoryWithItems[]>({
     queryKey: ["/api/categories?withItems=true"],
   });
 
@@ -224,7 +224,7 @@ export default function ContributionForm() {
                                     {participants?.map((p) => (
                                       <SelectItem key={p.id} value={p.id}>
                                         <div className="flex items-center gap-2">
-                                          <AvatarIcon avatar={p.avatar} size="sm" />
+                                          <AvatarIcon icon={p.avatar} className="h-4 w-4" />
                                           {p.name}
                                         </div>
                                       </SelectItem>

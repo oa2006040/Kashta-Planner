@@ -76,12 +76,7 @@ export default function EventForm() {
   });
 
   const { data: categories } = useQuery<CategoryWithItems[]>({
-    queryKey: ["/api/categories", "with-items"],
-    queryFn: async () => {
-      const res = await fetch("/api/categories?includeItems=true");
-      if (!res.ok) throw new Error("Failed to fetch categories");
-      return res.json();
-    },
+    queryKey: ["/api/categories?withItems=true"],
     enabled: selectContributions,
   });
 
@@ -118,9 +113,6 @@ export default function EventForm() {
         temperature: data.temperature || null,
         requiredItems: selectContributions ? Array.from(selectedItems) : [],
       };
-      console.log("[EventForm] Creating event with payload:", JSON.stringify(payload));
-      console.log("[EventForm] selectContributions:", selectContributions);
-      console.log("[EventForm] selectedItems:", Array.from(selectedItems));
       return apiRequest("POST", "/api/events", payload);
     },
     onSuccess: async (response) => {
