@@ -79,6 +79,7 @@ interface ContributionItemProps {
   eventId: string;
   onAssign: (contributionId: string, participantId: string, cost: string) => void;
   onDelete: (contributionId: string) => void;
+  onUnassign: (contributionId: string) => void;
   isAssigning: boolean;
 }
 
@@ -89,6 +90,7 @@ function ContributionItem({
   eventId,
   onAssign, 
   onDelete,
+  onUnassign,
   isAssigning 
 }: ContributionItemProps) {
   const [showAssign, setShowAssign] = useState(false);
@@ -172,23 +174,32 @@ function ContributionItem({
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>حذف المستلزم</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {hasParticipant ? "إلغاء تعيين المستلزم" : "حذف المستلزم"}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  هل تريد حذف "{contribution.item?.name}" من الطلعة؟
-                  {contribution.participant && (
-                    <span className="block mt-2 text-muted-foreground">
-                      المسؤول: {contribution.participant.name}
-                    </span>
+                  {hasParticipant ? (
+                    <>
+                      هل تريد إلغاء تعيين "{contribution.item?.name}"؟
+                      <span className="block mt-2 text-muted-foreground">
+                        سيتم إزالة المسؤول ({contribution.participant?.name}) ونقل المستلزم للقائمة المتبقية.
+                      </span>
+                    </>
+                  ) : (
+                    <>هل تريد حذف "{contribution.item?.name}" من الطلعة نهائياً؟</>
                   )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>إلغاء</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() => onDelete(contribution.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => hasParticipant ? onUnassign(contribution.id) : onDelete(contribution.id)}
+                  className={hasParticipant 
+                    ? "bg-orange-600 text-white hover:bg-orange-700" 
+                    : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  }
                 >
-                  حذف
+                  {hasParticipant ? "إلغاء التعيين" : "حذف"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -330,6 +341,28 @@ export default function EventDetail() {
       toast({
         title: "خطأ",
         description: "حدث خطأ أثناء حذف المستلزم",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unassignContributionMutation = useMutation({
+    mutationFn: async (contributionId: string) => {
+      return apiRequest("POST", `/api/contributions/${contributionId}/unassign`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/participants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: "تم إلغاء التعيين",
+        description: "تم نقل المستلزم إلى قائمة المتبقية",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء إلغاء التعيين",
         variant: "destructive",
       });
     },
@@ -618,6 +651,7 @@ export default function EventDetail() {
                       eventId={params?.id || ""}
                       onAssign={handleAssign}
                       onDelete={(id) => deleteContributionMutation.mutate(id)}
+                      onUnassign={(id) => unassignContributionMutation.mutate(id)}
                       isAssigning={assignParticipantMutation.isPending}
                     />
                   );
@@ -648,6 +682,7 @@ export default function EventDetail() {
                       eventId={params?.id || ""}
                       onAssign={handleAssign}
                       onDelete={(id) => deleteContributionMutation.mutate(id)}
+                      onUnassign={(id) => unassignContributionMutation.mutate(id)}
                       isAssigning={assignParticipantMutation.isPending}
                     />
                   );

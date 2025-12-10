@@ -69,6 +69,7 @@ export interface IStorage {
   createContribution(contribution: InsertContribution): Promise<Contribution>;
   updateContribution(id: string, contribution: Partial<InsertContribution>): Promise<Contribution | undefined>;
   deleteContribution(id: string): Promise<boolean>;
+  unassignContribution(id: string): Promise<{ unassigned: boolean; participantPruned: boolean }>;
   deleteContributionAndPruneParticipant(id: string): Promise<{ deleted: boolean; participantPruned: boolean }>;
   
   // Activity Logs
@@ -388,6 +389,59 @@ export class DatabaseStorage implements IStorage {
   async deleteContribution(id: string): Promise<boolean> {
     await db.delete(contributions).where(eq(contributions.id, id));
     return true;
+  }
+
+  async unassignContribution(id: string): Promise<{ unassigned: boolean; participantPruned: boolean }> {
+    // Get the contribution first to know the event and participant
+    const [contribution] = await db.select()
+      .from(contributions)
+      .where(eq(contributions.id, id));
+    
+    if (!contribution) {
+      return { unassigned: false, participantPruned: false };
+    }
+    
+    const { eventId, participantId } = contribution;
+    
+    // Reset the contribution to unfulfilled state
+    await db.update(contributions)
+      .set({
+        participantId: null,
+        cost: "0",
+        status: "pending",
+      })
+      .where(eq(contributions.id, id));
+    
+    // If no participant was assigned, we're done
+    if (!participantId) {
+      return { unassigned: true, participantPruned: false };
+    }
+    
+    // Check if this participant has any remaining fulfilled contributions for this event
+    const remainingContributions = await db.select()
+      .from(contributions)
+      .where(and(
+        eq(contributions.eventId, eventId),
+        eq(contributions.participantId, participantId)
+      ));
+    
+    // If no more contributions, remove participant from event
+    if (remainingContributions.length === 0) {
+      await db.delete(eventParticipants)
+        .where(and(
+          eq(eventParticipants.eventId, eventId),
+          eq(eventParticipants.participantId, participantId)
+        ));
+      
+      // Decrement trip count
+      await db.update(participants)
+        .set({ tripCount: sql`GREATEST(${participants.tripCount} - 1, 0)` })
+        .where(eq(participants.id, participantId));
+      
+      return { unassigned: true, participantPruned: true };
+    }
+    
+    return { unassigned: true, participantPruned: false };
   }
 
   async deleteContributionAndPruneParticipant(id: string): Promise<{ deleted: boolean; participantPruned: boolean }> {

@@ -444,6 +444,17 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/contributions/:id/unassign", async (req, res) => {
+    try {
+      // Unassign contribution (reset to pending) and prune participant if no other contributions
+      const result = await storage.unassignContribution(req.params.id);
+      res.json({ unassigned: result.unassigned, participantPruned: result.participantPruned });
+    } catch (error) {
+      console.error("Error unassigning contribution:", error);
+      res.status(500).json({ error: "Failed to unassign contribution" });
+    }
+  });
+
   app.delete("/api/contributions/:id", async (req, res) => {
     try {
       // Use cascade delete to auto-remove participant if no contributions remain
