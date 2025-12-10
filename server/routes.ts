@@ -478,5 +478,52 @@ export async function registerRoutes(
     }
   });
 
+  // Settlements
+  app.get("/api/settlements", async (req, res) => {
+    try {
+      const settlements = await storage.getAllSettlements();
+      res.json(settlements);
+    } catch (error) {
+      console.error("Error fetching settlements:", error);
+      res.status(500).json({ error: "Failed to fetch settlements" });
+    }
+  });
+
+  app.get("/api/events/:eventId/settlement", async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      const settlement = await storage.getEventSettlement(eventId);
+      if (!settlement) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      res.json(settlement);
+    } catch (error) {
+      console.error("Error fetching event settlement:", error);
+      res.status(500).json({ error: "Failed to fetch event settlement" });
+    }
+  });
+
+  app.patch("/api/events/:eventId/settlements/:debtorId/:creditorId", async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      const { debtorId, creditorId } = req.params;
+      
+      const updated = await storage.toggleSettlementStatus(eventId, debtorId, creditorId);
+      if (!updated) {
+        return res.status(404).json({ error: "Settlement record not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error toggling settlement status:", error);
+      res.status(500).json({ error: "Failed to toggle settlement status" });
+    }
+  });
+
   return httpServer;
 }

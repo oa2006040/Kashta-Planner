@@ -7,6 +7,7 @@ import {
   contributions, 
   activityLogs,
   users,
+  settlementRecords,
   type Category,
   type InsertCategory,
   type Item,
@@ -25,6 +26,10 @@ import {
   type InsertUser,
   type CategoryWithItems,
   type EventWithDetails,
+  type SettlementRecord,
+  type EventSettlement,
+  type ParticipantBalance,
+  type SettlementRecordWithDetails,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
@@ -89,6 +94,12 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  
+  // Settlements
+  getEventSettlement(eventId: number): Promise<EventSettlement | null>;
+  getAllSettlements(): Promise<EventSettlement[]>;
+  toggleSettlementStatus(eventId: number, debtorId: string, creditorId: string): Promise<SettlementRecord | undefined>;
+  syncEventSettlement(eventId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -550,6 +561,253 @@ export class DatabaseStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const [created] = await db.insert(users).values(user).returning();
     return created;
+  }
+
+  // Settlement methods
+  
+  // Calculate balances using the fair split algorithm
+  // Returns balances and also cost breakdowns for UI display
+  private calculateEventBalances(
+    eventContributions: Contribution[],
+    eventParticipantsList: Participant[]
+  ): { balances: ParticipantBalance[]; assignedCosts: number; unassignedCosts: number } {
+    // Split contributions into assigned and unassigned
+    const assignedContributions = eventContributions.filter(c => c.participantId);
+    const unassignedContributions = eventContributions.filter(c => !c.participantId);
+    
+    // Calculate costs for each group
+    const assignedCosts = assignedContributions.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+    const unassignedCosts = unassignedContributions.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+    
+    // Sum up what each participant paid (only assigned contributions count)
+    const paidByParticipant = new Map<string, number>();
+    
+    for (const contribution of assignedContributions) {
+      if (contribution.participantId) {
+        const current = paidByParticipant.get(contribution.participantId) || 0;
+        paidByParticipant.set(contribution.participantId, current + parseFloat(contribution.cost || "0"));
+      }
+    }
+    
+    // Fair share is based ONLY on assigned contributions (so balances net to zero)
+    const participantCount = eventParticipantsList.length;
+    const fairShare = participantCount > 0 ? assignedCosts / participantCount : 0;
+    
+    // Calculate balance for each participant
+    const balances: ParticipantBalance[] = eventParticipantsList.map(participant => {
+      const paid = paidByParticipant.get(participant.id) || 0;
+      const balance = paid - fairShare;
+      
+      let role: 'creditor' | 'debtor' | 'settled' = 'settled';
+      if (balance > 0.01) {
+        role = 'creditor';
+      } else if (balance < -0.01) {
+        role = 'debtor';
+      }
+      
+      return {
+        participant,
+        totalPaid: paid,
+        fairShare,
+        balance,
+        role,
+      };
+    });
+    
+    return { balances, assignedCosts, unassignedCosts };
+  }
+  
+  // Generate minimum transactions to settle debts
+  private generateSettlementTransactions(
+    balances: ParticipantBalance[]
+  ): { debtorId: string; creditorId: string; amount: number }[] {
+    const transactions: { debtorId: string; creditorId: string; amount: number }[] = [];
+    
+    // Separate into debtors and creditors
+    const debtors = balances
+      .filter(b => b.role === 'debtor')
+      .map(b => ({ id: b.participant.id, amount: Math.abs(b.balance) }))
+      .sort((a, b) => b.amount - a.amount);
+    
+    const creditors = balances
+      .filter(b => b.role === 'creditor')
+      .map(b => ({ id: b.participant.id, amount: b.balance }))
+      .sort((a, b) => b.amount - a.amount);
+    
+    // Match debtors to creditors
+    let i = 0, j = 0;
+    while (i < debtors.length && j < creditors.length) {
+      const debtor = debtors[i];
+      const creditor = creditors[j];
+      
+      const transfer = Math.min(debtor.amount, creditor.amount);
+      
+      if (transfer > 0.01) {
+        transactions.push({
+          debtorId: debtor.id,
+          creditorId: creditor.id,
+          amount: Math.round(transfer * 100) / 100, // Round to 2 decimals
+        });
+      }
+      
+      debtor.amount -= transfer;
+      creditor.amount -= transfer;
+      
+      if (debtor.amount < 0.01) i++;
+      if (creditor.amount < 0.01) j++;
+    }
+    
+    return transactions;
+  }
+  
+  async syncEventSettlement(eventId: number): Promise<void> {
+    // Get event with participants and contributions
+    const event = await this.getEventWithDetails(eventId);
+    if (!event) return;
+    
+    const participantsList = event.eventParticipants.map(ep => ep.participant);
+    const { balances } = this.calculateEventBalances(event.contributions, participantsList);
+    const newTransactions = this.generateSettlementTransactions(balances);
+    
+    // Get existing settlement records for this event
+    const existingRecords = await db.select()
+      .from(settlementRecords)
+      .where(eq(settlementRecords.eventId, eventId));
+    
+    // Create a map of existing records by debtor-creditor pair
+    const existingMap = new Map<string, SettlementRecord>();
+    for (const record of existingRecords) {
+      existingMap.set(`${record.debtorId}-${record.creditorId}`, record);
+    }
+    
+    // Update or create settlement records
+    for (const tx of newTransactions) {
+      const key = `${tx.debtorId}-${tx.creditorId}`;
+      const existing = existingMap.get(key);
+      
+      if (existing) {
+        // Update existing record if amount changed significantly
+        const amountDiff = Math.abs(parseFloat(existing.amount) - tx.amount);
+        if (amountDiff > 0.01) {
+          await db.update(settlementRecords)
+            .set({ 
+              amount: tx.amount.toString(),
+              isSettled: false, // Reset settled status if amount changed
+              updatedAt: new Date(),
+            })
+            .where(eq(settlementRecords.id, existing.id));
+        }
+        existingMap.delete(key);
+      } else {
+        // Create new record
+        await db.insert(settlementRecords).values({
+          eventId,
+          debtorId: tx.debtorId,
+          creditorId: tx.creditorId,
+          amount: tx.amount.toString(),
+          isSettled: false,
+        });
+      }
+    }
+    
+    // Delete obsolete records (where debt no longer exists)
+    const obsoleteRecords = Array.from(existingMap.values());
+    for (const record of obsoleteRecords) {
+      await db.delete(settlementRecords)
+        .where(eq(settlementRecords.id, record.id));
+    }
+  }
+  
+  async getEventSettlement(eventId: number): Promise<EventSettlement | null> {
+    const event = await this.getEventWithDetails(eventId);
+    if (!event) return null;
+    
+    // Sync settlements first
+    await this.syncEventSettlement(eventId);
+    
+    const participantsList = event.eventParticipants.map(ep => ep.participant);
+    const { balances, assignedCosts, unassignedCosts } = this.calculateEventBalances(event.contributions, participantsList);
+    
+    // Get settlement records with participant details
+    const records = await db.select()
+      .from(settlementRecords)
+      .where(eq(settlementRecords.eventId, eventId));
+    
+    const allParticipantIds = Array.from(new Set([
+      ...records.map(r => r.debtorId),
+      ...records.map(r => r.creditorId),
+    ]));
+    
+    const allParticipants = allParticipantIds.length > 0
+      ? await db.select().from(participants).where(inArray(participants.id, allParticipantIds))
+      : [];
+    
+    const transactions: SettlementRecordWithDetails[] = records.map(r => ({
+      ...r,
+      debtor: allParticipants.find(p => p.id === r.debtorId)!,
+      creditor: allParticipants.find(p => p.id === r.creditorId)!,
+    }));
+    
+    // Total spent is assigned + unassigned
+    const totalSpent = assignedCosts + unassignedCosts;
+    const fairShare = participantsList.length > 0 ? assignedCosts / participantsList.length : 0;
+    
+    return {
+      eventId: event.id,
+      eventTitle: event.title,
+      eventDate: event.date,
+      totalSpent,
+      assignedCosts,
+      unassignedCosts,
+      participantCount: participantsList.length,
+      fairShare,
+      balances,
+      transactions,
+    };
+  }
+  
+  async getAllSettlements(): Promise<EventSettlement[]> {
+    const allEvents = await db.select().from(events).orderBy(desc(events.date));
+    const settlements: EventSettlement[] = [];
+    
+    for (const event of allEvents) {
+      const settlement = await this.getEventSettlement(event.id);
+      if (settlement && settlement.transactions.length > 0) {
+        settlements.push(settlement);
+      }
+    }
+    
+    return settlements;
+  }
+  
+  async toggleSettlementStatus(
+    eventId: number, 
+    debtorId: string, 
+    creditorId: string
+  ): Promise<SettlementRecord | undefined> {
+    // Find the existing record
+    const [record] = await db.select()
+      .from(settlementRecords)
+      .where(and(
+        eq(settlementRecords.eventId, eventId),
+        eq(settlementRecords.debtorId, debtorId),
+        eq(settlementRecords.creditorId, creditorId)
+      ));
+    
+    if (!record) return undefined;
+    
+    const newStatus = !record.isSettled;
+    
+    const [updated] = await db.update(settlementRecords)
+      .set({ 
+        isSettled: newStatus,
+        settledAt: newStatus ? new Date() : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(settlementRecords.id, record.id))
+      .returning();
+    
+    return updated;
   }
 }
 

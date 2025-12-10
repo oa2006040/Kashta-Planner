@@ -1,0 +1,153 @@
+# Fair Split Algorithm: Expense Equalization
+
+## Problem Definition
+
+Given **n** people in a group, each person **i** has paid an amount **Pᵢ**. We want to equalize payments so everyone effectively pays the same amount.
+
+---
+
+## Mathematical Foundation
+
+### Step 1: Calculate the Fair Share (Average)
+
+$$\bar{P} = \frac{\sum_{i=1}^{n} P_i}{n} = \frac{P_1 + P_2 + ... + P_n}{n}$$
+
+### Step 2: Calculate Each Person's Balance
+
+For each person **i**, compute:
+
+$$B_i = P_i - \bar{P}$$
+
+**Interpretation:**
+- If **Bᵢ > 0** → Person **i** is a **creditor** (overpaid, should receive money)
+- If **Bᵢ < 0** → Person **i** is a **debtor** (underpaid, should give money)
+- If **Bᵢ = 0** → Person **i** is settled (paid exactly fair share)
+
+**Key Property:**
+$$\sum_{i=1}^{n} B_i = 0$$
+
+This guarantees total debts = total credits (zero-sum).
+
+---
+
+## The Settlement Algorithm
+
+```
+ALGORITHM: MinimizeTransactions
+
+INPUT: List of (person, amount_paid)
+OUTPUT: List of (debtor, creditor, transfer_amount)
+
+1. Compute average = total_paid / n
+
+2. For each person:
+   balance = paid - average
+   if balance < 0: add to DEBTORS list with |balance|
+   if balance > 0: add to CREDITORS list with balance
+
+3. Sort DEBTORS descending by amount owed
+   Sort CREDITORS descending by amount owed
+
+4. While DEBTORS and CREDITORS not empty:
+   
+   debtor = first in DEBTORS
+   creditor = first in CREDITORS
+   
+   transfer = min(debtor.owes, creditor.owed)
+   
+   OUTPUT: "debtor pays creditor: transfer"
+   
+   debtor.owes -= transfer
+   creditor.owed -= transfer
+   
+   if debtor.owes == 0: remove from DEBTORS
+   if creditor.owed == 0: remove from CREDITORS
+```
+
+---
+
+## Worked Example
+
+### Scenario:
+| Person | Paid |
+|--------|------|
+| Osama | 100 |
+| Mohammed | 20 |
+| Ali | 40 |
+| Khalid | 40 |
+
+### Step 1: Average
+$$\bar{P} = \frac{100 + 20 + 40 + 40}{4} = \frac{200}{4} = 50$$
+
+### Step 2: Balances
+| Person | Paid | Balance (Paid - 50) | Status |
+|--------|------|---------------------|--------|
+| Osama | 100 | +50 | Creditor |
+| Mohammed | 20 | -30 | Debtor |
+| Ali | 40 | -10 | Debtor |
+| Khalid | 40 | -10 | Debtor |
+
+**Verification:** (+50) + (-30) + (-10) + (-10) = 0 ✓
+
+### Step 3: Settlement Transactions
+
+```
+DEBTORS:  [Mohammed: 30, Ali: 10, Khalid: 10]
+CREDITORS: [Osama: 50]
+
+Transaction 1:
+  Mohammed → Osama: min(30, 50) = 30
+  Updated: Mohammed: 0 (settled), Osama: 20 remaining
+
+Transaction 2:
+  Ali → Osama: min(10, 20) = 10
+  Updated: Ali: 0 (settled), Osama: 10 remaining
+
+Transaction 3:
+  Khalid → Osama: min(10, 10) = 10
+  Updated: Khalid: 0 (settled), Osama: 0 (settled)
+```
+
+### Final Result:
+| From | To | Amount |
+|------|-----|--------|
+| Mohammed | Osama | 30 |
+| Ali | Osama | 10 |
+| Khalid | Osama | 10 |
+
+**Total transferred to Osama: 50** (exactly his overpayment) ✓
+
+---
+
+## Why This Works (Proof of Correctness)
+
+1. **Conservation of Money:**
+   $$\sum \text{debts} = \sum \text{credits} = \left| \sum_{B_i < 0} B_i \right|$$
+
+2. **Greedy Optimality:**
+   Each transaction fully settles at least one person, guaranteeing at most **(n-1)** transactions.
+
+3. **Fairness Invariant:**
+   After all transfers, each person's effective payment equals:
+   $$\text{Effective}_i = P_i - \text{received}_i + \text{paid}_i = \bar{P}$$
+
+---
+
+## Simple Two-Person Case
+
+Your original example:
+- Osama: 10 SAR
+- Mohammed: 5 SAR
+
+$$\bar{P} = \frac{10 + 5}{2} = 7.5$$
+
+| Person | Balance |
+|--------|---------|
+| Osama | +2.5 (creditor) |
+| Mohammed | -2.5 (debtor) |
+
+**Result:** Mohammed pays Osama **2.5 SAR**
+
+---
+
+هذي الخوارزمية تضمن أقل عدد ممكن من التحويلات وتوزيع عادل تماماً 👌

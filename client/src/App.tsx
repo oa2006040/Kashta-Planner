@@ -17,6 +17,7 @@ import Participants from "@/pages/participants";
 import ParticipantForm from "@/pages/participant-form";
 import Items from "@/pages/items";
 import History from "@/pages/history";
+import Statement from "@/pages/statement";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/participants/:id/edit" component={ParticipantForm} />
       <Route path="/items" component={Items} />
       <Route path="/history" component={History} />
+      <Route path="/statement" component={Statement} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

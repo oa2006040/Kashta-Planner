@@ -5,6 +5,7 @@ import {
   Users,
   Package,
   History,
+  Receipt,
   Settings,
   Flame,
   Star,
@@ -47,6 +48,11 @@ const mainNavItems = [
     title: "السجل",
     url: "/history",
     icon: History,
+  },
+  {
+    title: "كشف الحساب",
+    url: "/statement",
+    icon: Receipt,
   },
 ];
 

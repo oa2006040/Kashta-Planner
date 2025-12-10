@@ -19,7 +19,13 @@ import {
   UserPlus,
   CheckCircle2,
   Circle,
-  Loader2
+  Loader2,
+  Receipt,
+  ArrowLeft,
+  TrendingUp,
+  TrendingDown,
+  Equal,
+  AlertTriangle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,7 +58,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatArabicDate, formatHijriDate, formatCurrency, formatNumber } from "@/lib/constants";
 import { CategoryIcon } from "@/components/category-icon";
 import { AvatarIcon } from "@/components/avatar-icon";
-import type { EventWithDetails, Contribution, Participant, Category } from "@shared/schema";
+import type { EventWithDetails, Contribution, Participant, Category, EventSettlement } from "@shared/schema";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -303,6 +309,31 @@ export default function EventDetail() {
 
   const { data: participants } = useQuery<Participant[]>({
     queryKey: ["/api/participants"],
+  });
+
+  const { data: settlement } = useQuery<EventSettlement>({
+    queryKey: ["/api/events", params?.id, "settlement"],
+    enabled: !!params?.id,
+  });
+
+  const toggleSettlementMutation = useMutation({
+    mutationFn: async ({ debtorId, creditorId }: { debtorId: string; creditorId: string }) => {
+      return apiRequest("PATCH", `/api/events/${params?.id}/settlements/${debtorId}/${creditorId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id, "settlement"] });
+      toast({
+        title: "تم التحديث",
+        description: "تم تحديث حالة الدفع",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء تحديث حالة الدفع",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -639,6 +670,10 @@ export default function EventDetail() {
             <DollarSign className="h-4 w-4 ml-2" />
             الميزانية
           </TabsTrigger>
+          <TabsTrigger value="settlement" data-testid="tab-settlement">
+            <Receipt className="h-4 w-4 ml-2" />
+            التسوية
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="space-y-6">
@@ -891,6 +926,145 @@ export default function EventDetail() {
                 <h3 className="font-medium mb-2">لا توجد تكاليف</h3>
                 <p className="text-sm text-muted-foreground">
                   أضف مستلزمات وحدد تكلفتها لعرض الميزانية
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="settlement" className="space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <h3 className="font-semibold">تسوية المصاريف</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              {settlement && (
+                <Badge variant="outline" className="text-lg px-4 py-1">
+                  الحصة: {formatCurrency(settlement.fairShare)}
+                </Badge>
+              )}
+              {settlement && settlement.unassignedCosts > 0 && (
+                <Badge variant="outline" className="text-orange-600 border-orange-300">
+                  <AlertTriangle className="h-3 w-3 ml-1" />
+                  {formatCurrency(settlement.unassignedCosts)} غير معين
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {settlement && settlement.balances.length > 0 ? (
+            <div className="space-y-6">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {settlement.balances.map((balance) => (
+                  <div 
+                    key={balance.participant.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg ${
+                      balance.role === 'creditor' 
+                        ? 'bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800' 
+                        : balance.role === 'debtor'
+                        ? 'bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800'
+                        : 'bg-muted/50'
+                    }`}
+                  >
+                    <AvatarIcon icon={balance.participant.avatar} className="h-8 w-8" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{balance.participant.name}</p>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground">دفع: {formatCurrency(balance.totalPaid)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {balance.role === 'creditor' && (
+                        <>
+                          <TrendingUp className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-600">
+                            +{formatCurrency(balance.balance)}
+                          </span>
+                        </>
+                      )}
+                      {balance.role === 'debtor' && (
+                        <>
+                          <TrendingDown className="h-4 w-4 text-orange-600" />
+                          <span className="text-sm font-medium text-orange-600">
+                            {formatCurrency(balance.balance)}
+                          </span>
+                        </>
+                      )}
+                      {balance.role === 'settled' && (
+                        <>
+                          <Equal className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">متوازن</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {settlement.transactions.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">التحويلات المطلوبة</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {settlement.transactions.map((tx) => (
+                      <div 
+                        key={`${tx.debtorId}-${tx.creditorId}`}
+                        className={`flex items-center gap-3 p-3 rounded-lg ${
+                          tx.isSettled 
+                            ? 'bg-green-50 dark:bg-green-900/10' 
+                            : 'bg-muted/50'
+                        }`}
+                        data-testid={`settlement-tx-${tx.debtorId}-${tx.creditorId}`}
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <AvatarIcon icon={tx.debtor?.avatar} className="h-6 w-6" />
+                          <span className="font-medium truncate">{tx.debtor?.name}</span>
+                          <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <AvatarIcon icon={tx.creditor?.avatar} className="h-6 w-6" />
+                          <span className="font-medium truncate">{tx.creditor?.name}</span>
+                        </div>
+                        <Badge 
+                          variant={tx.isSettled ? "default" : "secondary"}
+                          className={tx.isSettled ? "bg-green-600" : ""}
+                        >
+                          {formatCurrency(tx.amount)}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant={tx.isSettled ? "outline" : "default"}
+                          onClick={() => toggleSettlementMutation.mutate({
+                            debtorId: tx.debtorId,
+                            creditorId: tx.creditorId,
+                          })}
+                          disabled={toggleSettlementMutation.isPending}
+                          data-testid={`button-toggle-tx-${tx.debtorId}-${tx.creditorId}`}
+                        >
+                          {toggleSettlementMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : tx.isSettled ? (
+                            <>
+                              <X className="h-4 w-4 ml-1" />
+                              إلغاء
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-4 w-4 ml-1" />
+                              تم الدفع
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="font-medium mb-2">لا توجد تسويات</h3>
+                <p className="text-sm text-muted-foreground">
+                  أضف مشاركين ومستلزمات بتكاليف لعرض تسوية المصاريف
                 </p>
               </CardContent>
             </Card>

@@ -164,6 +164,38 @@ export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ i
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 
+// Settlement Records table - tracks who owes whom after expense equalization
+export const settlementRecords = pgTable("settlement_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  debtorId: varchar("debtor_id").notNull().references(() => participants.id, { onDelete: "cascade" }),
+  creditorId: varchar("creditor_id").notNull().references(() => participants.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  isSettled: boolean("is_settled").default(false),
+  settledAt: timestamp("settled_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const settlementRecordsRelations = relations(settlementRecords, ({ one }) => ({
+  event: one(events, {
+    fields: [settlementRecords.eventId],
+    references: [events.id],
+  }),
+  debtor: one(participants, {
+    fields: [settlementRecords.debtorId],
+    references: [participants.id],
+  }),
+  creditor: one(participants, {
+    fields: [settlementRecords.creditorId],
+    references: [participants.id],
+  }),
+}));
+
+export const insertSettlementRecordSchema = createInsertSchema(settlementRecords).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSettlementRecord = z.infer<typeof insertSettlementRecordSchema>;
+export type SettlementRecord = typeof settlementRecords.$inferSelect;
+
 // Users table (keep existing)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -192,4 +224,32 @@ export type CategoryWithItems = Category & {
 export type ParticipantWithStats = Participant & {
   totalContributions: number;
   totalSpent: number;
+};
+
+// Settlement types for expense equalization
+export type SettlementRecordWithDetails = SettlementRecord & {
+  debtor: Participant;
+  creditor: Participant;
+  event?: Event;
+};
+
+export type ParticipantBalance = {
+  participant: Participant;
+  totalPaid: number;
+  fairShare: number;
+  balance: number; // positive = creditor (overpaid), negative = debtor (underpaid)
+  role: 'creditor' | 'debtor' | 'settled';
+};
+
+export type EventSettlement = {
+  eventId: number;
+  eventTitle: string;
+  eventDate: Date;
+  totalSpent: number; // Total of ALL contribution costs (assigned + unassigned)
+  assignedCosts: number; // Total of assigned contribution costs only
+  unassignedCosts: number; // Total of unassigned contribution costs
+  participantCount: number;
+  fairShare: number; // Based on assigned costs only
+  balances: ParticipantBalance[];
+  transactions: SettlementRecordWithDetails[];
 };
