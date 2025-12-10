@@ -27,7 +27,7 @@ import {
   type EventWithDetails,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Categories
@@ -188,7 +188,7 @@ export class DatabaseStorage implements IStorage {
     
     const participantIds = eventParticipantsList.map(ep => ep.participantId);
     const participantsList = participantIds.length > 0 
-      ? await db.select().from(participants)
+      ? await db.select().from(participants).where(inArray(participants.id, participantIds))
       : [];
 
     const eventParticipantsWithDetails = eventParticipantsList.map(ep => ({
@@ -204,7 +204,7 @@ export class DatabaseStorage implements IStorage {
     
     const itemIds = [...new Set(contributionsList.map(c => c.itemId))];
     const itemsList = itemIds.length > 0 
-      ? await db.select().from(items)
+      ? await db.select().from(items).where(inArray(items.id, itemIds))
       : [];
 
     const contributionsWithDetails = contributionsList.map(c => ({
