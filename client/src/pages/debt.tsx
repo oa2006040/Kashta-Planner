@@ -20,6 +20,7 @@ import type { ParticipantDebtSummary } from "@shared/schema";
 export default function DebtPage() {
   const { data: summaries, isLoading, error } = useQuery<ParticipantDebtSummary[]>({
     queryKey: ['/api/debt'],
+    refetchInterval: 5000,
   });
 
   if (isLoading) {

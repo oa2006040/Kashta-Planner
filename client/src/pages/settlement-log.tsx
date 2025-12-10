@@ -20,6 +20,7 @@ import type { SettlementActivityLog } from "@shared/schema";
 export default function SettlementLogPage() {
   const { data: logs, isLoading, error } = useQuery<SettlementActivityLog[]>({
     queryKey: ['/api/settlement-activity-log'],
+    refetchInterval: 5000,
   });
 
   if (isLoading) {

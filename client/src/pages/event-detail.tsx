@@ -301,6 +301,7 @@ export default function EventDetail() {
   const { data: event, isLoading } = useQuery<EventWithDetails>({
     queryKey: ["/api/events", params?.id],
     enabled: !!params?.id,
+    refetchInterval: 5000,
   });
 
   const { data: categories } = useQuery<Category[]>({
@@ -314,6 +315,7 @@ export default function EventDetail() {
   const { data: settlement } = useQuery<EventSettlement>({
     queryKey: ["/api/events", params?.id, "settlement"],
     enabled: !!params?.id,
+    refetchInterval: 5000,
   });
 
   const toggleSettlementMutation = useMutation({

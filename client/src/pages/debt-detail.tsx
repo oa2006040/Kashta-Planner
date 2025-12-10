@@ -26,6 +26,7 @@ export default function DebtDetailPage() {
   const { data: portfolio, isLoading, error } = useQuery<ParticipantDebtPortfolio>({
     queryKey: ['/api/debt', participantId],
     enabled: !!participantId,
+    refetchInterval: 5000,
   });
 
   if (isLoading) {

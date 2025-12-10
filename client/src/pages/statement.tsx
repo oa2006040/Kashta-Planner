@@ -28,6 +28,7 @@ export default function Statement() {
 
   const { data: settlements, isLoading } = useQuery<EventSettlement[]>({
     queryKey: ["/api/settlements"],
+    refetchInterval: 5000,
   });
 
   const toggleMutation = useMutation({

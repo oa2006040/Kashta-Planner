@@ -192,16 +192,19 @@ function EventCardSkeleton() {
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/stats"],
+    refetchInterval: 5000,
   });
 
   const { data: events, isLoading: eventsLoading } = useQuery<Event[]>({
     queryKey: ["/api/events"],
+    refetchInterval: 5000,
   });
 
   const { data: participants, isLoading: participantsLoading } = useQuery<
     Participant[]
   >({
     queryKey: ["/api/participants"],
+    refetchInterval: 5000,
   });
 
   // Filter for upcoming events only
