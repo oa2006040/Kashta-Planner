@@ -67,6 +67,8 @@ export const events = pgTable("events", {
   title: text("title").notNull(),
   description: text("description"),
   location: text("location"),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
   date: timestamp("date").notNull(),
   endDate: timestamp("end_date"),
   status: text("status").default("upcoming"), // upcoming, ongoing, completed, cancelled

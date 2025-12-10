@@ -104,6 +104,9 @@ export interface IStorage {
   getAllSettlements(): Promise<EventSettlement[]>;
   toggleSettlementStatus(eventId: number, debtorId: string, creditorId: string): Promise<SettlementRecord | undefined>;
   syncEventSettlement(eventId: number): Promise<void>;
+  
+  // Event status sync
+  syncEventStatuses(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1067,6 +1070,47 @@ export class DatabaseStorage implements IStorage {
       counterpartyDebts,
       eventBreakdown,
     };
+  }
+  
+  // Sync event statuses based on current date
+  async syncEventStatuses(): Promise<void> {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Get all events that are not cancelled
+    const allEvents = await db.select().from(events);
+    
+    for (const event of allEvents) {
+      // Skip cancelled events - they stay cancelled
+      if (event.status === 'cancelled') continue;
+      
+      const eventDate = new Date(event.date);
+      const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+      
+      // Determine end date for multi-day events
+      const endDate = event.endDate ? new Date(event.endDate) : eventDate;
+      const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+      
+      let newStatus: string;
+      
+      if (eventDateOnly > today) {
+        // Event is in the future
+        newStatus = 'upcoming';
+      } else if (eventDateOnly <= today && endDateOnly >= today) {
+        // Event is today or spans today
+        newStatus = 'ongoing';
+      } else {
+        // Event has passed
+        newStatus = 'completed';
+      }
+      
+      // Only update if status changed
+      if (event.status !== newStatus) {
+        await db.update(events)
+          .set({ status: newStatus })
+          .where(eq(events.id, event.id));
+      }
+    }
   }
 }
 

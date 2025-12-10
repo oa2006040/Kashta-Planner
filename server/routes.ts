@@ -583,5 +583,91 @@ export async function registerRoutes(
     }
   });
 
+  // Weather API - fetch weather from Open-Meteo (free, no API key)
+  app.get("/api/weather", async (req, res) => {
+    try {
+      const { lat, lng, date } = req.query;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ error: "Latitude and longitude are required" });
+      }
+      
+      const latitude = parseFloat(lat as string);
+      const longitude = parseFloat(lng as string);
+      
+      if (isNaN(latitude) || isNaN(longitude)) {
+        return res.status(400).json({ error: "Invalid coordinates" });
+      }
+      
+      // Use Open-Meteo API (free, no key required)
+      const targetDate = date ? new Date(date as string) : new Date();
+      const dateStr = targetDate.toISOString().split('T')[0];
+      
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&start_date=${dateStr}&end_date=${dateStr}&timezone=auto`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Failed to fetch weather data");
+      }
+      
+      const data = await response.json();
+      
+      // Map weather codes to Arabic descriptions
+      const weatherCodeMap: Record<number, string> = {
+        0: "صافي",
+        1: "صافي غالباً",
+        2: "غائم جزئياً",
+        3: "غائم",
+        45: "ضباب",
+        48: "ضباب متجمد",
+        51: "رذاذ خفيف",
+        53: "رذاذ متوسط",
+        55: "رذاذ كثيف",
+        61: "مطر خفيف",
+        63: "مطر متوسط",
+        65: "مطر غزير",
+        71: "ثلج خفيف",
+        73: "ثلج متوسط",
+        75: "ثلج كثيف",
+        77: "حبات ثلج",
+        80: "زخات خفيفة",
+        81: "زخات متوسطة",
+        82: "زخات غزيرة",
+        85: "زخات ثلجية خفيفة",
+        86: "زخات ثلجية كثيفة",
+        95: "عاصفة رعدية",
+        96: "عاصفة رعدية مع برد",
+        99: "عاصفة رعدية مع برد كثيف",
+      };
+      
+      const weatherCode = data.daily?.weathercode?.[0] || 0;
+      const tempMax = data.daily?.temperature_2m_max?.[0];
+      const tempMin = data.daily?.temperature_2m_min?.[0];
+      const avgTemp = tempMax && tempMin ? Math.round((tempMax + tempMin) / 2) : null;
+      
+      res.json({
+        weather: weatherCodeMap[weatherCode] || "غير معروف",
+        temperature: avgTemp,
+        tempMax,
+        tempMin,
+        weatherCode,
+      });
+    } catch (error) {
+      console.error("Error fetching weather:", error);
+      res.status(500).json({ error: "Failed to fetch weather data" });
+    }
+  });
+
+  // Sync event statuses based on current date
+  app.post("/api/events/sync-statuses", async (req, res) => {
+    try {
+      await storage.syncEventStatuses();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error syncing event statuses:", error);
+      res.status(500).json({ error: "Failed to sync event statuses" });
+    }
+  });
+
   return httpServer;
 }
