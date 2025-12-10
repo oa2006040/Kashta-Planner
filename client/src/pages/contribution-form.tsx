@@ -39,7 +39,7 @@ export default function ContributionForm() {
   });
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
-    queryKey: ["/api/categories"],
+    queryKey: ["/api/categories?withItems=true"],
   });
 
   const { data: participants } = useQuery<Participant[]>({
