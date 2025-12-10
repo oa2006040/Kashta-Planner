@@ -375,6 +375,9 @@ export default function Items() {
                 ? "جرب تغيير معايير البحث" 
                 : "أضف المستلزمات لتظهر في قاعدة البيانات المشتركة"}
             </p>
+            {categoriesWithItems && !searchQuery && selectedCategory === "all" && (
+              <AddItemDialog categories={categoriesWithItems} />
+            )}
           </CardContent>
         </Card>
       )}
