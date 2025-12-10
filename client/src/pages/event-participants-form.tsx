@@ -76,10 +76,10 @@ export default function EventParticipantsForm() {
     try {
       // Sanitize costs: convert empty strings to "0" and ensure numeric values
       const sanitizedCosts: Record<string, string> = {};
-      for (const itemId of selectedItems) {
+      Array.from(selectedItems).forEach((itemId) => {
         const cost = itemCosts[itemId];
         sanitizedCosts[itemId] = cost && cost.trim() !== "" ? cost : "0";
-      }
+      });
       
       await addParticipantMutation.mutateAsync({
         participantId: selectedParticipantId,

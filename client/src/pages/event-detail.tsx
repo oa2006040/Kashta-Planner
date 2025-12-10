@@ -116,6 +116,27 @@ export default function EventDetail() {
     },
   });
 
+  const deleteContributionMutation = useMutation({
+    mutationFn: async (contributionId: string) => {
+      return apiRequest("DELETE", `/api/contributions/${contributionId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف المستلزم من الطلعة",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حذف المستلزم",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -371,11 +392,47 @@ export default function EventDetail() {
                               )}
                             </div>
                           </div>
-                          {parseFloat(contribution.cost || "0") > 0 && (
-                            <Badge variant="outline">
-                              {formatCurrency(contribution.cost || 0)}
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {parseFloat(contribution.cost || "0") > 0 && (
+                              <Badge variant="outline">
+                                {formatCurrency(contribution.cost || 0)}
+                              </Badge>
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  data-testid={`button-delete-contribution-${contribution.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>حذف المستلزم</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    هل تريد حذف "{contribution.item?.name}" من الطلعة؟
+                                    {contribution.participant && (
+                                      <span className="block mt-2 text-muted-foreground">
+                                        المسؤول: {contribution.participant.name}
+                                      </span>
+                                    )}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteContributionMutation.mutate(contribution.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    حذف
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
                       ))}
                     </CardContent>
@@ -424,7 +481,7 @@ export default function EventDetail() {
                   <Card key={ep.id} className="hover-elevate">
                     <CardContent className="p-4 flex items-center gap-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                        <AvatarIcon avatar={ep.participant?.avatar} size="lg" />
+                        <AvatarIcon icon={ep.participant?.avatar} className="h-6 w-6" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{ep.participant?.name}</p>
