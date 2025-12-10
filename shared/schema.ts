@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, decimal, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, decimal, jsonb, serial } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -63,7 +63,7 @@ export type Participant = typeof participants.$inferSelect;
 
 // Events table - kashta outings
 export const events = pgTable("events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
   location: text("location"),
@@ -90,7 +90,7 @@ export type Event = typeof events.$inferSelect;
 // Event Participants junction table
 export const eventParticipants = pgTable("event_participants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   participantId: varchar("participant_id").notNull().references(() => participants.id, { onDelete: "cascade" }),
   role: text("role").default("member"), // organizer, member
   confirmedAt: timestamp("confirmed_at"),
@@ -114,7 +114,7 @@ export type EventParticipant = typeof eventParticipants.$inferSelect;
 // Contributions table - who brings what
 export const contributions = pgTable("contributions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   itemId: varchar("item_id").notNull().references(() => items.id),
   participantId: varchar("participant_id").references(() => participants.id),
   quantity: integer("quantity").default(1),
@@ -146,7 +146,7 @@ export type Contribution = typeof contributions.$inferSelect;
 // Activity Logs table
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  eventId: varchar("event_id").references(() => events.id, { onDelete: "cascade" }),
+  eventId: integer("event_id").references(() => events.id, { onDelete: "cascade" }),
   action: text("action").notNull(),
   details: text("details"),
   metadata: jsonb("metadata"),
