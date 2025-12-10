@@ -48,14 +48,15 @@ export default function ContributionForm() {
 
   const addContributionMutation = useMutation({
     mutationFn: async (data: { eventId: string; itemId: string; participantId?: string; cost?: string }) => {
-      return apiRequest(`/api/events/${data.eventId}/contributions`, {
-        method: "POST",
-        body: JSON.stringify({
+      return apiRequest(
+        "POST",
+        `/api/events/${data.eventId}/contributions`,
+        {
           itemId: data.itemId,
-          participantId: data.participantId,
-          cost: data.cost,
-        }),
-      });
+          participantId: data.participantId || null,
+          cost: data.cost || "0",
+        }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events", eventId] });
