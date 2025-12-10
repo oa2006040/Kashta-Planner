@@ -9,6 +9,8 @@ export default {
         lg: ".5625rem", /* 9px */
         md: ".375rem", /* 6px */
         sm: ".1875rem", /* 3px */
+        "2xl": "1rem", /* 16px */
+        "3xl": "1.5rem", /* 24px */
       },
       colors: {
         // Flat / base colors (regular buttons)
@@ -83,9 +85,10 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
+        sans: ["'Noto Kufi Arabic'", "var(--font-sans)", "sans-serif"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
+        arabic: ["'Noto Kufi Arabic'", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

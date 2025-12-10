@@ -1,38 +1,348 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { 
+  categories, 
+  items, 
+  participants, 
+  events, 
+  eventParticipants, 
+  contributions, 
+  activityLogs,
+  users,
+  type Category,
+  type InsertCategory,
+  type Item,
+  type InsertItem,
+  type Participant,
+  type InsertParticipant,
+  type Event,
+  type InsertEvent,
+  type EventParticipant,
+  type InsertEventParticipant,
+  type Contribution,
+  type InsertContribution,
+  type ActivityLog,
+  type InsertActivityLog,
+  type User,
+  type InsertUser,
+  type CategoryWithItems,
+  type EventWithDetails,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // Categories
+  getCategories(): Promise<Category[]>;
+  getCategoriesWithItems(): Promise<CategoryWithItems[]>;
+  getCategory(id: string): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  
+  // Items
+  getItems(): Promise<Item[]>;
+  getItemsByCategory(categoryId: string): Promise<Item[]>;
+  getItem(id: string): Promise<Item | undefined>;
+  createItem(item: InsertItem): Promise<Item>;
+  
+  // Participants
+  getParticipants(): Promise<Participant[]>;
+  getParticipant(id: string): Promise<Participant | undefined>;
+  createParticipant(participant: InsertParticipant): Promise<Participant>;
+  updateParticipant(id: string, participant: Partial<InsertParticipant>): Promise<Participant | undefined>;
+  deleteParticipant(id: string): Promise<boolean>;
+  
+  // Events
+  getEvents(): Promise<Event[]>;
+  getEvent(id: string): Promise<Event | undefined>;
+  getEventWithDetails(id: string): Promise<EventWithDetails | undefined>;
+  createEvent(event: InsertEvent): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent>): Promise<Event | undefined>;
+  deleteEvent(id: string): Promise<boolean>;
+  
+  // Event Participants
+  getEventParticipants(eventId: string): Promise<EventParticipant[]>;
+  addParticipantToEvent(data: InsertEventParticipant): Promise<EventParticipant>;
+  removeParticipantFromEvent(eventId: string, participantId: string): Promise<boolean>;
+  
+  // Contributions
+  getContributions(eventId: string): Promise<Contribution[]>;
+  createContribution(contribution: InsertContribution): Promise<Contribution>;
+  updateContribution(id: string, contribution: Partial<InsertContribution>): Promise<Contribution | undefined>;
+  deleteContribution(id: string): Promise<boolean>;
+  
+  // Activity Logs
+  getActivityLogs(limit?: number): Promise<ActivityLog[]>;
+  createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
+  
+  // Stats
+  getStats(): Promise<{
+    totalEvents: number;
+    upcomingEvents: number;
+    totalParticipants: number;
+    totalItems: number;
+    totalBudget: number;
+  }>;
+  
+  // Users (kept for compatibility)
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  // Categories
+  async getCategories(): Promise<Category[]> {
+    return db.select().from(categories).orderBy(categories.order);
   }
 
+  async getCategoriesWithItems(): Promise<CategoryWithItems[]> {
+    const allCategories = await db.select().from(categories).orderBy(categories.order);
+    const allItems = await db.select().from(items);
+    
+    return allCategories.map(cat => ({
+      ...cat,
+      items: allItems.filter(item => item.categoryId === cat.id),
+    }));
+  }
+
+  async getCategory(id: string): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [created] = await db.insert(categories).values(category).returning();
+    return created;
+  }
+
+  // Items
+  async getItems(): Promise<Item[]> {
+    return db.select().from(items);
+  }
+
+  async getItemsByCategory(categoryId: string): Promise<Item[]> {
+    return db.select().from(items).where(eq(items.categoryId, categoryId));
+  }
+
+  async getItem(id: string): Promise<Item | undefined> {
+    const [item] = await db.select().from(items).where(eq(items.id, id));
+    return item;
+  }
+
+  async createItem(item: InsertItem): Promise<Item> {
+    const [created] = await db.insert(items).values(item).returning();
+    return created;
+  }
+
+  // Participants
+  async getParticipants(): Promise<Participant[]> {
+    return db.select().from(participants).orderBy(desc(participants.tripCount));
+  }
+
+  async getParticipant(id: string): Promise<Participant | undefined> {
+    const [participant] = await db.select().from(participants).where(eq(participants.id, id));
+    return participant;
+  }
+
+  async createParticipant(participant: InsertParticipant): Promise<Participant> {
+    const [created] = await db.insert(participants).values({
+      ...participant,
+      tripCount: 0,
+    }).returning();
+    return created;
+  }
+
+  async updateParticipant(id: string, data: Partial<InsertParticipant>): Promise<Participant | undefined> {
+    const [updated] = await db.update(participants)
+      .set(data)
+      .where(eq(participants.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteParticipant(id: string): Promise<boolean> {
+    const result = await db.delete(participants).where(eq(participants.id, id));
+    return true;
+  }
+
+  // Events
+  async getEvents(): Promise<Event[]> {
+    return db.select().from(events).orderBy(desc(events.date));
+  }
+
+  async getEvent(id: string): Promise<Event | undefined> {
+    const [event] = await db.select().from(events).where(eq(events.id, id));
+    return event;
+  }
+
+  async getEventWithDetails(id: string): Promise<EventWithDetails | undefined> {
+    const [event] = await db.select().from(events).where(eq(events.id, id));
+    if (!event) return undefined;
+
+    // Get event participants with participant details
+    const eventParticipantsList = await db
+      .select()
+      .from(eventParticipants)
+      .where(eq(eventParticipants.eventId, id));
+    
+    const participantIds = eventParticipantsList.map(ep => ep.participantId);
+    const participantsList = participantIds.length > 0 
+      ? await db.select().from(participants)
+      : [];
+
+    const eventParticipantsWithDetails = eventParticipantsList.map(ep => ({
+      ...ep,
+      participant: participantsList.find(p => p.id === ep.participantId)!,
+    }));
+
+    // Get contributions with item and participant details
+    const contributionsList = await db
+      .select()
+      .from(contributions)
+      .where(eq(contributions.eventId, id));
+    
+    const itemIds = [...new Set(contributionsList.map(c => c.itemId))];
+    const itemsList = itemIds.length > 0 
+      ? await db.select().from(items)
+      : [];
+
+    const contributionsWithDetails = contributionsList.map(c => ({
+      ...c,
+      item: itemsList.find(i => i.id === c.itemId)!,
+      participant: c.participantId 
+        ? participantsList.find(p => p.id === c.participantId) || null
+        : null,
+    }));
+
+    return {
+      ...event,
+      eventParticipants: eventParticipantsWithDetails,
+      contributions: contributionsWithDetails,
+    };
+  }
+
+  async createEvent(event: InsertEvent): Promise<Event> {
+    const [created] = await db.insert(events).values(event).returning();
+    return created;
+  }
+
+  async updateEvent(id: string, data: Partial<InsertEvent>): Promise<Event | undefined> {
+    const [updated] = await db.update(events)
+      .set(data)
+      .where(eq(events.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteEvent(id: string): Promise<boolean> {
+    await db.delete(events).where(eq(events.id, id));
+    return true;
+  }
+
+  // Event Participants
+  async getEventParticipants(eventId: string): Promise<EventParticipant[]> {
+    return db.select().from(eventParticipants).where(eq(eventParticipants.eventId, eventId));
+  }
+
+  async addParticipantToEvent(data: InsertEventParticipant): Promise<EventParticipant> {
+    const [created] = await db.insert(eventParticipants).values(data).returning();
+    // Increment participant trip count
+    await db.update(participants)
+      .set({ tripCount: sql`${participants.tripCount} + 1` })
+      .where(eq(participants.id, data.participantId));
+    return created;
+  }
+
+  async removeParticipantFromEvent(eventId: string, participantId: string): Promise<boolean> {
+    await db.delete(eventParticipants)
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, participantId)
+      ));
+    return true;
+  }
+
+  // Contributions
+  async getContributions(eventId: string): Promise<Contribution[]> {
+    return db.select().from(contributions).where(eq(contributions.eventId, eventId));
+  }
+
+  async createContribution(contribution: InsertContribution): Promise<Contribution> {
+    const [created] = await db.insert(contributions).values(contribution).returning();
+    return created;
+  }
+
+  async updateContribution(id: string, data: Partial<InsertContribution>): Promise<Contribution | undefined> {
+    const [updated] = await db.update(contributions)
+      .set(data)
+      .where(eq(contributions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteContribution(id: string): Promise<boolean> {
+    await db.delete(contributions).where(eq(contributions.id, id));
+    return true;
+  }
+
+  // Activity Logs
+  async getActivityLogs(limit: number = 100): Promise<ActivityLog[]> {
+    return db.select()
+      .from(activityLogs)
+      .orderBy(desc(activityLogs.createdAt))
+      .limit(limit);
+  }
+
+  async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
+    const [created] = await db.insert(activityLogs).values(log).returning();
+    return created;
+  }
+
+  // Stats
+  async getStats() {
+    const [eventsResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(events);
+    
+    const [upcomingResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(events)
+      .where(eq(events.status, 'upcoming'));
+    
+    const [participantsResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(participants);
+    
+    const [itemsResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(items);
+    
+    const [budgetResult] = await db
+      .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
+      .from(contributions);
+
+    return {
+      totalEvents: eventsResult?.count || 0,
+      upcomingEvents: upcomingResult?.count || 0,
+      totalParticipants: participantsResult?.count || 0,
+      totalItems: itemsResult?.count || 0,
+      totalBudget: budgetResult?.total || 0,
+    };
+  }
+
+  // Users
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async createUser(user: InsertUser): Promise<User> {
+    const [created] = await db.insert(users).values(user).returning();
+    return created;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
