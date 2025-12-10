@@ -314,11 +314,39 @@ export async function registerRoutes(
 
   app.delete("/api/events/:eventId/participants/:participantId", async (req, res) => {
     try {
-      await storage.removeParticipantFromEvent(req.params.eventId, req.params.participantId);
+      // Use cascade delete to remove all contributions by this participant
+      await storage.removeParticipantFromEventWithCascade(req.params.eventId, req.params.participantId);
       res.status(204).send();
     } catch (error) {
       console.error("Error removing participant from event:", error);
       res.status(500).json({ error: "Failed to remove participant from event" });
+    }
+  });
+
+  // Add participant with required contributions
+  app.post("/api/events/:eventId/participants-with-contributions", async (req, res) => {
+    try {
+      const { participantId, itemIds, costs } = req.body;
+      
+      if (!participantId) {
+        return res.status(400).json({ error: "Participant ID is required" });
+      }
+      
+      if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+        return res.status(400).json({ error: "At least one item is required" });
+      }
+      
+      const result = await storage.addParticipantWithContributions(
+        req.params.eventId,
+        participantId,
+        itemIds,
+        costs
+      );
+      
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error adding participant with contributions:", error);
+      res.status(500).json({ error: "Failed to add participant with contributions" });
     }
   });
 
@@ -369,8 +397,9 @@ export async function registerRoutes(
 
   app.delete("/api/contributions/:id", async (req, res) => {
     try {
-      await storage.deleteContribution(req.params.id);
-      res.status(204).send();
+      // Use cascade delete to auto-remove participant if no contributions remain
+      const result = await storage.deleteContributionAndPruneParticipant(req.params.id);
+      res.json({ deleted: result.deleted, participantPruned: result.participantPruned });
     } catch (error) {
       console.error("Error deleting contribution:", error);
       res.status(500).json({ error: "Failed to delete contribution" });

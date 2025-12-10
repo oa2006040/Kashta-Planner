@@ -96,6 +96,26 @@ export default function EventDetail() {
     },
   });
 
+  const removeParticipantMutation = useMutation({
+    mutationFn: async (participantId: string) => {
+      return apiRequest("DELETE", `/api/events/${params?.id}/participants/${participantId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+      toast({
+        title: "تم الحذف",
+        description: "تم إزالة المشارك ومستلزماته من الطلعة",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء إزالة المشارك",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -395,26 +415,61 @@ export default function EventDetail() {
 
           {event.eventParticipants && event.eventParticipants.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              {event.eventParticipants.map((ep) => (
-                <Card key={ep.id} className="hover-elevate">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                      <AvatarIcon avatar={ep.participant?.avatar} size="lg" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{ep.participant?.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {ep.role === "organizer" ? "منظم" : "مشارك"}
-                      </p>
-                    </div>
-                    {ep.confirmedAt && (
-                      <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                        مؤكد
-                      </Badge>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+              {event.eventParticipants.map((ep) => {
+                const participantContributions = event.contributions?.filter(
+                  (c) => c.participantId === ep.participantId
+                ) || [];
+                
+                return (
+                  <Card key={ep.id} className="hover-elevate">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                        <AvatarIcon avatar={ep.participant?.avatar} size="lg" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{ep.participant?.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {participantContributions.length} مستلزم
+                        </p>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="text-muted-foreground"
+                            data-testid={`button-remove-participant-${ep.participantId}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>إزالة المشارك</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              هل أنت متأكد من إزالة {ep.participant?.name} من الطلعة؟
+                              {participantContributions.length > 0 && (
+                                <span className="block mt-2 text-destructive">
+                                  سيتم حذف {participantContributions.length} مستلزم مرتبط به أيضاً.
+                                </span>
+                              )}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => removeParticipantMutation.mutate(ep.participantId)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              إزالة
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <Card>

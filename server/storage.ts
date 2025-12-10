@@ -61,12 +61,15 @@ export interface IStorage {
   getEventParticipants(eventId: string): Promise<EventParticipant[]>;
   addParticipantToEvent(data: InsertEventParticipant): Promise<EventParticipant>;
   removeParticipantFromEvent(eventId: string, participantId: string): Promise<boolean>;
+  removeParticipantFromEventWithCascade(eventId: string, participantId: string): Promise<boolean>;
+  addParticipantWithContributions(eventId: string, participantId: string, itemIds: string[], costs?: Record<string, string>): Promise<{ eventParticipant: EventParticipant; contributions: Contribution[] }>;
   
   // Contributions
   getContributions(eventId: string): Promise<Contribution[]>;
   createContribution(contribution: InsertContribution): Promise<Contribution>;
   updateContribution(id: string, contribution: Partial<InsertContribution>): Promise<Contribution | undefined>;
   deleteContribution(id: string): Promise<boolean>;
+  deleteContributionAndPruneParticipant(id: string): Promise<{ deleted: boolean; participantPruned: boolean }>;
   
   // Activity Logs
   getActivityLogs(limit?: number): Promise<ActivityLog[]>;
@@ -260,6 +263,76 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
+  async removeParticipantFromEventWithCascade(eventId: string, participantId: string): Promise<boolean> {
+    // First remove all contributions by this participant for this event
+    await db.delete(contributions)
+      .where(and(
+        eq(contributions.eventId, eventId),
+        eq(contributions.participantId, participantId)
+      ));
+    
+    // Then remove the event participant link
+    await db.delete(eventParticipants)
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, participantId)
+      ));
+    
+    // Decrement participant trip count
+    await db.update(participants)
+      .set({ tripCount: sql`GREATEST(${participants.tripCount} - 1, 0)` })
+      .where(eq(participants.id, participantId));
+    
+    return true;
+  }
+
+  async addParticipantWithContributions(
+    eventId: string, 
+    participantId: string, 
+    itemIds: string[], 
+    costs?: Record<string, string>
+  ): Promise<{ eventParticipant: EventParticipant; contributions: Contribution[] }> {
+    // Check if participant already exists in event
+    const existing = await db.select()
+      .from(eventParticipants)
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, participantId)
+      ));
+    
+    let eventParticipant: EventParticipant;
+    
+    if (existing.length === 0) {
+      // Add participant to event
+      [eventParticipant] = await db.insert(eventParticipants)
+        .values({ eventId, participantId })
+        .returning();
+      
+      // Increment trip count
+      await db.update(participants)
+        .set({ tripCount: sql`${participants.tripCount} + 1` })
+        .where(eq(participants.id, participantId));
+    } else {
+      eventParticipant = existing[0];
+    }
+    
+    // Create contributions for each item
+    const createdContributions: Contribution[] = [];
+    for (const itemId of itemIds) {
+      const [contribution] = await db.insert(contributions)
+        .values({
+          eventId,
+          itemId,
+          participantId,
+          cost: costs?.[itemId] || "0",
+        })
+        .returning();
+      createdContributions.push(contribution);
+    }
+    
+    return { eventParticipant, contributions: createdContributions };
+  }
+
   // Contributions
   async getContributions(eventId: string): Promise<Contribution[]> {
     return db.select().from(contributions).where(eq(contributions.eventId, eventId));
@@ -281,6 +354,53 @@ export class DatabaseStorage implements IStorage {
   async deleteContribution(id: string): Promise<boolean> {
     await db.delete(contributions).where(eq(contributions.id, id));
     return true;
+  }
+
+  async deleteContributionAndPruneParticipant(id: string): Promise<{ deleted: boolean; participantPruned: boolean }> {
+    // Get the contribution first to know the event and participant
+    const [contribution] = await db.select()
+      .from(contributions)
+      .where(eq(contributions.id, id));
+    
+    if (!contribution) {
+      return { deleted: false, participantPruned: false };
+    }
+    
+    const { eventId, participantId } = contribution;
+    
+    // Delete the contribution
+    await db.delete(contributions).where(eq(contributions.id, id));
+    
+    // If no participant was assigned, we're done
+    if (!participantId) {
+      return { deleted: true, participantPruned: false };
+    }
+    
+    // Check if this participant has any remaining contributions for this event
+    const remainingContributions = await db.select()
+      .from(contributions)
+      .where(and(
+        eq(contributions.eventId, eventId),
+        eq(contributions.participantId, participantId)
+      ));
+    
+    // If no more contributions, remove participant from event
+    if (remainingContributions.length === 0) {
+      await db.delete(eventParticipants)
+        .where(and(
+          eq(eventParticipants.eventId, eventId),
+          eq(eventParticipants.participantId, participantId)
+        ));
+      
+      // Decrement trip count
+      await db.update(participants)
+        .set({ tripCount: sql`GREATEST(${participants.tripCount} - 1, 0)` })
+        .where(eq(participants.id, participantId));
+      
+      return { deleted: true, participantPruned: true };
+    }
+    
+    return { deleted: true, participantPruned: false };
   }
 
   // Activity Logs
