@@ -344,10 +344,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateContribution(id: string, data: Partial<InsertContribution>): Promise<Contribution | undefined> {
+    // Get the contribution first to know the event
+    const [existingContribution] = await db.select()
+      .from(contributions)
+      .where(eq(contributions.id, id));
+    
+    if (!existingContribution) {
+      return undefined;
+    }
+    
     const [updated] = await db.update(contributions)
       .set(data)
       .where(eq(contributions.id, id))
       .returning();
+    
+    // If a participant is being assigned, ensure they're part of the event
+    if (data.participantId && data.participantId !== existingContribution.participantId) {
+      const existingParticipant = await db.select()
+        .from(eventParticipants)
+        .where(and(
+          eq(eventParticipants.eventId, existingContribution.eventId),
+          eq(eventParticipants.participantId, data.participantId)
+        ));
+      
+      // Add participant to event if not already there
+      if (existingParticipant.length === 0) {
+        await db.insert(eventParticipants)
+          .values({
+            eventId: existingContribution.eventId,
+            participantId: data.participantId,
+          });
+        
+        // Increment trip count
+        await db.update(participants)
+          .set({ tripCount: sql`${participants.tripCount} + 1` })
+          .where(eq(participants.id, data.participantId));
+      }
+    }
+    
     return updated;
   }
 

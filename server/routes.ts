@@ -224,20 +224,37 @@ export async function registerRoutes(
 
   app.post("/api/events", async (req, res) => {
     try {
+      // Extract requiredItems before validation
+      const { requiredItems, ...restBody } = req.body;
+      
       // Convert date strings to Date objects
       const body = {
-        ...req.body,
-        date: req.body.date ? new Date(req.body.date) : undefined,
-        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+        ...restBody,
+        date: restBody.date ? new Date(restBody.date) : undefined,
+        endDate: restBody.endDate ? new Date(restBody.endDate) : undefined,
       };
       const data = insertEventSchema.parse(body);
       const event = await storage.createEvent(data);
+      
+      // Create contributions for required items (without participant assigned)
+      if (requiredItems && Array.isArray(requiredItems) && requiredItems.length > 0) {
+        for (const itemId of requiredItems) {
+          await storage.createContribution({
+            eventId: event.id,
+            itemId,
+            participantId: null,
+            quantity: 1,
+            cost: "0",
+            status: "pending",
+          });
+        }
+      }
       
       // Log activity
       await storage.createActivityLog({
         eventId: event.id,
         action: "إنشاء طلعة",
-        details: `تم إنشاء طلعة "${event.title}"`,
+        details: `تم إنشاء طلعة "${event.title}"${requiredItems?.length ? ` مع ${requiredItems.length} مستلزمات` : ""}`,
       });
       
       res.status(201).json(event);

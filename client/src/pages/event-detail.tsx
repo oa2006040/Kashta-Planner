@@ -16,13 +16,24 @@ import {
   DollarSign,
   Check,
   X,
-  ChevronLeft
+  UserPlus,
+  CheckCircle2,
+  Circle,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +50,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatArabicDate, formatHijriDate, formatCurrency, formatNumber } from "@/lib/constants";
 import { CategoryIcon } from "@/components/category-icon";
 import { AvatarIcon } from "@/components/avatar-icon";
-import type { Event, EventWithDetails, Contribution, Participant, Category, Item } from "@shared/schema";
+import type { EventWithDetails, Contribution, Participant, Category } from "@shared/schema";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -54,6 +65,193 @@ function getStatusBadge(status: string) {
     default:
       return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: 'قادمة' };
   }
+}
+
+type ContributionWithDetails = Contribution & { 
+  item: { id: string; categoryId: string; name: string; description: string | null; isCommon: boolean }; 
+  participant: Participant | null 
+};
+
+interface ContributionItemProps {
+  contribution: ContributionWithDetails;
+  category?: Category;
+  participants: Participant[];
+  eventId: string;
+  onAssign: (contributionId: string, participantId: string, cost: string) => void;
+  onDelete: (contributionId: string) => void;
+  isAssigning: boolean;
+}
+
+function ContributionItem({ 
+  contribution, 
+  category, 
+  participants, 
+  eventId,
+  onAssign, 
+  onDelete,
+  isAssigning 
+}: ContributionItemProps) {
+  const [showAssign, setShowAssign] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<string>("");
+  const [cost, setCost] = useState(contribution.cost || "0");
+
+  const hasParticipant = !!contribution.participantId;
+
+  const handleAssign = () => {
+    if (selectedParticipant) {
+      onAssign(contribution.id, selectedParticipant, cost);
+      setShowAssign(false);
+      setSelectedParticipant("");
+    }
+  };
+
+  return (
+    <div className={`flex flex-col gap-2 p-3 rounded-lg ${
+      hasParticipant 
+        ? "bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800" 
+        : "bg-muted/50"
+    }`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
+            hasParticipant 
+              ? "bg-green-100 dark:bg-green-900/30" 
+              : "bg-muted"
+          }`}>
+            {hasParticipant ? (
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            ) : (
+              <Circle className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-medium truncate">{contribution.item?.name}</p>
+              {category && (
+                <Badge variant="outline" className="text-xs">
+                  <CategoryIcon icon={category.icon} color={category.color} className="h-3 w-3 ml-1" />
+                  {category.nameAr}
+                </Badge>
+              )}
+            </div>
+            {contribution.participant && (
+              <div className="flex items-center gap-2 mt-1">
+                <AvatarIcon icon={contribution.participant.avatar} className="h-4 w-4" />
+                <span className="text-sm text-muted-foreground">{contribution.participant.name}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {parseFloat(contribution.cost || "0") > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {formatCurrency(contribution.cost || 0)}
+            </Badge>
+          )}
+          {!hasParticipant && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowAssign(!showAssign)}
+              data-testid={`button-assign-${contribution.id}`}
+            >
+              <UserPlus className="h-4 w-4 ml-1" />
+              تعيين
+            </Button>
+          )}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                data-testid={`button-delete-contribution-${contribution.id}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>حذف المستلزم</AlertDialogTitle>
+                <AlertDialogDescription>
+                  هل تريد حذف "{contribution.item?.name}" من الطلعة؟
+                  {contribution.participant && (
+                    <span className="block mt-2 text-muted-foreground">
+                      المسؤول: {contribution.participant.name}
+                    </span>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onDelete(contribution.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  حذف
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+      
+      {showAssign && !hasParticipant && (
+        <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+          <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
+            <SelectTrigger className="flex-1" data-testid={`select-participant-${contribution.id}`}>
+              <SelectValue placeholder="اختر المشارك" />
+            </SelectTrigger>
+            <SelectContent>
+              {participants.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  <div className="flex items-center gap-2">
+                    <AvatarIcon icon={p.avatar} className="h-4 w-4" />
+                    {p.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              placeholder="التكلفة"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+              className="w-24"
+              data-testid={`input-cost-${contribution.id}`}
+            />
+            <span className="text-sm text-muted-foreground">ر.ق</span>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              onClick={handleAssign} 
+              disabled={!selectedParticipant || isAssigning}
+              data-testid={`button-confirm-assign-${contribution.id}`}
+            >
+              {isAssigning ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => {
+                setShowAssign(false);
+                setSelectedParticipant("");
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function EventDetail() {
@@ -137,6 +335,39 @@ export default function EventDetail() {
     },
   });
 
+  const assignParticipantMutation = useMutation({
+    mutationFn: async ({ contributionId, participantId, cost }: { 
+      contributionId: string; 
+      participantId: string; 
+      cost: string;
+    }) => {
+      return apiRequest("PATCH", `/api/contributions/${contributionId}`, {
+        participantId,
+        cost: cost || "0",
+        status: "confirmed",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/participants"] });
+      toast({
+        title: "تم التعيين",
+        description: "تم تعيين المشارك للمستلزم بنجاح",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء تعيين المشارك",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAssign = (contributionId: string, participantId: string, cost: string) => {
+    assignParticipantMutation.mutate({ contributionId, participantId, cost });
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -174,7 +405,14 @@ export default function EventDetail() {
   const participantCount = event.eventParticipants?.length || 0;
   const itemCount = event.contributions?.length || 0;
 
-  // Group contributions by category
+  // Split contributions into fulfilled (has participant) and unfulfilled (no participant)
+  const fulfilledContributions = event.contributions?.filter(c => c.participantId) || [];
+  const unfulfilledContributions = event.contributions?.filter(c => !c.participantId) || [];
+  
+  const fulfilledCount = fulfilledContributions.length;
+  const unfulfilledCount = unfulfilledContributions.length;
+
+  // Group fulfilled contributions by category for budget view
   const contributionsByCategory = event.contributions?.reduce((acc, contribution) => {
     const categoryId = contribution.item?.categoryId || "other";
     if (!acc[categoryId]) {
@@ -284,7 +522,7 @@ export default function EventDetail() {
       </Card>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
@@ -299,11 +537,22 @@ export default function EventDetail() {
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30">
-              <Package className="h-6 w-6 text-green-600 dark:text-green-400" />
+              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{formatNumber(itemCount)}</p>
-              <p className="text-sm text-muted-foreground">مستلزم</p>
+              <p className="text-2xl font-bold">{formatNumber(fulfilledCount)}</p>
+              <p className="text-sm text-muted-foreground">مكتمل</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30">
+              <Circle className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{formatNumber(unfulfilledCount)}</p>
+              <p className="text-sm text-muted-foreground">متبقي</p>
             </div>
           </CardContent>
         </Card>
@@ -337,7 +586,7 @@ export default function EventDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="items" className="space-y-4">
+        <TabsContent value="items" className="space-y-6">
           <div className="flex items-center justify-between gap-4">
             <h3 className="font-semibold">المستلزمات المطلوبة</h3>
             <Link href={`/events/${event.id}/items`}>
@@ -348,99 +597,67 @@ export default function EventDetail() {
             </Link>
           </div>
 
-          {Object.keys(contributionsByCategory).length > 0 ? (
-            <div className="space-y-4">
-              {Object.entries(contributionsByCategory).map(([categoryId, contributions]) => {
-                const category = categories?.find((c) => c.id === categoryId);
-                return (
-                  <Card key={categoryId}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        {category && (
-                          <CategoryIcon icon={category.icon} color={category.color} className="h-5 w-5" />
-                        )}
-                        {category?.nameAr || "أخرى"}
-                        <Badge variant="secondary" className="mr-auto">
-                          {contributions?.length || 0}
-                        </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {contributions?.map((contribution) => (
-                        <div 
-                          key={contribution.id}
-                          className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                              contribution.status === "delivered" 
-                                ? "bg-green-100 dark:bg-green-900/30" 
-                                : "bg-muted"
-                            }`}>
-                              {contribution.status === "delivered" ? (
-                                <Check className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <Package className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-medium truncate">{contribution.item?.name}</p>
-                              {contribution.participant && (
-                                <p className="text-xs text-muted-foreground">
-                                  {contribution.participant.name}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {parseFloat(contribution.cost || "0") > 0 && (
-                              <Badge variant="outline">
-                                {formatCurrency(contribution.cost || 0)}
-                              </Badge>
-                            )}
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  size="icon" 
-                                  variant="ghost" 
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                  data-testid={`button-delete-contribution-${contribution.id}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>حذف المستلزم</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    هل تريد حذف "{contribution.item?.name}" من الطلعة؟
-                                    {contribution.participant && (
-                                      <span className="block mt-2 text-muted-foreground">
-                                        المسؤول: {contribution.participant.name}
-                                      </span>
-                                    )}
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteContributionMutation.mutate(contribution.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    حذف
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                );
-              })}
+          {/* Fulfilled Contributions Section (TOP) */}
+          {fulfilledContributions.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <h4 className="font-medium text-green-700 dark:text-green-400">
+                  المستلزمات المكتملة ({fulfilledCount})
+                </h4>
+              </div>
+              <div className="space-y-2">
+                {fulfilledContributions.map((contribution) => {
+                  const category = categories?.find(c => c.id === contribution.item?.categoryId);
+                  return (
+                    <ContributionItem
+                      key={contribution.id}
+                      contribution={contribution as ContributionWithDetails}
+                      category={category}
+                      participants={participants || []}
+                      eventId={params?.id || ""}
+                      onAssign={handleAssign}
+                      onDelete={(id) => deleteContributionMutation.mutate(id)}
+                      isAssigning={assignParticipantMutation.isPending}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          ) : (
+          )}
+
+          {/* Unfulfilled Contributions Section (BOTTOM) */}
+          {unfulfilledContributions.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Circle className="h-5 w-5 text-orange-600" />
+                <h4 className="font-medium text-orange-700 dark:text-orange-400">
+                  المستلزمات المتبقية ({unfulfilledCount})
+                </h4>
+                <span className="text-sm text-muted-foreground">- قم بتعيين مشارك لكل مستلزم</span>
+              </div>
+              <div className="space-y-2">
+                {unfulfilledContributions.map((contribution) => {
+                  const category = categories?.find(c => c.id === contribution.item?.categoryId);
+                  return (
+                    <ContributionItem
+                      key={contribution.id}
+                      contribution={contribution as ContributionWithDetails}
+                      category={category}
+                      participants={participants || []}
+                      eventId={params?.id || ""}
+                      onAssign={handleAssign}
+                      onDelete={(id) => deleteContributionMutation.mutate(id)}
+                      isAssigning={assignParticipantMutation.isPending}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {event.contributions?.length === 0 && (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Package className="h-12 w-12 text-muted-foreground mb-4" />
@@ -476,6 +693,9 @@ export default function EventDetail() {
                 const participantContributions = event.contributions?.filter(
                   (c) => c.participantId === ep.participantId
                 ) || [];
+                const participantTotal = participantContributions.reduce(
+                  (sum, c) => sum + parseFloat(c.cost || "0"), 0
+                );
                 
                 return (
                   <Card key={ep.id} className="hover-elevate">
@@ -485,9 +705,15 @@ export default function EventDetail() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{ep.participant?.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {participantContributions.length} مستلزم
-                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{participantContributions.length} مستلزم</span>
+                          {participantTotal > 0 && (
+                            <>
+                              <span>•</span>
+                              <span>{formatCurrency(participantTotal)}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -548,55 +774,70 @@ export default function EventDetail() {
         </TabsContent>
 
         <TabsContent value="budget" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">ملخص الميزانية</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-primary/10">
-                <span className="font-medium">إجمالي التكلفة</span>
-                <span className="text-2xl font-bold text-primary">{formatCurrency(totalBudget)}</span>
-              </div>
+          <div className="flex items-center justify-between gap-4">
+            <h3 className="font-semibold">ملخص الميزانية</h3>
+            <Badge variant="outline" className="text-lg px-4 py-1">
+              {formatCurrency(totalBudget)}
+            </Badge>
+          </div>
 
-              {participantCount > 0 && (
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted">
-                  <span className="text-muted-foreground">التكلفة للفرد</span>
-                  <span className="font-semibold">
-                    {formatCurrency(totalBudget / participantCount)}
-                  </span>
-                </div>
-              )}
-
-              {event.contributions && event.contributions.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">توزيع التكاليف</h4>
-                  {Object.entries(contributionsByCategory).map(([categoryId, contributions]) => {
-                    const category = categories?.find((c) => c.id === categoryId);
-                    const categoryTotal = contributions?.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0) || 0;
-                    const percentage = totalBudget > 0 ? (categoryTotal / totalBudget) * 100 : 0;
-                    
-                    return (
-                      <div key={categoryId} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-2">
-                            {category && <CategoryIcon icon={category.icon} color={category.color} className="h-4 w-4" />}
-                            {category?.nameAr || "أخرى"}
-                          </span>
-                          <span>{formatCurrency(categoryTotal)}</span>
+          {Object.keys(contributionsByCategory).length > 0 ? (
+            <div className="space-y-4">
+              {Object.entries(contributionsByCategory).map(([categoryId, contributions]) => {
+                const category = categories?.find((c) => c.id === categoryId);
+                const categoryTotal = contributions?.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0) || 0;
+                
+                return (
+                  <Card key={categoryId}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {category && (
+                            <CategoryIcon icon={category.icon} color={category.color} className="h-5 w-5" />
+                          )}
+                          {category?.nameAr || "أخرى"}
+                          <Badge variant="secondary">
+                            {contributions?.length || 0}
+                          </Badge>
                         </div>
-                        <div className="h-2 rounded-full bg-muted overflow-hidden">
-                          <div 
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${percentage}%` }}
-                          />
+                        <span className="font-bold">{formatCurrency(categoryTotal)}</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {contributions?.map((contribution) => (
+                        <div 
+                          key={contribution.id}
+                          className="flex items-center justify-between gap-3 p-2 rounded-lg bg-muted/30"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="font-medium truncate">{contribution.item?.name}</span>
+                            {contribution.participant && (
+                              <span className="text-xs text-muted-foreground">
+                                - {contribution.participant.name}
+                              </span>
+                            )}
+                          </div>
+                          <Badge variant="outline">
+                            {formatCurrency(contribution.cost || 0)}
+                          </Badge>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <DollarSign className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="font-medium mb-2">لا توجد تكاليف</h3>
+                <p className="text-sm text-muted-foreground">
+                  أضف مستلزمات وحدد تكلفتها لعرض الميزانية
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

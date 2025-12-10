@@ -10,12 +10,18 @@ import {
   MapPin,
   FileText,
   Save,
-  Loader2
+  Loader2,
+  Package,
+  Check,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Form,
   FormControl,
@@ -31,9 +37,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Event, InsertEvent } from "@shared/schema";
+import { CategoryIcon } from "@/components/category-icon";
+import type { Event, CategoryWithItems } from "@shared/schema";
 
 const eventFormSchema = z.object({
   title: z.string().min(1, "يرجى إدخال اسم الطلعة"),
@@ -53,10 +65,24 @@ export default function EventForm() {
   const [, params] = useRoute("/events/:id/edit");
   const isEditing = !!params?.id;
   const { toast } = useToast();
+  
+  const [selectContributions, setSelectContributions] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
   const { data: event, isLoading: eventLoading } = useQuery<Event>({
     queryKey: ["/api/events", params?.id],
     enabled: isEditing,
+  });
+
+  const { data: categories } = useQuery<CategoryWithItems[]>({
+    queryKey: ["/api/categories", "with-items"],
+    queryFn: async () => {
+      const res = await fetch("/api/categories?includeItems=true");
+      if (!res.ok) throw new Error("Failed to fetch categories");
+      return res.json();
+    },
+    enabled: selectContributions,
   });
 
   const form = useForm<EventFormData>({
@@ -90,17 +116,19 @@ export default function EventForm() {
         date: new Date(data.date).toISOString(),
         endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
         temperature: data.temperature || null,
+        requiredItems: selectContributions ? Array.from(selectedItems) : [],
       };
       return apiRequest("POST", "/api/events", payload);
     },
-    onSuccess: () => {
+    onSuccess: async (response) => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      const event = await response.json();
       toast({
         title: "تم إنشاء الطلعة",
         description: "تم إنشاء الطلعة بنجاح",
       });
-      navigate("/events");
+      navigate(`/events/${event.id}`);
     },
     onError: () => {
       toast({
@@ -148,6 +176,45 @@ export default function EventForm() {
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  const toggleItem = (itemId: string) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
+
+  const selectAllInCategory = (categoryId: string, items: { id: string }[]) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      const categoryItemIds = items.map(i => i.id);
+      const allSelected = categoryItemIds.every(id => next.has(id));
+      
+      if (allSelected) {
+        categoryItemIds.forEach(id => next.delete(id));
+      } else {
+        categoryItemIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -347,6 +414,108 @@ export default function EventForm() {
                   )}
                 />
               </div>
+
+              {!isEditing && (
+                <div className="space-y-4 border-t pt-6">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="selectContributions"
+                      checked={selectContributions}
+                      onCheckedChange={(checked) => setSelectContributions(checked === true)}
+                      data-testid="checkbox-select-contributions"
+                    />
+                    <label
+                      htmlFor="selectContributions"
+                      className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                    >
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      تحديد المستلزمات المطلوبة
+                    </label>
+                  </div>
+
+                  {selectContributions && (
+                    <div className="space-y-3 pr-6">
+                      {selectedItems.size > 0 && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Badge variant="secondary">{selectedItems.size}</Badge>
+                          <span>مستلزم محدد</span>
+                        </div>
+                      )}
+
+                      {categories?.map((category) => {
+                        const isExpanded = expandedCategories.has(category.id);
+                        const categoryItems = category.items || [];
+                        const selectedCount = categoryItems.filter(i => selectedItems.has(i.id)).length;
+                        const allSelected = categoryItems.length > 0 && selectedCount === categoryItems.length;
+
+                        return (
+                          <Collapsible
+                            key={category.id}
+                            open={isExpanded}
+                            onOpenChange={() => toggleCategory(category.id)}
+                          >
+                            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                              <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+                                  {isExpanded ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </CollapsibleTrigger>
+                              <CategoryIcon icon={category.icon} color={category.color} className="h-5 w-5" />
+                              <span className="font-medium flex-1">{category.nameAr}</span>
+                              {selectedCount > 0 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {selectedCount}/{categoryItems.length}
+                                </Badge>
+                              )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  selectAllInCategory(category.id, categoryItems);
+                                }}
+                                className="text-xs"
+                                data-testid={`button-select-all-${category.id}`}
+                              >
+                                {allSelected ? "إلغاء الكل" : "تحديد الكل"}
+                              </Button>
+                            </div>
+                            <CollapsibleContent className="space-y-1 pr-6 pt-2">
+                              {categoryItems.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center gap-3 p-2 rounded-md hover-elevate cursor-pointer"
+                                  onClick={() => toggleItem(item.id)}
+                                  data-testid={`item-${item.id}`}
+                                >
+                                  <div className={`flex h-5 w-5 items-center justify-center rounded border ${
+                                    selectedItems.has(item.id)
+                                      ? "bg-primary border-primary"
+                                      : "border-muted-foreground/30"
+                                  }`}>
+                                    {selectedItems.has(item.id) && (
+                                      <Check className="h-3 w-3 text-primary-foreground" />
+                                    )}
+                                  </div>
+                                  <span className="text-sm">{item.name}</span>
+                                  {item.description && (
+                                    <span className="text-xs text-muted-foreground">({item.description})</span>
+                                  )}
+                                </div>
+                              ))}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <Button 
