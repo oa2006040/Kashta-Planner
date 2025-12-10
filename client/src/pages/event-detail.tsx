@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatArabicDate, formatHijriDate, formatCurrency, formatNumber } from "@/lib/constants";
 import { CategoryIcon } from "@/components/category-icon";
+import { AvatarIcon } from "@/components/avatar-icon";
 import type { Event, EventWithDetails, Contribution, Participant, Category, Item } from "@shared/schema";
 
 function getStatusBadge(status: string) {
@@ -397,8 +398,8 @@ export default function EventDetail() {
               {event.eventParticipants.map((ep) => (
                 <Card key={ep.id} className="hover-elevate">
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-xl">
-                      {ep.participant?.avatar || '👤'}
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <AvatarIcon avatar={ep.participant?.avatar} size="lg" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{ep.participant?.name}</p>

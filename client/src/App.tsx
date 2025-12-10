@@ -12,6 +12,7 @@ import Events from "@/pages/events";
 import EventForm from "@/pages/event-form";
 import EventDetail from "@/pages/event-detail";
 import ContributionForm from "@/pages/contribution-form";
+import EventParticipantsForm from "@/pages/event-participants-form";
 import Participants from "@/pages/participants";
 import ParticipantForm from "@/pages/participant-form";
 import Items from "@/pages/items";
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/events/:id" component={EventDetail} />
       <Route path="/events/:id/edit" component={EventForm} />
       <Route path="/events/:id/items" component={ContributionForm} />
+      <Route path="/events/:id/participants" component={EventParticipantsForm} />
       <Route path="/participants" component={Participants} />
       <Route path="/participants/new" component={ParticipantForm} />
       <Route path="/participants/:id/edit" component={ParticipantForm} />
