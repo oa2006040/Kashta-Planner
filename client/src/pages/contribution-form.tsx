@@ -48,9 +48,13 @@ export default function ContributionForm() {
 
   const addContributionMutation = useMutation({
     mutationFn: async (data: { eventId: string; itemId: string; participantId?: string; cost?: string }) => {
-      return apiRequest("/api/contributions", {
+      return apiRequest(`/api/events/${data.eventId}/contributions`, {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          itemId: data.itemId,
+          participantId: data.participantId,
+          cost: data.cost,
+        }),
       });
     },
     onSuccess: () => {
