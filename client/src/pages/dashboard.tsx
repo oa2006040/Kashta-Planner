@@ -1,23 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { 
-  Calendar, 
-  Users, 
-  Package, 
-  TrendingUp, 
-  Plus, 
+import {
+  Calendar,
+  Users,
+  Package,
+  TrendingUp,
+  Plus,
   MapPin,
   Clock,
   ChevronLeft,
   Flame,
   Star,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatArabicDate, formatHijriDate, formatCurrency, formatNumber } from "@/lib/constants";
+import {
+  formatArabicDate,
+  formatHijriDate,
+  formatCurrency,
+  formatNumber,
+} from "@/lib/constants";
 import { AvatarIcon, getAvatarColor } from "@/components/avatar-icon";
 import type { Event, Participant, Category } from "@shared/schema";
 
@@ -29,14 +34,14 @@ interface DashboardStats {
   totalBudget: number;
 }
 
-function StatCard({ 
-  title, 
-  value, 
-  icon: Icon, 
+function StatCard({
+  title,
+  value,
+  icon: Icon,
   trend,
-}: { 
-  title: string; 
-  value: string | number; 
+}: {
+  title: string;
+  value: string | number;
   icon: React.ElementType;
   trend?: string;
 }) {
@@ -81,53 +86,79 @@ function StatCardSkeleton() {
 
 function getStatusBadge(status: string) {
   switch (status) {
-    case 'upcoming':
-      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: 'قادمة' };
-    case 'ongoing':
-      return { className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', label: 'جارية' };
-    case 'completed':
-      return { className: 'bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300', label: 'منتهية' };
-    case 'cancelled':
-      return { className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', label: 'ملغاة' };
+    case "upcoming":
+      return {
+        className:
+          "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        label: "قادمة",
+      };
+    case "ongoing":
+      return {
+        className:
+          "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+        label: "جارية",
+      };
+    case "completed":
+      return {
+        className:
+          "bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300",
+        label: "منتهية",
+      };
+    case "cancelled":
+      return {
+        className:
+          "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+        label: "ملغاة",
+      };
     default:
-      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: 'قادمة' };
+      return {
+        className:
+          "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        label: "قادمة",
+      };
   }
 }
 
 function EventCard({ event }: { event: Event }) {
-  const statusBadge = getStatusBadge(event.status || 'upcoming');
+  const statusBadge = getStatusBadge(event.status || "upcoming");
   const eventDate = new Date(event.date);
-  
+
   return (
     <Link href={`/events/${event.id}`}>
-      <Card className="hover-elevate cursor-pointer transition-all" data-testid={`card-event-${event.id}`}>
+      <Card
+        className="hover-elevate cursor-pointer transition-all"
+        data-testid={`card-event-${event.id}`}
+      >
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold truncate">{event.title}</h3>
-                <Badge variant="secondary" className={`${statusBadge.className} text-xs`}>
+                <Badge
+                  variant="secondary"
+                  className={`${statusBadge.className} text-xs`}
+                >
                   {statusBadge.label}
                 </Badge>
               </div>
-              
+
               {event.location && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{event.location}</span>
                 </div>
               )}
-              
+
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
                 <span>{formatArabicDate(eventDate)}</span>
               </div>
             </div>
-            
+
             <div className="flex flex-col items-center gap-1 text-center shrink-0">
               <div className="flex h-14 w-14 flex-col items-center justify-center rounded-xl bg-primary/10">
                 <span className="text-xs text-muted-foreground">
-                  {eventDate.toLocaleDateString('ar-SA', { weekday: 'short' })}
+                  {eventDate.toLocaleDateString("ar-SA", { weekday: "short" })}
                 </span>
                 <span className="text-lg font-bold text-primary">
                   {eventDate.getDate()}
@@ -167,12 +198,16 @@ export default function Dashboard() {
     queryKey: ["/api/events"],
   });
 
-  const { data: participants, isLoading: participantsLoading } = useQuery<Participant[]>({
+  const { data: participants, isLoading: participantsLoading } = useQuery<
+    Participant[]
+  >({
     queryKey: ["/api/participants"],
   });
 
   // Filter for upcoming events only
-  const upcomingEvents = events?.filter(e => e.status === 'upcoming').slice(0, 5);
+  const upcomingEvents = events
+    ?.filter((e) => e.status === "upcoming")
+    .slice(0, 5);
   const recentParticipants = participants?.slice(0, 5);
 
   return (
@@ -186,10 +221,12 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">أهلاً بك في كشتة</h1>
-              <p className="text-muted-foreground">نظم طلعاتك البرية بكل سهولة</p>
+              <p className="text-muted-foreground">
+                رتب كشتاتك معانا بكل سهولة
+              </p>
             </div>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/events/new">
               <Button data-testid="button-create-event">
@@ -205,7 +242,7 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
-        
+
         <div className="absolute -left-8 -top-8 h-32 w-32 rounded-full bg-primary/20 blur-3xl" />
         <div className="absolute -bottom-8 left-1/4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
       </div>
@@ -221,25 +258,27 @@ export default function Dashboard() {
           </>
         ) : (
           <>
-            <StatCard 
-              title="إجمالي الطلعات" 
-              value={formatNumber(stats?.totalEvents || 0)} 
+            <StatCard
+              title="إجمالي الطلعات"
+              value={formatNumber(stats?.totalEvents || 0)}
               icon={Calendar}
-              trend={stats?.totalEvents ? `${stats.upcomingEvents} قادمة` : undefined}
+              trend={
+                stats?.totalEvents ? `${stats.upcomingEvents} قادمة` : undefined
+              }
             />
-            <StatCard 
-              title="المشاركين" 
-              value={formatNumber(stats?.totalParticipants || 0)} 
+            <StatCard
+              title="المشاركين"
+              value={formatNumber(stats?.totalParticipants || 0)}
               icon={Users}
             />
-            <StatCard 
-              title="المستلزمات" 
-              value={formatNumber(stats?.totalItems || 0)} 
+            <StatCard
+              title="المستلزمات"
+              value={formatNumber(stats?.totalItems || 0)}
               icon={Package}
             />
-            <StatCard 
-              title="إجمالي الميزانية" 
-              value={formatCurrency(stats?.totalBudget || 0)} 
+            <StatCard
+              title="إجمالي الميزانية"
+              value={formatCurrency(stats?.totalBudget || 0)}
               icon={TrendingUp}
             />
           </>
@@ -262,7 +301,7 @@ export default function Dashboard() {
               </Button>
             </Link>
           </div>
-          
+
           <div className="space-y-3">
             {eventsLoading ? (
               <>
@@ -308,19 +347,31 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="space-y-2">
               <Link href="/events/new" className="block">
-                <Button variant="outline" className="w-full justify-start" data-testid="button-quick-new-event">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  data-testid="button-quick-new-event"
+                >
                   <Calendar className="h-4 w-4 ml-2" />
                   إضافة طلعة
                 </Button>
               </Link>
               <Link href="/participants/new" className="block">
-                <Button variant="outline" className="w-full justify-start" data-testid="button-quick-new-participant">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  data-testid="button-quick-new-participant"
+                >
                   <Users className="h-4 w-4 ml-2" />
                   إضافة مشارك
                 </Button>
               </Link>
               <Link href="/items" className="block">
-                <Button variant="outline" className="w-full justify-start" data-testid="button-quick-items">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  data-testid="button-quick-items"
+                >
                   <Package className="h-4 w-4 ml-2" />
                   إدارة المستلزمات
                 </Button>
@@ -337,7 +388,11 @@ export default function Dashboard() {
                   المشاركين
                 </CardTitle>
                 <Link href="/participants">
-                  <Button variant="ghost" size="sm" data-testid="link-all-participants">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    data-testid="link-all-participants"
+                  >
                     الكل
                     <ChevronLeft className="h-3 w-3 mr-1" />
                   </Button>
@@ -360,23 +415,30 @@ export default function Dashboard() {
               ) : recentParticipants && recentParticipants.length > 0 ? (
                 <div className="space-y-3">
                   {recentParticipants.slice(0, 5).map((participant) => (
-                    <Link key={participant.id} href={`/participants/${participant.id}/edit`}>
-                      <div 
+                    <Link
+                      key={participant.id}
+                      href={`/participants/${participant.id}/edit`}
+                    >
+                      <div
                         className="flex items-center gap-3 p-2 rounded-lg hover-elevate cursor-pointer -mx-2"
                         data-testid={`card-participant-${participant.id}`}
                       >
-                        <div 
+                        <div
                           className="flex h-10 w-10 items-center justify-center rounded-full"
-                          style={{ backgroundColor: `${getAvatarColor(participant.name)}20` }}
+                          style={{
+                            backgroundColor: `${getAvatarColor(participant.name)}20`,
+                          }}
                         >
-                          <AvatarIcon 
-                            icon={participant.avatar} 
-                            className="h-5 w-5" 
+                          <AvatarIcon
+                            icon={participant.avatar}
+                            className="h-5 w-5"
                             color={getAvatarColor(participant.name)}
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{participant.name}</p>
+                          <p className="font-medium truncate">
+                            {participant.name}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             {formatNumber(participant.tripCount || 0)} طلعة
                           </p>
@@ -387,9 +449,15 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground mb-3">لا يوجد مشاركين</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    لا يوجد مشاركين
+                  </p>
                   <Link href="/participants/new">
-                    <Button size="sm" variant="outline" data-testid="button-add-first-participant">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      data-testid="button-add-first-participant"
+                    >
                       <Plus className="h-4 w-4 ml-1" />
                       إضافة
                     </Button>
@@ -404,8 +472,12 @@ export default function Dashboard() {
             <CardContent className="p-4">
               <div className="text-center space-y-1">
                 <p className="text-xs text-muted-foreground">التاريخ الهجري</p>
-                <p className="text-lg font-semibold">{formatHijriDate(new Date())}</p>
-                <p className="text-xs text-muted-foreground">{formatArabicDate(new Date())}</p>
+                <p className="text-lg font-semibold">
+                  {formatHijriDate(new Date())}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatArabicDate(new Date())}
+                </p>
               </div>
             </CardContent>
           </Card>

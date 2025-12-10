@@ -3,13 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { 
-  ArrowRight, 
-  User,
-  Phone,
-  Save,
-  Loader2
-} from "lucide-react";
+import { ArrowRight, User, Phone, Save, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,11 +47,13 @@ export default function ParticipantForm() {
       phone: "",
       avatar: "user",
     },
-    values: participant ? {
-      name: participant.name,
-      phone: participant.phone || "",
-      avatar: participant.avatar || "user",
-    } : undefined,
+    values: participant
+      ? {
+          name: participant.name,
+          phone: participant.phone || "",
+          avatar: participant.avatar || "user",
+        }
+      : undefined,
   });
 
   const createMutation = useMutation({
@@ -130,7 +126,9 @@ export default function ParticipantForm() {
           {isEditing ? "تعديل المشارك" : "مشارك جديد"}
         </h1>
         <p className="text-muted-foreground">
-          {isEditing ? "قم بتعديل بيانات المشارك" : "أدخل بيانات المشارك الجديد"}
+          {isEditing
+            ? "قم بتعديل بيانات المشارك"
+            : "أدخل بيانات المشارك الجديد"}
         </p>
       </div>
 
@@ -178,8 +176,8 @@ export default function ParticipantForm() {
                     <FormControl>
                       <div className="relative">
                         <User className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input 
-                          placeholder="مثال: أبو محمد" 
+                        <Input
+                          placeholder="مثال: أسامه السميطي"
                           className="pr-9"
                           {...field}
                           data-testid="input-participant-name"
@@ -200,8 +198,8 @@ export default function ParticipantForm() {
                     <FormControl>
                       <div className="relative">
                         <Phone className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input 
-                          placeholder="05xxxxxxxx" 
+                        <Input
+                          placeholder="55xx xxxx"
                           className="pr-9"
                           {...field}
                           data-testid="input-participant-phone"
@@ -214,8 +212,8 @@ export default function ParticipantForm() {
               />
 
               <div className="flex gap-3 pt-4">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isPending}
                   data-testid="button-submit-participant"
                 >
@@ -226,8 +224,8 @@ export default function ParticipantForm() {
                   )}
                   {isEditing ? "حفظ التغييرات" : "إضافة المشارك"}
                 </Button>
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   variant="outline"
                   onClick={() => navigate("/participants")}
                   data-testid="button-cancel"
