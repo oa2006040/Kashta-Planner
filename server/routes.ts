@@ -220,7 +220,13 @@ export async function registerRoutes(
 
   app.post("/api/events", async (req, res) => {
     try {
-      const data = insertEventSchema.parse(req.body);
+      // Convert date strings to Date objects
+      const body = {
+        ...req.body,
+        date: req.body.date ? new Date(req.body.date) : undefined,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+      };
+      const data = insertEventSchema.parse(body);
       const event = await storage.createEvent(data);
       
       // Log activity
@@ -242,7 +248,13 @@ export async function registerRoutes(
 
   app.patch("/api/events/:id", async (req, res) => {
     try {
-      const data = insertEventSchema.partial().parse(req.body);
+      // Convert date strings to Date objects
+      const body = {
+        ...req.body,
+        date: req.body.date ? new Date(req.body.date) : undefined,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+      };
+      const data = insertEventSchema.partial().parse(body);
       const event = await storage.updateEvent(req.params.id, data);
       if (!event) {
         return res.status(404).json({ error: "Event not found" });
