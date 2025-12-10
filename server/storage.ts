@@ -30,6 +30,8 @@ import {
   type EventSettlement,
   type ParticipantBalance,
   type SettlementRecordWithDetails,
+  type ParticipantDebtSummary,
+  type ParticipantDebtPortfolio,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
@@ -808,6 +810,210 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updated;
+  }
+  
+  // Debt Portfolio Methods
+  
+  async getDebtSummaries(): Promise<ParticipantDebtSummary[]> {
+    // Get all participants
+    const allParticipants = await db.select().from(participants);
+    
+    // Get all settlement records (unsettled only for active debts)
+    const allRecords = await db.select()
+      .from(settlementRecords)
+      .where(eq(settlementRecords.isSettled, false));
+    
+    // Get all contributions for total paid calculations
+    const allContributions = await db.select().from(contributions);
+    
+    // Get all event participations
+    const allEventParticipants = await db.select().from(eventParticipants);
+    
+    const summaries: ParticipantDebtSummary[] = [];
+    
+    for (const participant of allParticipants) {
+      // Total paid across all events (from assigned contributions)
+      const totalPaid = allContributions
+        .filter(c => c.participantId === participant.id)
+        .reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+      
+      // Total owed TO others (this participant is debtor)
+      const totalOwed = allRecords
+        .filter(r => r.debtorId === participant.id)
+        .reduce((sum, r) => sum + parseFloat(r.amount), 0);
+      
+      // Total owed BY others to this participant (this participant is creditor)
+      const totalOwedToYou = allRecords
+        .filter(r => r.creditorId === participant.id)
+        .reduce((sum, r) => sum + parseFloat(r.amount), 0);
+      
+      const netPosition = totalOwedToYou - totalOwed;
+      
+      // Count events participated in
+      const eventCount = allEventParticipants.filter(ep => ep.participantId === participant.id).length;
+      
+      let role: 'creditor' | 'debtor' | 'settled' = 'settled';
+      if (netPosition > 0.01) role = 'creditor';
+      else if (netPosition < -0.01) role = 'debtor';
+      
+      summaries.push({
+        participant,
+        totalPaid,
+        totalOwed,
+        totalOwedToYou,
+        netPosition,
+        role,
+        eventCount,
+      });
+    }
+    
+    // Sort by absolute net position (highest debt/credit first)
+    return summaries.sort((a, b) => Math.abs(b.netPosition) - Math.abs(a.netPosition));
+  }
+  
+  async getDebtPortfolio(participantId: string): Promise<ParticipantDebtPortfolio | undefined> {
+    // Get participant
+    const [participant] = await db.select().from(participants).where(eq(participants.id, participantId));
+    if (!participant) return undefined;
+    
+    // Get all events this participant was in
+    const participantEvents = await db.select()
+      .from(eventParticipants)
+      .innerJoin(events, eq(eventParticipants.eventId, events.id))
+      .where(eq(eventParticipants.participantId, participantId))
+      .orderBy(desc(events.date));
+    
+    // Get all settlement records involving this participant (unsettled only)
+    const debtorRecords = await db.select()
+      .from(settlementRecords)
+      .innerJoin(events, eq(settlementRecords.eventId, events.id))
+      .where(and(
+        eq(settlementRecords.debtorId, participantId),
+        eq(settlementRecords.isSettled, false)
+      ));
+    
+    const creditorRecords = await db.select()
+      .from(settlementRecords)
+      .innerJoin(events, eq(settlementRecords.eventId, events.id))
+      .where(and(
+        eq(settlementRecords.creditorId, participantId),
+        eq(settlementRecords.isSettled, false)
+      ));
+    
+    // Get all contributions by this participant
+    const participantContributions = await db.select()
+      .from(contributions)
+      .where(eq(contributions.participantId, participantId));
+    
+    // Calculate totals
+    const totalPaid = participantContributions.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+    const totalOwed = debtorRecords.reduce((sum, r) => sum + parseFloat(r.settlement_records.amount), 0);
+    const totalOwedToYou = creditorRecords.reduce((sum, r) => sum + parseFloat(r.settlement_records.amount), 0);
+    const netPosition = totalOwedToYou - totalOwed;
+    
+    let role: 'creditor' | 'debtor' | 'settled' = 'settled';
+    if (netPosition > 0.01) role = 'creditor';
+    else if (netPosition < -0.01) role = 'debtor';
+    
+    // Get all participants for counterparty details
+    const allParticipants = await db.select().from(participants);
+    
+    // Build counterparty debts (aggregate by counterparty)
+    const counterpartyMap = new Map<string, {
+      counterparty: Participant;
+      totalOwed: number;
+      events: { eventId: number; eventTitle: string; amount: number }[];
+    }>();
+    
+    // Add debts (this participant owes to others) - positive amounts
+    for (const record of debtorRecords) {
+      const creditorId = record.settlement_records.creditorId;
+      const existing = counterpartyMap.get(creditorId);
+      const amount = parseFloat(record.settlement_records.amount);
+      
+      if (existing) {
+        existing.totalOwed += amount;
+        existing.events.push({
+          eventId: record.events.id,
+          eventTitle: record.events.title,
+          amount: amount,
+        });
+      } else {
+        counterpartyMap.set(creditorId, {
+          counterparty: allParticipants.find(p => p.id === creditorId)!,
+          totalOwed: amount,
+          events: [{
+            eventId: record.events.id,
+            eventTitle: record.events.title,
+            amount: amount,
+          }],
+        });
+      }
+    }
+    
+    // Add credits (others owe to this participant) - negative amounts to show they owe us
+    for (const record of creditorRecords) {
+      const debtorId = record.settlement_records.debtorId;
+      const existing = counterpartyMap.get(debtorId);
+      const amount = -parseFloat(record.settlement_records.amount); // negative = they owe us
+      
+      if (existing) {
+        existing.totalOwed += amount;
+        existing.events.push({
+          eventId: record.events.id,
+          eventTitle: record.events.title,
+          amount: amount,
+        });
+      } else {
+        counterpartyMap.set(debtorId, {
+          counterparty: allParticipants.find(p => p.id === debtorId)!,
+          totalOwed: amount,
+          events: [{
+            eventId: record.events.id,
+            eventTitle: record.events.title,
+            amount: amount,
+          }],
+        });
+      }
+    }
+    
+    const counterpartyDebts = Array.from(counterpartyMap.values())
+      .filter(cp => cp.counterparty) // Filter out any undefined counterparties
+      .sort((a, b) => Math.abs(b.totalOwed) - Math.abs(a.totalOwed));
+    
+    // Build event breakdown
+    const eventBreakdown: ParticipantDebtPortfolio['eventBreakdown'] = [];
+    
+    for (const ep of participantEvents) {
+      const eventId = ep.events.id;
+      
+      // Get all contributions for this event by this participant
+      const eventContributions = participantContributions.filter(c => c.eventId === eventId);
+      const paid = eventContributions.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+      
+      // Get settlement info for this event
+      const settlement = await this.getEventSettlement(eventId);
+      const participantBalance = settlement?.balances.find(b => b.participant.id === participantId);
+      
+      eventBreakdown.push({
+        event: ep.events,
+        paid,
+        fairShare: participantBalance?.fairShare || 0,
+        balance: participantBalance?.balance || 0,
+        role: participantBalance?.role || 'settled',
+      });
+    }
+    
+    return {
+      participant,
+      totalPaid,
+      totalOwed,
+      totalOwedToYou,
+      netPosition,
+      role,
+      counterpartyDebts,
+      eventBreakdown,
+    };
   }
 }
 

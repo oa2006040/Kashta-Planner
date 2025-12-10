@@ -253,3 +253,37 @@ export type EventSettlement = {
   balances: ParticipantBalance[];
   transactions: SettlementRecordWithDetails[];
 };
+
+// Debt portfolio types for cross-event debt aggregation
+export type CounterpartyDebt = {
+  counterparty: Participant;
+  totalOwed: number; // Amount this participant owes to counterparty (positive) or is owed by (negative)
+  events: { eventId: number; eventTitle: string; amount: number }[];
+};
+
+export type ParticipantDebtSummary = {
+  participant: Participant;
+  totalPaid: number; // Total paid across all events
+  totalOwed: number; // Total amount owed to others (debts)
+  totalOwedToYou: number; // Total amount others owe to this participant (credits)
+  netPosition: number; // Positive = net creditor, Negative = net debtor
+  role: 'creditor' | 'debtor' | 'settled';
+  eventCount: number; // Number of events participated in
+};
+
+export type ParticipantDebtPortfolio = {
+  participant: Participant;
+  totalPaid: number; // Total paid across all events
+  totalOwed: number; // Total amount owed to others
+  totalOwedToYou: number; // Total amount others owe to this participant
+  netPosition: number;
+  role: 'creditor' | 'debtor' | 'settled';
+  counterpartyDebts: CounterpartyDebt[]; // Breakdown by person
+  eventBreakdown: {
+    event: Event;
+    paid: number;
+    fairShare: number;
+    balance: number;
+    role: 'creditor' | 'debtor' | 'settled';
+  }[];
+};

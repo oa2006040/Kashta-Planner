@@ -218,8 +218,8 @@ export function formatCurrency(amount: number | string): string {
   return new Intl.NumberFormat("ar-SA", {
     style: "currency",
     currency: "QAR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(num);
 }
 

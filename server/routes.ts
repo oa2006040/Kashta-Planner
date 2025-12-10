@@ -525,5 +525,29 @@ export async function registerRoutes(
     }
   });
 
+  // Debt Portfolio Routes
+  app.get("/api/debt", async (req, res) => {
+    try {
+      const summaries = await storage.getDebtSummaries();
+      res.json(summaries);
+    } catch (error) {
+      console.error("Error fetching debt summaries:", error);
+      res.status(500).json({ error: "Failed to fetch debt summaries" });
+    }
+  });
+
+  app.get("/api/debt/:participantId", async (req, res) => {
+    try {
+      const portfolio = await storage.getDebtPortfolio(req.params.participantId);
+      if (!portfolio) {
+        return res.status(404).json({ error: "Participant not found" });
+      }
+      res.json(portfolio);
+    } catch (error) {
+      console.error("Error fetching debt portfolio:", error);
+      res.status(500).json({ error: "Failed to fetch debt portfolio" });
+    }
+  });
+
   return httpServer;
 }
