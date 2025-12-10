@@ -31,7 +31,12 @@ export default function ContributionForm() {
   const { toast } = useToast();
   const eventId = params?.id;
 
-  const [selectedItems, setSelectedItems] = useState<Map<string, { participantId?: string; cost?: string }>>(new Map());
+  const [selectedItems, setSelectedItems] = useState<Map<string, { 
+    participantId?: string; 
+    cost?: string;
+    includeParticipant?: boolean;
+    includeCost?: boolean;
+  }>>(new Map());
 
   const { data: event, isLoading: eventLoading } = useQuery<EventWithDetails>({
     queryKey: ["/api/events", eventId],
@@ -78,8 +83,8 @@ export default function ContributionForm() {
         addContributionMutation.mutateAsync({
           eventId: eventId!,
           itemId,
-          participantId: data.participantId,
-          cost: data.cost,
+          participantId: data.includeParticipant ? data.participantId : undefined,
+          cost: data.includeCost ? data.cost : undefined,
         })
       );
 
@@ -105,12 +110,12 @@ export default function ContributionForm() {
     if (newSelected.has(itemId)) {
       newSelected.delete(itemId);
     } else {
-      newSelected.set(itemId, {});
+      newSelected.set(itemId, { includeParticipant: false, includeCost: false });
     }
     setSelectedItems(newSelected);
   };
 
-  const updateItemData = (itemId: string, field: "participantId" | "cost", value: string) => {
+  const updateItemData = (itemId: string, field: "participantId" | "cost" | "includeParticipant" | "includeCost", value: string | boolean) => {
     const newSelected = new Map(selectedItems);
     const current = newSelected.get(itemId) || {};
     newSelected.set(itemId, { ...current, [field]: value });
@@ -210,38 +215,67 @@ export default function ContributionForm() {
                           )}
 
                           {isSelected && (
-                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">المسؤول</Label>
-                                <Select
-                                  value={itemData?.participantId || ""}
-                                  onValueChange={(v) => updateItemData(item.id, "participantId", v)}
-                                >
-                                  <SelectTrigger data-testid={`select-participant-${item.id}`}>
-                                    <SelectValue placeholder="اختر مشارك" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {participants?.map((p) => (
-                                      <SelectItem key={p.id} value={p.id}>
-                                        <div className="flex items-center gap-2">
-                                          <AvatarIcon icon={p.avatar} className="h-4 w-4" />
-                                          {p.name}
-                                        </div>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">التكلفة (ر.ق)</Label>
-                                <Input
-                                  type="number"
-                                  placeholder="0.000"
-                                  value={itemData?.cost || ""}
-                                  onChange={(e) => updateItemData(item.id, "cost", e.target.value)}
-                                  data-testid={`input-cost-${item.id}`}
+                            <div className="mt-3 space-y-3">
+                              <div className="flex items-center gap-3 p-2 rounded-md bg-muted/50">
+                                <Checkbox
+                                  id={`participant-toggle-${item.id}`}
+                                  checked={itemData?.includeParticipant || false}
+                                  onCheckedChange={(checked) => updateItemData(item.id, "includeParticipant", !!checked)}
+                                  data-testid={`checkbox-include-participant-${item.id}`}
                                 />
+                                <Label htmlFor={`participant-toggle-${item.id}`} className="text-sm cursor-pointer flex-1">
+                                  تعيين مسؤول
+                                </Label>
+                                <Checkbox
+                                  id={`cost-toggle-${item.id}`}
+                                  checked={itemData?.includeCost || false}
+                                  onCheckedChange={(checked) => updateItemData(item.id, "includeCost", !!checked)}
+                                  data-testid={`checkbox-include-cost-${item.id}`}
+                                />
+                                <Label htmlFor={`cost-toggle-${item.id}`} className="text-sm cursor-pointer">
+                                  إضافة تكلفة
+                                </Label>
                               </div>
+                              
+                              {(itemData?.includeParticipant || itemData?.includeCost) && (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  {itemData?.includeParticipant && (
+                                    <div className="space-y-1.5">
+                                      <Label className="text-xs">المسؤول</Label>
+                                      <Select
+                                        value={itemData?.participantId || ""}
+                                        onValueChange={(v) => updateItemData(item.id, "participantId", v)}
+                                      >
+                                        <SelectTrigger data-testid={`select-participant-${item.id}`}>
+                                          <SelectValue placeholder="اختر مشارك" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {participants?.map((p) => (
+                                            <SelectItem key={p.id} value={p.id}>
+                                              <div className="flex items-center gap-2">
+                                                <AvatarIcon icon={p.avatar} className="h-4 w-4" />
+                                                {p.name}
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                  {itemData?.includeCost && (
+                                    <div className="space-y-1.5">
+                                      <Label className="text-xs">التكلفة (ر.ق)</Label>
+                                      <Input
+                                        type="number"
+                                        placeholder="0.000"
+                                        value={itemData?.cost || ""}
+                                        onChange={(e) => updateItemData(item.id, "cost", e.target.value)}
+                                        data-testid={`input-cost-${item.id}`}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

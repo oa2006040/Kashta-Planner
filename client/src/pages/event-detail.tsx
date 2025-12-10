@@ -26,6 +26,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -95,15 +97,18 @@ function ContributionItem({
 }: ContributionItemProps) {
   const [showAssign, setShowAssign] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<string>("");
+  const [includeCost, setIncludeCost] = useState(false);
   const [cost, setCost] = useState(contribution.cost || "0");
 
   const hasParticipant = !!contribution.participantId;
 
   const handleAssign = () => {
     if (selectedParticipant) {
-      onAssign(contribution.id, selectedParticipant, cost);
+      onAssign(contribution.id, selectedParticipant, includeCost ? cost : "0");
       setShowAssign(false);
       setSelectedParticipant("");
+      setIncludeCost(false);
+      setCost("0");
     }
   };
 
@@ -208,56 +213,73 @@ function ContributionItem({
       </div>
       
       {showAssign && !hasParticipant && (
-        <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-          <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
-            <SelectTrigger className="flex-1" data-testid={`select-participant-${contribution.id}`}>
-              <SelectValue placeholder="اختر المشارك" />
-            </SelectTrigger>
-            <SelectContent>
-              {participants.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  <div className="flex items-center gap-2">
-                    <AvatarIcon icon={p.avatar} className="h-4 w-4" />
-                    {p.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              placeholder="التكلفة"
-              value={cost}
-              onChange={(e) => setCost(e.target.value)}
-              className="w-24"
-              data-testid={`input-cost-${contribution.id}`}
-            />
-            <span className="text-sm text-muted-foreground">ر.ق</span>
+        <div className="flex flex-col gap-3 pt-3 border-t">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
+              <SelectTrigger className="flex-1" data-testid={`select-participant-${contribution.id}`}>
+                <SelectValue placeholder="اختر المشارك" />
+              </SelectTrigger>
+              <SelectContent>
+                {participants.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    <div className="flex items-center gap-2">
+                      <AvatarIcon icon={p.avatar} className="h-4 w-4" />
+                      {p.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                onClick={handleAssign} 
+                disabled={!selectedParticipant || isAssigning}
+                data-testid={`button-confirm-assign-${contribution.id}`}
+              >
+                {isAssigning ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => {
+                  setShowAssign(false);
+                  setSelectedParticipant("");
+                  setIncludeCost(false);
+                  setCost("0");
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              size="sm" 
-              onClick={handleAssign} 
-              disabled={!selectedParticipant || isAssigning}
-              data-testid={`button-confirm-assign-${contribution.id}`}
-            >
-              {isAssigning ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4" />
-              )}
-            </Button>
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={() => {
-                setShowAssign(false);
-                setSelectedParticipant("");
-              }}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-3 p-2 rounded-md bg-muted/50">
+            <Checkbox
+              id={`cost-toggle-${contribution.id}`}
+              checked={includeCost}
+              onCheckedChange={(checked) => setIncludeCost(!!checked)}
+              data-testid={`checkbox-include-cost-${contribution.id}`}
+            />
+            <Label htmlFor={`cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
+              إضافة تكلفة
+            </Label>
+            {includeCost && (
+              <div className="flex items-center gap-2 mr-auto">
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  className="w-24"
+                  data-testid={`input-cost-${contribution.id}`}
+                />
+                <span className="text-sm text-muted-foreground">ر.ق</span>
+              </div>
+            )}
           </div>
         </div>
       )}
