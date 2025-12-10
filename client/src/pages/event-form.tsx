@@ -118,6 +118,9 @@ export default function EventForm() {
         temperature: data.temperature || null,
         requiredItems: selectContributions ? Array.from(selectedItems) : [],
       };
+      console.log("[EventForm] Creating event with payload:", JSON.stringify(payload));
+      console.log("[EventForm] selectContributions:", selectContributions);
+      console.log("[EventForm] selectedItems:", Array.from(selectedItems));
       return apiRequest("POST", "/api/events", payload);
     },
     onSuccess: async (response) => {
