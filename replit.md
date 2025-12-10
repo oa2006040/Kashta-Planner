@@ -38,7 +38,25 @@ Core entities defined in `shared/schema.ts`:
 - **EventParticipants**: Junction table linking events and participants
 - **Contributions**: Items contributed by participants for events
 - **ActivityLogs**: Audit trail of actions
+- **SettlementRecords**: Tracks debts between participants after expense splitting
 - **Users**: User accounts (future authentication)
+
+### Expense Settlement System
+The app includes a complete expense settlement system:
+- **Fair Share Calculation**: Expenses are split equally among participants
+- **Decimal Precision**: All amounts use 2 decimal places (e.g., 1.50 QAR for 3 QAR split between 2)
+- **Settlement Tracking**: Track who owes whom with toggle for marking debts as settled
+- **Unassigned Costs**: Items without assigned participants are tracked separately and excluded from settlement math
+- **Currency**: Qatari Riyal (QAR) with Arabic numeral formatting
+
+### Debt Portfolio System
+Cross-event debt aggregation:
+- **Debt Overview** (`/debt`): Lists all participants with their net debt position
+- **Participant Portfolio** (`/debt/:participantId`): Detailed breakdown per participant
+  - Total paid across all events
+  - Total owed to others / Total owed to you
+  - Counterparty breakdown (aggregated debts with each person)
+  - Per-event contribution history
 
 ### Key Design Patterns
 - Shared schema between client and server via `@shared/*` path alias
