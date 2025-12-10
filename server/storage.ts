@@ -51,21 +51,21 @@ export interface IStorage {
   
   // Events
   getEvents(): Promise<Event[]>;
-  getEvent(id: string): Promise<Event | undefined>;
-  getEventWithDetails(id: string): Promise<EventWithDetails | undefined>;
+  getEvent(id: number): Promise<Event | undefined>;
+  getEventWithDetails(id: number): Promise<EventWithDetails | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
-  updateEvent(id: string, event: Partial<InsertEvent>): Promise<Event | undefined>;
-  deleteEvent(id: string): Promise<boolean>;
+  updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event | undefined>;
+  deleteEvent(id: number): Promise<boolean>;
   
   // Event Participants
-  getEventParticipants(eventId: string): Promise<EventParticipant[]>;
+  getEventParticipants(eventId: number): Promise<EventParticipant[]>;
   addParticipantToEvent(data: InsertEventParticipant): Promise<EventParticipant>;
-  removeParticipantFromEvent(eventId: string, participantId: string): Promise<boolean>;
-  removeParticipantFromEventWithCascade(eventId: string, participantId: string): Promise<boolean>;
-  addParticipantWithContributions(eventId: string, participantId: string, itemIds: string[], costs?: Record<string, string>): Promise<{ eventParticipant: EventParticipant; contributions: Contribution[] }>;
+  removeParticipantFromEvent(eventId: number, participantId: string): Promise<boolean>;
+  removeParticipantFromEventWithCascade(eventId: number, participantId: string): Promise<boolean>;
+  addParticipantWithContributions(eventId: number, participantId: string, itemIds: string[], costs?: Record<string, string>): Promise<{ eventParticipant: EventParticipant; contributions: Contribution[] }>;
   
   // Contributions
-  getContributions(eventId: string): Promise<Contribution[]>;
+  getContributions(eventId: number): Promise<Contribution[]>;
   createContribution(contribution: InsertContribution): Promise<Contribution>;
   updateContribution(id: string, contribution: Partial<InsertContribution>): Promise<Contribution | undefined>;
   deleteContribution(id: string): Promise<boolean>;
@@ -93,11 +93,11 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // Categories
   async getCategories(): Promise<Category[]> {
-    return db.select().from(categories).orderBy(categories.order);
+    return db.select().from(categories).orderBy(categories.sortOrder);
   }
 
   async getCategoriesWithItems(): Promise<CategoryWithItems[]> {
-    const allCategories = await db.select().from(categories).orderBy(categories.order);
+    const allCategories = await db.select().from(categories).orderBy(categories.sortOrder);
     const allItems = await db.select().from(items);
     
     return allCategories.map(cat => ({
@@ -171,12 +171,12 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(events).orderBy(desc(events.date));
   }
 
-  async getEvent(id: string): Promise<Event | undefined> {
+  async getEvent(id: number): Promise<Event | undefined> {
     const [event] = await db.select().from(events).where(eq(events.id, id));
     return event;
   }
 
-  async getEventWithDetails(id: string): Promise<EventWithDetails | undefined> {
+  async getEventWithDetails(id: number): Promise<EventWithDetails | undefined> {
     const [event] = await db.select().from(events).where(eq(events.id, id));
     if (!event) return undefined;
 
@@ -227,7 +227,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateEvent(id: string, data: Partial<InsertEvent>): Promise<Event | undefined> {
+  async updateEvent(id: number, data: Partial<InsertEvent>): Promise<Event | undefined> {
     const [updated] = await db.update(events)
       .set(data)
       .where(eq(events.id, id))
@@ -235,13 +235,13 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async deleteEvent(id: string): Promise<boolean> {
+  async deleteEvent(id: number): Promise<boolean> {
     await db.delete(events).where(eq(events.id, id));
     return true;
   }
 
   // Event Participants
-  async getEventParticipants(eventId: string): Promise<EventParticipant[]> {
+  async getEventParticipants(eventId: number): Promise<EventParticipant[]> {
     return db.select().from(eventParticipants).where(eq(eventParticipants.eventId, eventId));
   }
 
@@ -254,7 +254,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async removeParticipantFromEvent(eventId: string, participantId: string): Promise<boolean> {
+  async removeParticipantFromEvent(eventId: number, participantId: string): Promise<boolean> {
     await db.delete(eventParticipants)
       .where(and(
         eq(eventParticipants.eventId, eventId),
@@ -263,7 +263,7 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  async removeParticipantFromEventWithCascade(eventId: string, participantId: string): Promise<boolean> {
+  async removeParticipantFromEventWithCascade(eventId: number, participantId: string): Promise<boolean> {
     // First remove all contributions by this participant for this event
     await db.delete(contributions)
       .where(and(
@@ -287,7 +287,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addParticipantWithContributions(
-    eventId: string, 
+    eventId: number, 
     participantId: string, 
     itemIds: string[], 
     costs?: Record<string, string>
@@ -334,7 +334,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Contributions
-  async getContributions(eventId: string): Promise<Contribution[]> {
+  async getContributions(eventId: number): Promise<Contribution[]> {
     return db.select().from(contributions).where(eq(contributions.eventId, eventId));
   }
 

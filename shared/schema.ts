@@ -11,7 +11,7 @@ export const categories = pgTable("categories", {
   nameAr: text("name_ar").notNull(),
   icon: text("icon").notNull(),
   color: text("color").notNull(),
-  order: integer("order").default(0),
+  sortOrder: integer("sort_order").default(0),
 });
 
 export const categoriesRelations = relations(categories, ({ many }) => ({

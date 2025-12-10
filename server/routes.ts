@@ -207,7 +207,11 @@ export async function registerRoutes(
 
   app.get("/api/events/:id", async (req, res) => {
     try {
-      const event = await storage.getEventWithDetails(req.params.id);
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      const event = await storage.getEventWithDetails(eventId);
       if (!event) {
         return res.status(404).json({ error: "Event not found" });
       }
@@ -248,6 +252,10 @@ export async function registerRoutes(
 
   app.patch("/api/events/:id", async (req, res) => {
     try {
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
       // Convert date strings to Date objects
       const body = {
         ...req.body,
@@ -255,7 +263,7 @@ export async function registerRoutes(
         endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
       };
       const data = insertEventSchema.partial().parse(body);
-      const event = await storage.updateEvent(req.params.id, data);
+      const event = await storage.updateEvent(eventId, data);
       if (!event) {
         return res.status(404).json({ error: "Event not found" });
       }
@@ -279,14 +287,18 @@ export async function registerRoutes(
 
   app.delete("/api/events/:id", async (req, res) => {
     try {
-      const event = await storage.getEvent(req.params.id);
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      const event = await storage.getEvent(eventId);
       if (event) {
         await storage.createActivityLog({
           action: "حذف طلعة",
           details: `تم حذف طلعة "${event.title}"`,
         });
       }
-      await storage.deleteEvent(req.params.id);
+      await storage.deleteEvent(eventId);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting event:", error);
@@ -297,9 +309,13 @@ export async function registerRoutes(
   // Event Participants
   app.post("/api/events/:eventId/participants", async (req, res) => {
     try {
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
       const data = insertEventParticipantSchema.parse({
         ...req.body,
-        eventId: req.params.eventId,
+        eventId,
       });
       const eventParticipant = await storage.addParticipantToEvent(data);
       res.status(201).json(eventParticipant);
@@ -314,8 +330,12 @@ export async function registerRoutes(
 
   app.delete("/api/events/:eventId/participants/:participantId", async (req, res) => {
     try {
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
       // Use cascade delete to remove all contributions by this participant
-      await storage.removeParticipantFromEventWithCascade(req.params.eventId, req.params.participantId);
+      await storage.removeParticipantFromEventWithCascade(eventId, req.params.participantId);
       res.status(204).send();
     } catch (error) {
       console.error("Error removing participant from event:", error);
@@ -326,6 +346,10 @@ export async function registerRoutes(
   // Add participant with required contributions
   app.post("/api/events/:eventId/participants-with-contributions", async (req, res) => {
     try {
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
       const { participantId, itemIds, costs } = req.body;
       
       if (!participantId) {
@@ -337,7 +361,7 @@ export async function registerRoutes(
       }
       
       const result = await storage.addParticipantWithContributions(
-        req.params.eventId,
+        eventId,
         participantId,
         itemIds,
         costs
@@ -353,7 +377,11 @@ export async function registerRoutes(
   // Contributions
   app.get("/api/events/:eventId/contributions", async (req, res) => {
     try {
-      const contributions = await storage.getContributions(req.params.eventId);
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      const contributions = await storage.getContributions(eventId);
       res.json(contributions);
     } catch (error) {
       console.error("Error fetching contributions:", error);
@@ -363,9 +391,13 @@ export async function registerRoutes(
 
   app.post("/api/events/:eventId/contributions", async (req, res) => {
     try {
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
       const data = insertContributionSchema.parse({
         ...req.body,
-        eventId: req.params.eventId,
+        eventId,
       });
       const contribution = await storage.createContribution(data);
       res.status(201).json(contribution);
