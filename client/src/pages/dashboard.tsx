@@ -376,21 +376,6 @@ export default function Dashboard() {
                   إدارة المستلزمات
                 </Button>
               </Link>
-              <Link 
-                href={upcomingEvents && upcomingEvents.length > 0 
-                  ? `/events/${upcomingEvents[0].id}/items` 
-                  : "/events"} 
-                className="block"
-              >
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  data-testid="button-quick-add-contribution"
-                >
-                  <Plus className="h-4 w-4 ml-2" />
-                  إضافة مستلزم للطلعة
-                </Button>
-              </Link>
             </CardContent>
           </Card>
 
