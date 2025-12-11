@@ -186,6 +186,12 @@ export async function registerRoutes(
 
   app.delete("/api/participants/:id", async (req, res) => {
     try {
+      // Check if participant can be deleted (no unsettled debts)
+      const { canDelete, reason } = await storage.canDeleteParticipant(req.params.id);
+      if (!canDelete) {
+        return res.status(409).json({ error: reason });
+      }
+      
       await storage.deleteParticipant(req.params.id);
       res.status(204).send();
     } catch (error) {

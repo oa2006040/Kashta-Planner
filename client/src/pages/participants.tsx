@@ -136,7 +136,17 @@ export default function Participants() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/participants/${id}`);
+      const response = await fetch(`/api/participants/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "حدث خطأ أثناء حذف المشارك");
+      }
+      
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/participants"] });
@@ -147,12 +157,13 @@ export default function Participants() {
       });
       setDeleteId(null);
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء حذف المشارك",
+        title: "لا يمكن حذف المشارك",
+        description: error.message,
         variant: "destructive",
       });
+      setDeleteId(null);
     },
   });
 

@@ -111,6 +111,9 @@ export interface IStorage {
   // Event protection (cancellation/deletion)
   canCancelEvent(eventId: number): Promise<{ canCancel: boolean; reason?: string }>;
   canDeleteEvent(eventId: number): Promise<{ canDelete: boolean; reason?: string }>;
+  
+  // Participant protection (deletion)
+  canDeleteParticipant(participantId: string): Promise<{ canDelete: boolean; reason?: string }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -926,6 +929,47 @@ export class DatabaseStorage implements IStorage {
       return { 
         canDelete: false, 
         reason: "لا يمكن حذف الطلعة لأنها تحتوي على مساهمات بتكاليف. يرجى إزالة جميع التكاليف أولاً." 
+      };
+    }
+    
+    return { canDelete: true };
+  }
+  
+  async canDeleteParticipant(participantId: string): Promise<{ canDelete: boolean; reason?: string }> {
+    // Check for unsettled debts as debtor (owes others)
+    const debtorRecords = await db.select()
+      .from(settlementRecords)
+      .where(
+        and(
+          eq(settlementRecords.debtorId, participantId),
+          eq(settlementRecords.isSettled, false)
+        )
+      );
+    
+    // Check for unsettled debts as creditor (others owe them)
+    const creditorRecords = await db.select()
+      .from(settlementRecords)
+      .where(
+        and(
+          eq(settlementRecords.creditorId, participantId),
+          eq(settlementRecords.isSettled, false)
+        )
+      );
+    
+    const totalOwed = debtorRecords.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+    const totalOwedToThem = creditorRecords.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+    
+    if (totalOwed > 0.01) {
+      return { 
+        canDelete: false, 
+        reason: `لا يمكن حذف المشارك لأنه مدين بمبلغ ${totalOwed.toFixed(2)} ر.ق. يرجى تسوية جميع الديون أولاً.` 
+      };
+    }
+    
+    if (totalOwedToThem > 0.01) {
+      return { 
+        canDelete: false, 
+        reason: `لا يمكن حذف المشارك لأن له ديون على الآخرين بمبلغ ${totalOwedToThem.toFixed(2)} ر.ق. يرجى تسوية جميع الديون أولاً.` 
       };
     }
     
