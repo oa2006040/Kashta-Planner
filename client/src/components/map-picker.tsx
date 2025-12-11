@@ -88,22 +88,28 @@ export function MapPickerDialog({
       const defaultLocation = language === "ar" ? "موقع محدد" : "Selected location";
       
       if (data.address) {
+        const city = data.address.city || 
+                     data.address.town || 
+                     data.address.village || 
+                     data.address.hamlet ||
+                     data.address.suburb ||
+                     "";
         const region = data.address.state || 
                       data.address.region || 
                       data.address.county || 
-                      data.address.city || 
-                      data.address.town || 
-                      data.address.village || 
                       "";
         const country = data.address.country || "";
         
-        if (region && country) {
-          setLocationName(`${region}${separator}${country}`);
-        } else if (country) {
-          setLocationName(country);
+        const locationParts = [city, region, country].filter(part => part && part.trim());
+        const uniqueParts = locationParts.filter((part, index) => 
+          locationParts.indexOf(part) === index
+        );
+        
+        if (uniqueParts.length > 0) {
+          setLocationName(uniqueParts.join(separator));
         } else if (data.display_name) {
           const parts = data.display_name.split(",");
-          setLocationName(parts.slice(0, 2).join(separator).trim());
+          setLocationName(parts.slice(0, 3).join(separator).trim());
         } else {
           setLocationName(defaultLocation);
         }
