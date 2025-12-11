@@ -275,10 +275,10 @@ function ContributionItem({
               data-testid={`checkbox-include-cost-${contribution.id}`}
             />
             <Label htmlFor={`cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
-              إضافة تكلفة
+              {t("إضافة تكلفة", "Add cost")}
             </Label>
             {includeCost && (
-              <div className="flex items-center gap-2 mr-auto">
+              <div className={`flex items-center gap-2 ${language === "ar" ? "mr-auto" : "ml-auto"}`}>
                 <Input
                   type="number"
                   placeholder="0"
@@ -287,7 +287,7 @@ function ContributionItem({
                   className="w-24"
                   data-testid={`input-cost-${contribution.id}`}
                 />
-                <span className="text-sm text-muted-foreground">ر.ق</span>
+                <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
               </div>
             )}
           </div>
