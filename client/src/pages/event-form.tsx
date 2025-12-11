@@ -201,15 +201,27 @@ export default function EventForm() {
       },
       (error) => {
         setIsLoadingLocation(false);
+        let errorMessage = "حدث خطأ أثناء تحديد الموقع";
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "يرجى السماح بالوصول إلى موقعك من إعدادات المتصفح";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "لا يمكن تحديد موقعك حالياً. تأكد من تفعيل GPS";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "انتهت المهلة الزمنية لتحديد الموقع. حاول مرة أخرى";
+            break;
+        }
+        
         toast({
           title: "خطأ في تحديد الموقع",
-          description: error.message === "User denied Geolocation" 
-            ? "يرجى السماح بالوصول إلى موقعك" 
-            : "حدث خطأ أثناء تحديد الموقع",
+          description: errorMessage,
           variant: "destructive",
         });
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   };
 
