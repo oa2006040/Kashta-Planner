@@ -353,9 +353,12 @@ export default function EventDetail() {
       navigate("/events");
     },
     onError: (error: Error) => {
-      const errorMessage = error.message.includes("400") 
-        ? "لا يمكن حذف الطلعة لأنها تحتوي على مساهمات بتكاليف"
-        : "حدث خطأ أثناء حذف الطلعة";
+      let errorMessage = "حدث خطأ أثناء حذف الطلعة";
+      if (error.message.includes("400")) {
+        errorMessage = error.message.includes("تسويات") || error.message.includes("ديون")
+          ? "لا يمكن حذف الطلعة لأنها تحتوي على تسويات وديون"
+          : "لا يمكن حذف الطلعة لأنها تحتوي على مساهمات بتكاليف";
+      }
       toast({
         title: "خطأ",
         description: errorMessage,
@@ -377,10 +380,13 @@ export default function EventDetail() {
         description: "تم إلغاء الطلعة بنجاح",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      const errorMessage = error.message.includes("400") || error.message.includes("تسويات")
+        ? "لا يمكن إلغاء الطلعة لأنها تحتوي على تسويات وديون"
+        : "حدث خطأ أثناء إلغاء الطلعة";
       toast({
         title: "خطأ",
-        description: "حدث خطأ أثناء إلغاء الطلعة",
+        description: errorMessage,
         variant: "destructive",
       });
     },

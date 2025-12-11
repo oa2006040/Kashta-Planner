@@ -277,6 +277,15 @@ export async function registerRoutes(
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      // Check if trying to cancel - prevent if event has settlements
+      if (req.body.status === "cancelled") {
+        const { canCancel, reason } = await storage.canCancelEvent(eventId);
+        if (!canCancel) {
+          return res.status(400).json({ error: reason });
+        }
+      }
+      
       // Convert date strings to Date objects
       const body = {
         ...req.body,
@@ -346,6 +355,21 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error checking event deletion:", error);
       res.status(500).json({ error: "Failed to check event deletion status" });
+    }
+  });
+  
+  // Check if event can be cancelled
+  app.get("/api/events/:id/can-cancel", async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      const result = await storage.canCancelEvent(eventId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking event cancellation:", error);
+      res.status(500).json({ error: "Failed to check event cancellation status" });
     }
   });
 

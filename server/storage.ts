@@ -107,6 +107,10 @@ export interface IStorage {
   
   // Event status sync
   syncEventStatuses(): Promise<void>;
+  
+  // Event protection (cancellation/deletion)
+  canCancelEvent(eventId: number): Promise<{ canCancel: boolean; reason?: string }>;
+  canDeleteEvent(eventId: number): Promise<{ canDelete: boolean; reason?: string }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -877,9 +881,37 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
   
-  // Event deletion protection
+  // Event protection (cancellation/deletion)
+  
+  async canCancelEvent(eventId: number): Promise<{ canCancel: boolean; reason?: string }> {
+    // Check if event has any settlement records (debts)
+    const eventSettlements = await db.select()
+      .from(settlementRecords)
+      .where(eq(settlementRecords.eventId, eventId));
+    
+    if (eventSettlements.length > 0) {
+      return { 
+        canCancel: false, 
+        reason: "لا يمكن إلغاء الطلعة لأنها تحتوي على تسويات وديون. يرجى تسوية جميع الديون أولاً." 
+      };
+    }
+    
+    return { canCancel: true };
+  }
   
   async canDeleteEvent(eventId: number): Promise<{ canDelete: boolean; reason?: string }> {
+    // Check for settlement records first
+    const eventSettlements = await db.select()
+      .from(settlementRecords)
+      .where(eq(settlementRecords.eventId, eventId));
+    
+    if (eventSettlements.length > 0) {
+      return { 
+        canDelete: false, 
+        reason: "لا يمكن حذف الطلعة لأنها تحتوي على تسويات وديون. يرجى تسوية جميع الديون أولاً." 
+      };
+    }
+    
     // Get all contributions for this event with non-zero costs
     const eventContributions = await db.select()
       .from(contributions)
@@ -893,7 +925,7 @@ export class DatabaseStorage implements IStorage {
     if (hasNonZeroCosts) {
       return { 
         canDelete: false, 
-        reason: "لا يمكن حذف الفعالية لأنها تحتوي على مساهمات بتكاليف. يرجى إزالة جميع التكاليف أولاً." 
+        reason: "لا يمكن حذف الطلعة لأنها تحتوي على مساهمات بتكاليف. يرجى إزالة جميع التكاليف أولاً." 
       };
     }
     

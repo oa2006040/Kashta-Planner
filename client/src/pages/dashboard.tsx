@@ -260,10 +260,13 @@ export default function Dashboard() {
         description: variables.status === "cancelled" ? "تم تغيير حالة الطلعة إلى ملغاة" : "تم استعادة الطلعة إلى قادمة",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      const errorMessage = error.message.includes("تسويات") || error.message.includes("ديون")
+        ? "لا يمكن إلغاء الطلعة لأنها تحتوي على تسويات وديون"
+        : "حدث خطأ أثناء تحديث حالة الطلعة";
       toast({
         title: "خطأ",
-        description: "حدث خطأ أثناء تحديث حالة الطلعة",
+        description: errorMessage,
         variant: "destructive",
       });
     },
