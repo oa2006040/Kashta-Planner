@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatNumber } from "@/lib/constants";
 import { AvatarIcon, getAvatarColor } from "@/components/avatar-icon";
+import { useLanguage } from "@/components/language-provider";
 import type { Participant } from "@shared/schema";
 
 function ParticipantCard({ 
@@ -45,6 +46,7 @@ function ParticipantCard({
   participant: Participant;
   onDelete: (id: string) => void;
 }) {
+  const { t, language } = useLanguage();
   return (
     <Card className="hover-elevate" data-testid={`card-participant-${participant.id}`}>
       <CardContent className="p-4">
@@ -80,16 +82,16 @@ function ParticipantCard({
                 <DropdownMenuContent align="start">
                   <Link href={`/participants/${participant.id}/edit`}>
                     <DropdownMenuItem>
-                      <Edit2 className="h-4 w-4 ml-2" />
-                      تعديل
+                      <Edit2 className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                      {t("تعديل", "Edit")}
                     </DropdownMenuItem>
                   </Link>
                   <DropdownMenuItem 
                     className="text-destructive"
                     onClick={() => onDelete(participant.id)}
                   >
-                    <Trash2 className="h-4 w-4 ml-2" />
-                    حذف
+                    <Trash2 className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                    {t("حذف", "Delete")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -97,8 +99,8 @@ function ParticipantCard({
             
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
-                <Calendar className="h-3 w-3 ml-1" />
-                {formatNumber(participant.tripCount || 0)} طلعة
+                <Calendar className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                {formatNumber(participant.tripCount || 0)} {t("طلعة", "trips")}
               </Badge>
             </div>
           </div>
@@ -126,6 +128,7 @@ function ParticipantCardSkeleton() {
 }
 
 export default function Participants() {
+  const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -143,7 +146,7 @@ export default function Participants() {
       
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "حدث خطأ أثناء حذف المشارك");
+        throw new Error(data.error || t("حدث خطأ أثناء حذف المشارك", "An error occurred while deleting the participant"));
       }
       
       return response;
@@ -152,14 +155,14 @@ export default function Participants() {
       queryClient.invalidateQueries({ queryKey: ["/api/participants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
-        title: "تم الحذف",
-        description: "تم حذف المشارك بنجاح",
+        title: t("تم الحذف", "Deleted"),
+        description: t("تم حذف المشارك بنجاح", "Participant deleted successfully"),
       });
       setDeleteId(null);
     },
     onError: (error: Error) => {
       toast({
-        title: "لا يمكن حذف المشارك",
+        title: t("لا يمكن حذف المشارك", "Cannot delete participant"),
         description: error.message,
         variant: "destructive",
       });
@@ -177,25 +180,25 @@ export default function Participants() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">المشاركين</h1>
-          <p className="text-muted-foreground">إدارة قائمة المشاركين في الطلعات</p>
+          <h1 className="text-2xl font-bold">{t("المشاركين", "Participants")}</h1>
+          <p className="text-muted-foreground">{t("إدارة قائمة المشاركين في الطلعات", "Manage the list of participants in events")}</p>
         </div>
         <Link href="/participants/new">
           <Button data-testid="button-new-participant">
-            <Plus className="h-4 w-4 ml-2" />
-            مشارك جديد
+            <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            {t("مشارك جديد", "New Participant")}
           </Button>
         </Link>
       </div>
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground`} />
         <Input
-          placeholder="ابحث عن مشارك..."
+          placeholder={t("ابحث عن مشارك...", "Search for a participant...")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pr-9"
+          className={language === "ar" ? "pr-9" : "pl-9"}
           data-testid="input-search-participants"
         />
       </div>
@@ -209,7 +212,7 @@ export default function Participants() {
             </div>
             <div>
               <p className="text-2xl font-bold">{formatNumber(participants?.length || 0)}</p>
-              <p className="text-sm text-muted-foreground">إجمالي المشاركين</p>
+              <p className="text-sm text-muted-foreground">{t("إجمالي المشاركين", "Total Participants")}</p>
             </div>
           </CardContent>
         </Card>
@@ -239,18 +242,18 @@ export default function Participants() {
               <Users className="h-10 w-10 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-medium mb-2">
-              {searchQuery ? "لا توجد نتائج" : "لا يوجد مشاركين"}
+              {searchQuery ? t("لا توجد نتائج", "No results") : t("لا يوجد مشاركين", "No participants")}
             </h3>
             <p className="text-muted-foreground mb-6 max-w-md">
               {searchQuery 
-                ? "جرب تغيير معايير البحث" 
-                : "أضف المشاركين ليتمكنوا من المشاركة في الطلعات"}
+                ? t("جرب تغيير معايير البحث", "Try changing search criteria") 
+                : t("أضف المشاركين ليتمكنوا من المشاركة في الطلعات", "Add participants so they can join events")}
             </p>
             {!searchQuery && (
               <Link href="/participants/new">
                 <Button data-testid="button-create-first-participant">
-                  <Plus className="h-4 w-4 ml-2" />
-                  إضافة مشارك
+                  <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                  {t("إضافة مشارك", "Add Participant")}
                 </Button>
               </Link>
             )}
@@ -262,18 +265,18 @@ export default function Participants() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>حذف المشارك</AlertDialogTitle>
+            <AlertDialogTitle>{t("حذف المشارك", "Delete Participant")}</AlertDialogTitle>
             <AlertDialogDescription>
-              هل أنت متأكد من حذف هذا المشارك؟ لا يمكن التراجع عن هذا الإجراء.
+              {t("هل أنت متأكد من حذف هذا المشارك؟ لا يمكن التراجع عن هذا الإجراء.", "Are you sure you want to delete this participant? This action cannot be undone.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
               className="bg-destructive text-destructive-foreground"
             >
-              حذف
+              {t("حذف", "Delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

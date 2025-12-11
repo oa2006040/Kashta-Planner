@@ -25,26 +25,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatArabicDate, formatCurrency } from "@/lib/constants";
+import { formatDate, formatCurrency } from "@/lib/constants";
+import { useLanguage } from "@/components/language-provider";
 import type { Event } from "@shared/schema";
 
-function getStatusBadge(status: string) {
+function getStatusBadge(status: string, t: (ar: string, en: string) => string) {
   switch (status) {
     case 'upcoming':
-      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: 'قادمة' };
+      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: t('قادمة', 'Upcoming') };
     case 'ongoing':
-      return { className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', label: 'جارية' };
+      return { className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', label: t('جارية', 'Ongoing') };
     case 'completed':
-      return { className: 'bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300', label: 'منتهية' };
+      return { className: 'bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300', label: t('منتهية', 'Completed') };
     case 'cancelled':
-      return { className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', label: 'ملغاة' };
+      return { className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', label: t('ملغاة', 'Cancelled') };
     default:
-      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: 'قادمة' };
+      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: t('قادمة', 'Upcoming') };
   }
 }
 
 function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
-  const statusBadge = getStatusBadge(event.status || 'upcoming');
+  const { t, language } = useLanguage();
+  const statusBadge = getStatusBadge(event.status || 'upcoming', t);
   const eventDate = new Date(event.date);
 
   if (view === "list") {
@@ -55,7 +57,7 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 flex-col items-center justify-center rounded-xl bg-primary/10 shrink-0">
                 <span className="text-xs text-muted-foreground">
-                  {eventDate.toLocaleDateString('ar-SA', { weekday: 'short' })}
+                  {eventDate.toLocaleDateString(language === "ar" ? 'ar-SA' : 'en-US', { weekday: 'short' })}
                 </span>
                 <span className="text-xl font-bold text-primary">
                   {eventDate.getDate()}
@@ -79,7 +81,7 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
                   )}
                   <span className="flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5" />
-                    {formatArabicDate(eventDate)}
+                    {formatDate(eventDate, language)}
                   </span>
                 </div>
               </div>
@@ -87,7 +89,7 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
               <div className="flex items-center gap-2 shrink-0">
                 {event.totalBudget && parseFloat(event.totalBudget) > 0 && (
                   <Badge variant="outline" className="text-xs">
-                    {formatCurrency(event.totalBudget)}
+                    {formatCurrency(event.totalBudget, language)}
                   </Badge>
                 )}
                 <ChevronLeft className="h-5 w-5 text-muted-foreground" />
@@ -123,12 +125,12 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
             
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-3.5 w-3.5 shrink-0" />
-              <span>{formatArabicDate(eventDate)}</span>
+              <span>{formatDate(eventDate, language)}</span>
             </div>
 
             {event.totalBudget && parseFloat(event.totalBudget) > 0 && (
               <div className="pt-2 border-t">
-                <span className="text-sm font-medium">{formatCurrency(event.totalBudget)}</span>
+                <span className="text-sm font-medium">{formatCurrency(event.totalBudget, language)}</span>
               </div>
             )}
           </div>
@@ -170,6 +172,7 @@ function EventCardSkeleton({ view }: { view: "grid" | "list" }) {
 }
 
 export default function Events() {
+  const { t, language } = useLanguage();
   const [view, setView] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -190,13 +193,13 @@ export default function Events() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">الطلعات</h1>
-          <p className="text-muted-foreground">إدارة جميع الطلعات والرحلات البرية</p>
+          <h1 className="text-2xl font-bold">{t("الطلعات", "Events")}</h1>
+          <p className="text-muted-foreground">{t("إدارة جميع الطلعات والرحلات البرية", "Manage all your events and desert trips")}</p>
         </div>
         <Link href="/events/new">
           <Button data-testid="button-new-event">
-            <Plus className="h-4 w-4 ml-2" />
-            طلعة جديدة
+            <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            {t("طلعة جديدة", "New Event")}
           </Button>
         </Link>
       </div>
@@ -204,27 +207,27 @@ export default function Events() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground`} />
           <Input
-            placeholder="ابحث عن طلعة..."
+            placeholder={t("ابحث عن طلعة...", "Search events...")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-9"
+            className={language === "ar" ? "pr-9" : "pl-9"}
             data-testid="input-search-events"
           />
         </div>
         
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-40" data-testid="select-status-filter">
-            <Filter className="h-4 w-4 ml-2" />
-            <SelectValue placeholder="الحالة" />
+            <Filter className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            <SelectValue placeholder={t("الحالة", "Status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">جميع الحالات</SelectItem>
-            <SelectItem value="upcoming">قادمة</SelectItem>
-            <SelectItem value="ongoing">جارية</SelectItem>
-            <SelectItem value="completed">منتهية</SelectItem>
-            <SelectItem value="cancelled">ملغاة</SelectItem>
+            <SelectItem value="all">{t("جميع الحالات", "All Status")}</SelectItem>
+            <SelectItem value="upcoming">{t("قادمة", "Upcoming")}</SelectItem>
+            <SelectItem value="ongoing">{t("جارية", "Ongoing")}</SelectItem>
+            <SelectItem value="completed">{t("منتهية", "Completed")}</SelectItem>
+            <SelectItem value="cancelled">{t("ملغاة", "Cancelled")}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -268,18 +271,18 @@ export default function Events() {
               <Calendar className="h-10 w-10 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-medium mb-2">
-              {searchQuery || statusFilter !== "all" ? "لا توجد نتائج" : "لا توجد طلعات"}
+              {searchQuery || statusFilter !== "all" ? t("لا توجد نتائج", "No results") : t("لا توجد طلعات", "No events")}
             </h3>
             <p className="text-muted-foreground mb-6 max-w-md">
               {searchQuery || statusFilter !== "all" 
-                ? "جرب تغيير معايير البحث" 
-                : "ابدأ بإنشاء طلعتك الأولى وادعُ أصدقاءك للمشاركة"}
+                ? t("جرب تغيير معايير البحث", "Try changing search criteria") 
+                : t("ابدأ بإنشاء طلعتك الأولى وادعُ أصدقاءك للمشاركة", "Start by creating your first event and invite friends to join")}
             </p>
             {!searchQuery && statusFilter === "all" && (
               <Link href="/events/new">
                 <Button data-testid="button-create-first-event">
-                  <Plus className="h-4 w-4 ml-2" />
-                  إنشاء طلعة جديدة
+                  <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                  {t("إنشاء طلعة جديدة", "Create New Event")}
                 </Button>
               </Link>
             )}

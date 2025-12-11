@@ -224,9 +224,32 @@ export function formatHijriDate(date: Date | string): string {
   }).format(d);
 }
 
-export function formatCurrency(amount: number | string): string {
+// Bilingual date formatting
+export function formatDate(date: Date | string, language: "ar" | "en" = "ar"): string {
+  const d = new Date(date);
+  const locale = language === "ar" ? "ar-u-ca-gregory" : "en-US";
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(d);
+}
+
+export function formatDateShort(date: Date | string, language: "ar" | "en" = "ar"): string {
+  const d = new Date(date);
+  const locale = language === "ar" ? "ar-u-ca-gregory" : "en-US";
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(d);
+}
+
+export function formatCurrency(amount: number | string, language: "ar" | "en" = "ar"): string {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat("ar-SA", {
+  const locale = language === "ar" ? "ar-SA" : "en-US";
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "QAR",
     minimumFractionDigits: 2,
@@ -234,6 +257,7 @@ export function formatCurrency(amount: number | string): string {
   }).format(num);
 }
 
-export function formatNumber(num: number): string {
-  return new Intl.NumberFormat("ar-SA").format(num);
+export function formatNumber(num: number, language: "ar" | "en" = "ar"): string {
+  const locale = language === "ar" ? "ar-SA" : "en-US";
+  return new Intl.NumberFormat(locale).format(num);
 }
