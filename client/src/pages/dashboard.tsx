@@ -401,33 +401,57 @@ export default function Dashboard() {
           </div>
 
           {/* Completed Events - Show 1 with link to events page */}
-          {!eventsLoading && completedEvents.length > 0 && (
+          {!eventsLoading && (
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
                   <h2 className="text-xl font-semibold">الطلعات المنتهية</h2>
-                  <Badge variant="secondary" className="bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300">
-                    {completedEvents.length}
-                  </Badge>
+                  {completedEvents.length > 0 && (
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300">
+                      {completedEvents.length}
+                    </Badge>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-3">
-                {displayedCompleted.map((event) => (
-                  <EventCard key={event.id} event={event} />
-                ))}
-                {completedEvents.length > 1 && (
-                  <Link href="/events">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      data-testid="button-view-all-completed"
-                    >
-                      <ChevronDown className="h-4 w-4 ml-2" />
-                      عرض كل الطلعات ({completedEvents.length})
-                    </Button>
-                  </Link>
+                {displayedCompleted.length > 0 ? (
+                  <>
+                    {displayedCompleted.map((event) => (
+                      <EventCard key={event.id} event={event} />
+                    ))}
+                    {completedEvents.length > 1 && (
+                      <Link href="/events">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          data-testid="button-view-all-completed"
+                        >
+                          <ChevronDown className="h-4 w-4 ml-2" />
+                          عرض كل الطلعات ({completedEvents.length})
+                        </Button>
+                      </Link>
+                    )}
+                  </>
+                ) : (
+                  <Card>
+                    <CardContent className="py-8 text-center">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        لا توجد طلعات منتهية بعد
+                      </p>
+                      <Link href="/events">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          data-testid="button-view-all-events"
+                        >
+                          عرض كل الطلعات
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             </div>
