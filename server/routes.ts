@@ -703,5 +703,84 @@ export async function registerRoutes(
     }
   });
 
+  // Export all data as JSON snapshot
+  app.get("/api/export", async (req, res) => {
+    try {
+      const [
+        categories,
+        items,
+        participants,
+        events,
+        activityLogs,
+        settlementActivityLogs,
+        settlementRecords,
+        debtSummaries,
+      ] = await Promise.all([
+        storage.getCategories(),
+        storage.getItems(),
+        storage.getParticipants(),
+        storage.getEvents(),
+        storage.getActivityLogs(),
+        storage.getSettlementActivityLogs(10000),
+        storage.getAllSettlementRecords(),
+        storage.getDebtSummaries(),
+      ]);
+
+      // Get event details with contributions and event participants
+      const eventsWithDetails = await Promise.all(
+        events.map(async (event) => {
+          const details = await storage.getEventWithDetails(event.id);
+          const settlement = await storage.getEventSettlement(event.id);
+          return {
+            ...details,
+            settlement,
+          };
+        })
+      );
+
+      // Get debt portfolios for each participant
+      const debtPortfolios = await Promise.all(
+        participants.map(async (p) => {
+          const portfolio = await storage.getDebtPortfolio(p.id);
+          return portfolio;
+        })
+      );
+
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        version: "1.0.0",
+        data: {
+          categories,
+          items,
+          participants,
+          events: eventsWithDetails,
+          activityLogs,
+          settlementActivityLogs,
+          settlementRecords,
+          debtSummaries,
+          debtPortfolios: debtPortfolios.filter(Boolean),
+        },
+        stats: {
+          categoriesCount: categories.length,
+          itemsCount: items.length,
+          participantsCount: participants.length,
+          eventsCount: events.length,
+          activityLogsCount: activityLogs.length,
+          settlementRecordsCount: settlementRecords.length,
+        },
+      };
+
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="kashta-export-${new Date().toISOString().split("T")[0]}.json"`
+      );
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
   return httpServer;
 }

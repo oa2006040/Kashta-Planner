@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { LanguageProvider } from "@/components/language-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -60,8 +61,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="kashta-ui-theme">
-        <TooltipProvider>
-          <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
+        <LanguageProvider defaultLanguage="ar" storageKey="kashta-language">
+          <TooltipProvider>
+            <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
             <div className="flex min-h-screen w-full">
               <AppSidebar />
               <SidebarInset className="flex flex-col flex-1 min-w-0">
@@ -82,9 +84,10 @@ function App() {
                 </main>
               </SidebarInset>
             </div>
-          </SidebarProvider>
-          <Toaster />
-        </TooltipProvider>
+            </SidebarProvider>
+            <Toaster />
+          </TooltipProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

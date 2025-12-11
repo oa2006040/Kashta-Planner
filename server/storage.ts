@@ -102,6 +102,7 @@ export interface IStorage {
   // Settlements
   getEventSettlement(eventId: number): Promise<EventSettlement | null>;
   getAllSettlements(): Promise<EventSettlement[]>;
+  getAllSettlementRecords(): Promise<SettlementRecord[]>;
   toggleSettlementStatus(eventId: number, debtorId: string, creditorId: string): Promise<SettlementRecord | undefined>;
   syncEventSettlement(eventId: number): Promise<void>;
   
@@ -824,6 +825,10 @@ export class DatabaseStorage implements IStorage {
     }
     
     return settlements;
+  }
+
+  async getAllSettlementRecords(): Promise<SettlementRecord[]> {
+    return await db.select().from(settlementRecords).orderBy(desc(settlementRecords.createdAt));
   }
   
   async toggleSettlementStatus(
