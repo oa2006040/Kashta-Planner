@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   ArrowRight, 
   Calendar, 
+  CalendarPlus,
   MapPin, 
   Users, 
   Package, 
@@ -28,7 +29,8 @@ import {
   Equal,
   AlertTriangle,
   ExternalLink,
-  Navigation
+  Navigation,
+  Download
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,6 +58,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDate, formatHijriDate, formatCurrency, formatNumber } from "@/lib/constants";
@@ -324,6 +335,109 @@ export default function EventDetail() {
     enabled: !!params?.id,
     refetchInterval: 5000,
   });
+
+  const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
+  const [selectedParticipantForCalendar, setSelectedParticipantForCalendar] = useState<string>("");
+
+  const generateICSFile = () => {
+    if (!event || !selectedParticipantForCalendar) return;
+
+    const eventParticipantsList = event.eventParticipants?.map(ep => ep.participant) || [];
+    const selectedParticipant = eventParticipantsList.find(p => p.id === selectedParticipantForCalendar);
+    if (!selectedParticipant) return;
+
+    const eventDate = new Date(event.date);
+    const endDate = event.endDate ? new Date(event.endDate) : new Date(eventDate.getTime() + 24 * 60 * 60 * 1000);
+    
+    const formatICSDate = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    const participantContributions = event.contributions?.filter(c => c.participantId === selectedParticipantForCalendar) || [];
+    const participantItems = participantContributions.map(c => {
+      const cost = c.cost ? ` (${c.cost} ${t("ر.ق", "QAR")})` : "";
+      return `- ${c.item?.name || t("غرض", "Item")}${cost}`;
+    }).join("\\n");
+
+    const participantDebts: string[] = [];
+    if (settlement?.transactions) {
+      settlement.transactions.forEach(tx => {
+        if (tx.debtorId === selectedParticipantForCalendar && !tx.isSettled) {
+          participantDebts.push(`${t("تدفع", "Pay")} ${tx.creditor?.name}: ${formatCurrency(tx.amount, language)}`);
+        }
+        if (tx.creditorId === selectedParticipantForCalendar && !tx.isSettled) {
+          participantDebts.push(`${t("تستلم من", "Receive from")} ${tx.debtor?.name}: ${formatCurrency(tx.amount, language)}`);
+        }
+      });
+    }
+
+    const locationText = event.location || "";
+    const mapsUrl = event.latitude && event.longitude 
+      ? `https://www.google.com/maps?q=${event.latitude},${event.longitude}`
+      : "";
+    
+    const weatherInfo = event.weather 
+      ? `${t("الطقس", "Weather")}: ${event.weather}${event.temperature ? ` (${event.temperature}°)` : ""}`
+      : "";
+
+    let description = `${t("طلعة", "Event")}: ${event.title}\\n`;
+    description += `${t("المشارك", "Participant")}: ${selectedParticipant.name}\\n\\n`;
+    
+    if (event.description) {
+      description += `${event.description}\\n\\n`;
+    }
+    
+    if (weatherInfo) {
+      description += `${weatherInfo}\\n\\n`;
+    }
+    
+    if (participantItems) {
+      description += `${t("المستلزمات المطلوبة منك", "Your Required Items")}:\\n${participantItems}\\n\\n`;
+    }
+    
+    if (participantDebts.length > 0) {
+      description += `${t("التسويات المالية", "Financial Settlements")}:\\n${participantDebts.join("\\n")}\\n\\n`;
+    }
+    
+    if (mapsUrl) {
+      description += `${t("رابط الموقع", "Location Link")}: ${mapsUrl}`;
+    }
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Kashta App//Trip Planning//AR',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${event.id}@kashta.app`,
+      `DTSTAMP:${formatICSDate(new Date())}`,
+      `DTSTART:${formatICSDate(eventDate)}`,
+      `DTEND:${formatICSDate(endDate)}`,
+      `SUMMARY:${event.title} - ${selectedParticipant.name}`,
+      `DESCRIPTION:${description}`,
+      locationText ? `LOCATION:${locationText}` : '',
+      mapsUrl ? `URL:${mapsUrl}` : '',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].filter(line => line).join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${event.title}-${selectedParticipant.name}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setCalendarDialogOpen(false);
+    toast({
+      title: t("تم التحميل", "Downloaded"),
+      description: t("تم تحميل ملف التقويم بنجاح", "Calendar file downloaded successfully"),
+    });
+  };
 
   const toggleSettlementMutation = useMutation({
     mutationFn: async ({ debtorId, creditorId }: { debtorId: string; creditorId: string }) => {
@@ -635,6 +749,66 @@ export default function EventDetail() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <Dialog open={calendarDialogOpen} onOpenChange={setCalendarDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon" data-testid="button-add-to-calendar">
+                <CalendarPlus className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("إضافة للتقويم", "Add to Calendar")}</DialogTitle>
+                <DialogDescription>
+                  {t("اختر المشارك لتحميل ملف التقويم بمستلزماته وديونه", "Select participant to download calendar file with their items and debts")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>{t("اختر المشارك", "Select Participant")}</Label>
+                  <Select value={selectedParticipantForCalendar} onValueChange={setSelectedParticipantForCalendar}>
+                    <SelectTrigger data-testid="select-calendar-participant">
+                      <SelectValue placeholder={t("اختر مشارك...", "Select participant...")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {event.eventParticipants?.map((ep) => (
+                        <SelectItem key={ep.participant.id} value={ep.participant.id}>
+                          <div className="flex items-center gap-2">
+                            <AvatarIcon icon={ep.participant.avatar} className="h-5 w-5" />
+                            <span>{ep.participant.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedParticipantForCalendar && (
+                  <div className="rounded-lg bg-muted/50 p-3 text-sm space-y-2">
+                    <p className="font-medium">{t("سيتضمن ملف التقويم:", "Calendar file will include:")}</p>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      <li>{t("تاريخ ومكان الطلعة", "Event date and location")}</li>
+                      <li>{t("رابط الموقع على الخريطة", "Map location link")}</li>
+                      <li>{t("حالة الطقس", "Weather information")}</li>
+                      <li>{t("المستلزمات المطلوبة من المشارك", "Participant's required items")}</li>
+                      <li>{t("الديون والتسويات المالية", "Debts and financial settlements")}</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setCalendarDialogOpen(false)}>
+                  {t("إلغاء", "Cancel")}
+                </Button>
+                <Button 
+                  onClick={generateICSFile} 
+                  disabled={!selectedParticipantForCalendar}
+                  data-testid="button-download-calendar"
+                >
+                  <Download className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                  {t("تحميل", "Download")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
