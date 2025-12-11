@@ -740,24 +740,30 @@ export default function EventDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="items" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="items" data-testid="tab-items">
-            <Package className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-            {t("المستلزمات", "Items")}
-          </TabsTrigger>
-          <TabsTrigger value="participants" data-testid="tab-participants">
-            <Users className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-            {t("المشاركين", "Participants")}
-          </TabsTrigger>
-          <TabsTrigger value="budget" data-testid="tab-budget">
-            <DollarSign className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-            {t("الميزانية", "Budget")}
-          </TabsTrigger>
-          <TabsTrigger value="settlement" data-testid="tab-settlement">
-            <Receipt className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-            {t("التسوية", "Settlement")}
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-6 px-6">
+          <TabsList className="w-max min-w-full">
+            <TabsTrigger value="items" data-testid="tab-items" className="text-xs sm:text-sm">
+              <Package className={`h-4 w-4 ${language === "ar" ? "ml-1 sm:ml-2" : "mr-1 sm:mr-2"}`} />
+              <span className="hidden sm:inline">{t("المستلزمات", "Items")}</span>
+              <span className="sm:hidden">{t("مستلزمات", "Items")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="participants" data-testid="tab-participants" className="text-xs sm:text-sm">
+              <Users className={`h-4 w-4 ${language === "ar" ? "ml-1 sm:ml-2" : "mr-1 sm:mr-2"}`} />
+              <span className="hidden sm:inline">{t("المشاركين", "Participants")}</span>
+              <span className="sm:hidden">{t("مشاركين", "People")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="budget" data-testid="tab-budget" className="text-xs sm:text-sm">
+              <DollarSign className={`h-4 w-4 ${language === "ar" ? "ml-1 sm:ml-2" : "mr-1 sm:mr-2"}`} />
+              <span className="hidden sm:inline">{t("الميزانية", "Budget")}</span>
+              <span className="sm:hidden">{t("ميزانية", "Cost")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="settlement" data-testid="tab-settlement" className="text-xs sm:text-sm">
+              <Receipt className={`h-4 w-4 ${language === "ar" ? "ml-1 sm:ml-2" : "mr-1 sm:mr-2"}`} />
+              <span className="hidden sm:inline">{t("التسوية", "Settlement")}</span>
+              <span className="sm:hidden">{t("تسوية", "Settle")}</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="items" className="space-y-6">
           <div className="flex items-center justify-between gap-4">
@@ -1091,7 +1097,7 @@ export default function EventDetail() {
                     {settlement.transactions.map((tx) => (
                       <div 
                         key={`${tx.debtorId}-${tx.creditorId}`}
-                        className={`flex items-center gap-3 p-3 rounded-lg ${
+                        className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg ${
                           tx.isSettled 
                             ? 'bg-green-50 dark:bg-green-900/10' 
                             : 'bg-muted/50'
@@ -1099,42 +1105,44 @@ export default function EventDetail() {
                         data-testid={`settlement-tx-${tx.debtorId}-${tx.creditorId}`}
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <AvatarIcon icon={tx.debtor?.avatar} className="h-6 w-6" />
-                          <span className="font-medium truncate">{tx.debtor?.name}</span>
+                          <AvatarIcon icon={tx.debtor?.avatar} className="h-6 w-6 shrink-0" />
+                          <span className="font-medium text-sm sm:text-base truncate max-w-[80px] sm:max-w-none">{tx.debtor?.name}</span>
                           <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <AvatarIcon icon={tx.creditor?.avatar} className="h-6 w-6" />
-                          <span className="font-medium truncate">{tx.creditor?.name}</span>
+                          <AvatarIcon icon={tx.creditor?.avatar} className="h-6 w-6 shrink-0" />
+                          <span className="font-medium text-sm sm:text-base truncate max-w-[80px] sm:max-w-none">{tx.creditor?.name}</span>
                         </div>
-                        <Badge 
-                          variant={tx.isSettled ? "default" : "secondary"}
-                          className={tx.isSettled ? "bg-green-600" : ""}
-                        >
-                          {formatCurrency(tx.amount, language)}
-                        </Badge>
-                        <Button
-                          size="sm"
-                          variant={tx.isSettled ? "outline" : "default"}
-                          onClick={() => toggleSettlementMutation.mutate({
-                            debtorId: tx.debtorId,
-                            creditorId: tx.creditorId,
-                          })}
-                          disabled={toggleSettlementMutation.isPending}
-                          data-testid={`button-toggle-tx-${tx.debtorId}-${tx.creditorId}`}
-                        >
-                          {toggleSettlementMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : tx.isSettled ? (
-                            <>
-                              <X className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
-                              {t("إلغاء", "Undo")}
-                            </>
-                          ) : (
-                            <>
-                              <Check className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
-                              {t("تم الدفع", "Paid")}
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-2 justify-between sm:justify-end">
+                          <Badge 
+                            variant={tx.isSettled ? "default" : "secondary"}
+                            className={tx.isSettled ? "bg-green-600" : ""}
+                          >
+                            {formatCurrency(tx.amount, language)}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant={tx.isSettled ? "outline" : "default"}
+                            onClick={() => toggleSettlementMutation.mutate({
+                              debtorId: tx.debtorId,
+                              creditorId: tx.creditorId,
+                            })}
+                            disabled={toggleSettlementMutation.isPending}
+                            data-testid={`button-toggle-tx-${tx.debtorId}-${tx.creditorId}`}
+                          >
+                            {toggleSettlementMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : tx.isSettled ? (
+                              <>
+                                <X className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                                {t("إلغاء", "Undo")}
+                              </>
+                            ) : (
+                              <>
+                                <Check className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                                {t("تم الدفع", "Paid")}
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </CardContent>

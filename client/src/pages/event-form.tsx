@@ -541,7 +541,7 @@ export default function EventForm() {
                 )}
               />
 
-              <div className="space-y-4 rounded-lg border p-4">
+              <div className="space-y-4 rounded-lg border p-4 overflow-hidden">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -563,11 +563,11 @@ export default function EventForm() {
                       <FormItem>
                         <FormLabel>{t("تاريخ النهاية", "End Date")}</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Calendar className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground`} />
+                          <div className="relative w-full">
+                            <Calendar className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none`} />
                             <Input 
                               type="date" 
-                              className={language === "ar" ? "pr-9" : "pl-9"}
+                              className={`w-full ${language === "ar" ? "pr-9" : "pl-9"}`}
                               min={form.getValues("date") || todayStr}
                               {...field}
                               data-testid="input-event-end-date"
