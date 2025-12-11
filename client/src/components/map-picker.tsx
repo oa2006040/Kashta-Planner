@@ -10,6 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/components/language-provider";
 
 const markerIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -57,6 +58,7 @@ export function MapPickerDialog({
   initialLng,
   onSelect,
 }: MapPickerProps) {
+  const { t, language } = useLanguage();
   const defaultLat = 25.2854;
   const defaultLng = 51.5310;
   
@@ -69,7 +71,7 @@ export function MapPickerDialog({
     setIsLoadingLocation(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`,
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=${language}`,
         {
           headers: {
             "User-Agent": "KashtaApp/1.0 (trip planning app)"
@@ -82,6 +84,8 @@ export function MapPickerDialog({
       }
       
       const data = await response.json();
+      const separator = language === "ar" ? "، " : ", ";
+      const defaultLocation = language === "ar" ? "موقع محدد" : "Selected location";
       
       if (data.address) {
         const region = data.address.state || 
@@ -94,25 +98,25 @@ export function MapPickerDialog({
         const country = data.address.country || "";
         
         if (region && country) {
-          setLocationName(`${region}، ${country}`);
+          setLocationName(`${region}${separator}${country}`);
         } else if (country) {
           setLocationName(country);
         } else if (data.display_name) {
           const parts = data.display_name.split(",");
-          setLocationName(parts.slice(0, 2).join("،").trim());
+          setLocationName(parts.slice(0, 2).join(separator).trim());
         } else {
-          setLocationName("موقع محدد");
+          setLocationName(defaultLocation);
         }
       } else {
-        setLocationName("موقع محدد");
+        setLocationName(defaultLocation);
       }
     } catch (error) {
       console.error("Error fetching location name:", error);
-      setLocationName("موقع محدد");
+      setLocationName(language === "ar" ? "موقع محدد" : "Selected location");
     } finally {
       setIsLoadingLocation(false);
     }
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     if (isOpen) {
@@ -134,7 +138,7 @@ export function MapPickerDialog({
 
   const handleConfirm = () => {
     if (selectedLat !== null && selectedLng !== null) {
-      const finalLocationName = locationName || "موقع محدد";
+      const finalLocationName = locationName || (language === "ar" ? "موقع محدد" : "Selected location");
       onSelect(selectedLat, selectedLng, finalLocationName);
       onOpenChange(false);
     }
@@ -147,12 +151,12 @@ export function MapPickerDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl w-[95vw]">
         <DialogHeader>
-          <DialogTitle>اختر الموقع على الخريطة</DialogTitle>
+          <DialogTitle>{t("اختر الموقع على الخريطة", "Choose location on map")}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            اضغط على الخريطة لتحديد موقع الطلعة
+            {t("اضغط على الخريطة لتحديد موقع الطلعة", "Click on the map to select trip location")}
           </p>
           
           <div className="h-[400px] w-full rounded-md overflow-hidden border" style={{ direction: "ltr" }}>
@@ -179,7 +183,7 @@ export function MapPickerDialog({
           {selectedLat !== null && selectedLng !== null && (
             <div className="bg-muted/50 rounded-md p-3 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">الإحداثيات:</span>
+                <span className="text-sm font-medium">{t("الإحداثيات:", "Coordinates:")}</span>
                 <span className="text-sm font-mono" dir="ltr">
                   {selectedLat.toFixed(6)}°, {selectedLng.toFixed(6)}°
                 </span>
@@ -187,11 +191,11 @@ export function MapPickerDialog({
               {isLoadingLocation ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>جاري تحديد الموقع...</span>
+                  <span>{t("جاري تحديد الموقع...", "Locating...")}</span>
                 </div>
               ) : locationName && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">الموقع:</span>
+                  <span className="text-sm font-medium">{t("الموقع:", "Location:")}</span>
                   <span className="text-sm">{locationName}</span>
                 </div>
               )}
@@ -201,13 +205,13 @@ export function MapPickerDialog({
         
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            إلغاء
+            {t("إلغاء", "Cancel")}
           </Button>
           <Button 
             onClick={handleConfirm}
             disabled={selectedLat === null || selectedLng === null}
           >
-            تأكيد الموقع
+            {t("تأكيد الموقع", "Confirm location")}
           </Button>
         </DialogFooter>
       </DialogContent>
