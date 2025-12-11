@@ -16,6 +16,7 @@ import {
   DollarSign,
   Check,
   X,
+  XCircle,
   UserPlus,
   CheckCircle2,
   Circle,
@@ -351,10 +352,35 @@ export default function EventDetail() {
       });
       navigate("/events");
     },
+    onError: (error: Error) => {
+      const errorMessage = error.message.includes("400") 
+        ? "لا يمكن حذف الطلعة لأنها تحتوي على مساهمات بتكاليف"
+        : "حدث خطأ أثناء حذف الطلعة";
+      toast({
+        title: "خطأ",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelEventMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/events/${params?.id}`, { status: "cancelled" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: "تم الإلغاء",
+        description: "تم إلغاء الطلعة بنجاح",
+      });
+    },
     onError: () => {
       toast({
         title: "خطأ",
-        description: "حدث خطأ أثناء حذف الطلعة",
+        description: "حدث خطأ أثناء إلغاء الطلعة",
         variant: "destructive",
       });
     },
@@ -536,6 +562,32 @@ export default function EventDetail() {
               <Edit2 className="h-4 w-4" />
             </Button>
           </Link>
+          {event.status === 'upcoming' && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="icon" data-testid="button-cancel-event">
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>إلغاء الطلعة</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    هل أنت متأكد من إلغاء هذه الطلعة؟ سيتم تغيير حالتها إلى "ملغاة".
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="gap-2">
+                  <AlertDialogCancel>تراجع</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => cancelEventMutation.mutate()}
+                    className="bg-destructive text-destructive-foreground"
+                  >
+                    إلغاء الطلعة
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" size="icon" data-testid="button-delete-event">

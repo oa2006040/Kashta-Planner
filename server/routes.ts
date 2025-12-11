@@ -197,6 +197,8 @@ export async function registerRoutes(
   // Events
   app.get("/api/events", async (req, res) => {
     try {
+      // Sync event statuses based on current date before returning
+      await storage.syncEventStatuses();
       const events = await storage.getEvents();
       res.json(events);
     } catch (error) {
@@ -211,6 +213,8 @@ export async function registerRoutes(
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      // Sync event statuses before returning single event
+      await storage.syncEventStatuses();
       const event = await storage.getEventWithDetails(eventId);
       if (!event) {
         return res.status(404).json({ error: "Event not found" });
