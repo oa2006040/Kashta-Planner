@@ -26,7 +26,8 @@ import {
   TrendingUp,
   TrendingDown,
   Equal,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -645,6 +646,24 @@ export default function EventDetail() {
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
                 <span>{event.location}</span>
+                {event.latitude && event.longitude && (
+                  <a
+                    href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline flex items-center gap-1"
+                    data-testid="link-open-map"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            )}
+            {event.latitude && event.longitude && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="font-mono text-xs" dir="ltr">
+                  ({parseFloat(event.latitude).toFixed(6)}°, {parseFloat(event.longitude).toFixed(6)}°)
+                </span>
               </div>
             )}
             {event.weather && (
