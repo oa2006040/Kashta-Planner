@@ -243,16 +243,16 @@ export default function Statement() {
                           {language === "ar" ? (
                             <div className="flex items-center gap-3 flex-1 min-w-0 flex-wrap">
                               <div className="flex items-center gap-2">
-                                <AvatarIcon icon={tx.creditor?.avatar} className="h-7 w-7 shrink-0" />
-                                <span className="font-medium">{tx.creditor?.name}</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-primary">
-                                <ArrowLeft className="h-4 w-4" />
-                                <span className="text-xs text-muted-foreground">{t("يدفع", "pays")}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
                                 <AvatarIcon icon={tx.debtor?.avatar} className="h-7 w-7 shrink-0" />
                                 <span className="font-medium">{tx.debtor?.name}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-primary">
+                                <span className="text-xs text-muted-foreground">{t("يدفع إلى", "pays")}</span>
+                                <ArrowLeft className="h-4 w-4" />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <AvatarIcon icon={tx.creditor?.avatar} className="h-7 w-7 shrink-0" />
+                                <span className="font-medium">{tx.creditor?.name}</span>
                               </div>
                             </div>
                           ) : (
@@ -262,7 +262,7 @@ export default function Statement() {
                                 <span className="font-medium">{tx.debtor?.name}</span>
                               </div>
                               <div className="flex items-center gap-1 text-primary">
-                                <span className="text-xs text-muted-foreground">{t("يدفع", "pays")}</span>
+                                <span className="text-xs text-muted-foreground">{t("يدفع إلى", "pays")}</span>
                                 <ArrowRight className="h-4 w-4" />
                               </div>
                               <div className="flex items-center gap-2">
