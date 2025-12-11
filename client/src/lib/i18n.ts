@@ -1,0 +1,414 @@
+export const translations = {
+  // Common
+  common: {
+    appName: { ar: "كشتة", en: "Kashta" },
+    loading: { ar: "جاري التحميل...", en: "Loading..." },
+    save: { ar: "حفظ", en: "Save" },
+    cancel: { ar: "إلغاء", en: "Cancel" },
+    delete: { ar: "حذف", en: "Delete" },
+    edit: { ar: "تعديل", en: "Edit" },
+    add: { ar: "إضافة", en: "Add" },
+    close: { ar: "إغلاق", en: "Close" },
+    confirm: { ar: "تأكيد", en: "Confirm" },
+    search: { ar: "بحث", en: "Search" },
+    filter: { ar: "تصفية", en: "Filter" },
+    all: { ar: "الكل", en: "All" },
+    none: { ar: "لا يوجد", en: "None" },
+    yes: { ar: "نعم", en: "Yes" },
+    no: { ar: "لا", en: "No" },
+    back: { ar: "رجوع", en: "Back" },
+    next: { ar: "التالي", en: "Next" },
+    previous: { ar: "السابق", en: "Previous" },
+    actions: { ar: "إجراءات", en: "Actions" },
+    details: { ar: "التفاصيل", en: "Details" },
+    status: { ar: "الحالة", en: "Status" },
+    date: { ar: "التاريخ", en: "Date" },
+    time: { ar: "الوقت", en: "Time" },
+    name: { ar: "الاسم", en: "Name" },
+    description: { ar: "الوصف", en: "Description" },
+    notes: { ar: "ملاحظات", en: "Notes" },
+    total: { ar: "الإجمالي", en: "Total" },
+    amount: { ar: "المبلغ", en: "Amount" },
+    price: { ar: "السعر", en: "Price" },
+    cost: { ar: "التكلفة", en: "Cost" },
+    currency: { ar: "ر.ق", en: "QAR" },
+    noData: { ar: "لا توجد بيانات", en: "No data" },
+    error: { ar: "خطأ", en: "Error" },
+    success: { ar: "تم بنجاح", en: "Success" },
+    warning: { ar: "تحذير", en: "Warning" },
+    info: { ar: "معلومات", en: "Info" },
+    required: { ar: "مطلوب", en: "Required" },
+    optional: { ar: "اختياري", en: "Optional" },
+    select: { ar: "اختر", en: "Select" },
+    selectDate: { ar: "اختر تاريخ", en: "Select date" },
+    selectOption: { ar: "اختر خيار", en: "Select option" },
+    share: { ar: "مشاركة", en: "Share" },
+    view: { ar: "عرض", en: "View" },
+    viewAll: { ar: "عرض الكل", en: "View all" },
+    showMore: { ar: "عرض المزيد", en: "Show more" },
+    showLess: { ar: "عرض أقل", en: "Show less" },
+    download: { ar: "تنزيل", en: "Download" },
+    export: { ar: "تصدير", en: "Export" },
+    import: { ar: "استيراد", en: "Import" },
+  },
+
+  // Navigation
+  nav: {
+    home: { ar: "الرئيسية", en: "Home" },
+    events: { ar: "الفعاليات", en: "Events" },
+    participants: { ar: "المشاركين", en: "Participants" },
+    items: { ar: "المعدات", en: "Items" },
+    categories: { ar: "التصنيفات", en: "Categories" },
+    debt: { ar: "الديون", en: "Debt" },
+    settlements: { ar: "التسويات", en: "Settlements" },
+    settings: { ar: "الإعدادات", en: "Settings" },
+    dashboard: { ar: "لوحة التحكم", en: "Dashboard" },
+  },
+
+  // Home/Dashboard
+  home: {
+    welcome: { ar: "مرحباً بك في كشتة", en: "Welcome to Kashta" },
+    subtitle: { ar: "نظام تخطيط رحلات التخييم الصحراوي", en: "Desert Camping Trip Planning System" },
+    upcomingEvents: { ar: "الفعاليات القادمة", en: "Upcoming Events" },
+    recentActivity: { ar: "النشاط الأخير", en: "Recent Activity" },
+    quickStats: { ar: "إحصائيات سريعة", en: "Quick Stats" },
+    totalEvents: { ar: "إجمالي الفعاليات", en: "Total Events" },
+    totalParticipants: { ar: "إجمالي المشاركين", en: "Total Participants" },
+    totalItems: { ar: "إجمالي المعدات", en: "Total Items" },
+    activeEvents: { ar: "الفعاليات النشطة", en: "Active Events" },
+    noUpcomingEvents: { ar: "لا توجد فعاليات قادمة", en: "No upcoming events" },
+    createFirstEvent: { ar: "أنشئ فعاليتك الأولى", en: "Create your first event" },
+    viewAllEvents: { ar: "عرض جميع الفعاليات", en: "View all events" },
+    planNewTrip: { ar: "خطط لرحلة جديدة", en: "Plan new trip" },
+  },
+
+  // Events
+  events: {
+    title: { ar: "الفعاليات", en: "Events" },
+    newEvent: { ar: "فعالية جديدة", en: "New Event" },
+    createEvent: { ar: "إنشاء فعالية", en: "Create Event" },
+    editEvent: { ar: "تعديل الفعالية", en: "Edit Event" },
+    deleteEvent: { ar: "حذف الفعالية", en: "Delete Event" },
+    eventDetails: { ar: "تفاصيل الفعالية", en: "Event Details" },
+    eventName: { ar: "اسم الفعالية", en: "Event Name" },
+    eventDate: { ar: "تاريخ الفعالية", en: "Event Date" },
+    eventLocation: { ar: "موقع الفعالية", en: "Event Location" },
+    eventStatus: { ar: "حالة الفعالية", en: "Event Status" },
+    planned: { ar: "مخطط", en: "Planned" },
+    ongoing: { ar: "جاري", en: "Ongoing" },
+    completed: { ar: "مكتمل", en: "Completed" },
+    cancelled: { ar: "ملغي", en: "Cancelled" },
+    noEvents: { ar: "لا توجد فعاليات", en: "No events" },
+    noEventsDesc: { ar: "أنشئ فعالية جديدة للبدء", en: "Create a new event to get started" },
+    participants: { ar: "المشاركون", en: "Participants" },
+    contributions: { ar: "المساهمات", en: "Contributions" },
+    budget: { ar: "الميزانية", en: "Budget" },
+    expenses: { ar: "المصروفات", en: "Expenses" },
+    weather: { ar: "الطقس", en: "Weather" },
+    temperature: { ar: "درجة الحرارة", en: "Temperature" },
+    fetchWeather: { ar: "جلب الطقس", en: "Fetch Weather" },
+    location: { ar: "الموقع", en: "Location" },
+    selectLocation: { ar: "اختر الموقع", en: "Select Location" },
+    openInMaps: { ar: "فتح في الخرائط", en: "Open in Maps" },
+    coordinates: { ar: "الإحداثيات", en: "Coordinates" },
+    confirmDelete: { ar: "هل أنت متأكد من حذف هذه الفعالية؟", en: "Are you sure you want to delete this event?" },
+    deleteWarning: { ar: "سيتم حذف جميع المساهمات والتسويات المرتبطة", en: "All related contributions and settlements will be deleted" },
+    cannotDelete: { ar: "لا يمكن حذف الفعالية", en: "Cannot delete event" },
+    hasUnsettledDebts: { ar: "توجد ديون غير مسددة", en: "There are unsettled debts" },
+    addParticipant: { ar: "إضافة مشارك", en: "Add Participant" },
+    removeParticipant: { ar: "إزالة مشارك", en: "Remove Participant" },
+    addContribution: { ar: "إضافة مساهمة", en: "Add Contribution" },
+    editContribution: { ar: "تعديل مساهمة", en: "Edit Contribution" },
+    deleteContribution: { ar: "حذف مساهمة", en: "Delete Contribution" },
+    startDate: { ar: "تاريخ البداية", en: "Start Date" },
+    endDate: { ar: "تاريخ النهاية", en: "End Date" },
+    allDay: { ar: "طوال اليوم", en: "All Day" },
+    gregorianDate: { ar: "التاريخ الميلادي", en: "Gregorian Date" },
+    hijriDate: { ar: "التاريخ الهجري", en: "Hijri Date" },
+  },
+
+  // Participants
+  participants: {
+    title: { ar: "المشاركين", en: "Participants" },
+    newParticipant: { ar: "مشارك جديد", en: "New Participant" },
+    addParticipant: { ar: "إضافة مشارك", en: "Add Participant" },
+    editParticipant: { ar: "تعديل المشارك", en: "Edit Participant" },
+    deleteParticipant: { ar: "حذف المشارك", en: "Delete Participant" },
+    participantName: { ar: "اسم المشارك", en: "Participant Name" },
+    phone: { ar: "رقم الهاتف", en: "Phone" },
+    email: { ar: "البريد الإلكتروني", en: "Email" },
+    noParticipants: { ar: "لا يوجد مشاركين", en: "No participants" },
+    noParticipantsDesc: { ar: "أضف مشاركين للبدء في التخطيط", en: "Add participants to start planning" },
+    confirmDelete: { ar: "هل أنت متأكد من حذف هذا المشارك؟", en: "Are you sure you want to delete this participant?" },
+    cannotDelete: { ar: "لا يمكن حذف المشارك", en: "Cannot delete participant" },
+    hasUnsettledDebts: { ar: "يوجد ديون غير مسددة لهذا المشارك", en: "This participant has unsettled debts" },
+    totalContributions: { ar: "إجمالي المساهمات", en: "Total Contributions" },
+    eventsJoined: { ar: "الفعاليات المشارك فيها", en: "Events Joined" },
+  },
+
+  // Items & Categories
+  items: {
+    title: { ar: "المعدات", en: "Items" },
+    newItem: { ar: "معدة جديدة", en: "New Item" },
+    addItem: { ar: "إضافة معدة", en: "Add Item" },
+    editItem: { ar: "تعديل المعدة", en: "Edit Item" },
+    deleteItem: { ar: "حذف المعدة", en: "Delete Item" },
+    itemName: { ar: "اسم المعدة", en: "Item Name" },
+    category: { ar: "التصنيف", en: "Category" },
+    quantity: { ar: "الكمية", en: "Quantity" },
+    unit: { ar: "الوحدة", en: "Unit" },
+    noItems: { ar: "لا توجد معدات", en: "No items" },
+    noItemsDesc: { ar: "أضف معدات للبدء", en: "Add items to get started" },
+    confirmDelete: { ar: "هل أنت متأكد من حذف هذه المعدة؟", en: "Are you sure you want to delete this item?" },
+  },
+  categories: {
+    title: { ar: "التصنيفات", en: "Categories" },
+    newCategory: { ar: "تصنيف جديد", en: "New Category" },
+    addCategory: { ar: "إضافة تصنيف", en: "Add Category" },
+    editCategory: { ar: "تعديل التصنيف", en: "Edit Category" },
+    deleteCategory: { ar: "حذف التصنيف", en: "Delete Category" },
+    categoryName: { ar: "اسم التصنيف", en: "Category Name" },
+    noCategories: { ar: "لا توجد تصنيفات", en: "No categories" },
+    noCategoriesDesc: { ar: "أضف تصنيفات لتنظيم المعدات", en: "Add categories to organize items" },
+    coffee: { ar: "القهوة والشاي", en: "Coffee & Tea" },
+    grilling: { ar: "الشواء", en: "Grilling" },
+    camping: { ar: "التخييم", en: "Camping" },
+    food: { ar: "الطعام", en: "Food" },
+    drinks: { ar: "المشروبات", en: "Drinks" },
+    equipment: { ar: "المعدات", en: "Equipment" },
+    other: { ar: "أخرى", en: "Other" },
+  },
+
+  // Contributions
+  contributions: {
+    title: { ar: "المساهمات", en: "Contributions" },
+    newContribution: { ar: "مساهمة جديدة", en: "New Contribution" },
+    addContribution: { ar: "إضافة مساهمة", en: "Add Contribution" },
+    editContribution: { ar: "تعديل المساهمة", en: "Edit Contribution" },
+    deleteContribution: { ar: "حذف المساهمة", en: "Delete Contribution" },
+    contributor: { ar: "المساهم", en: "Contributor" },
+    item: { ar: "المعدة", en: "Item" },
+    assignedTo: { ar: "مخصص لـ", en: "Assigned to" },
+    unassigned: { ar: "غير مخصص", en: "Unassigned" },
+    noContributions: { ar: "لا توجد مساهمات", en: "No contributions" },
+    noContributionsDesc: { ar: "أضف مساهمة للبدء", en: "Add a contribution to get started" },
+    confirmDelete: { ar: "هل أنت متأكد من حذف هذه المساهمة؟", en: "Are you sure you want to delete this contribution?" },
+    paidBy: { ar: "دفع بواسطة", en: "Paid by" },
+    sharedBy: { ar: "مشترك بين", en: "Shared by" },
+    splitEqually: { ar: "تقسيم بالتساوي", en: "Split equally" },
+    customSplit: { ar: "تقسيم مخصص", en: "Custom split" },
+  },
+
+  // Debt & Settlements
+  debt: {
+    title: { ar: "الديون", en: "Debt" },
+    overview: { ar: "نظرة عامة على الديون", en: "Debt Overview" },
+    portfolio: { ar: "محفظة الديون", en: "Debt Portfolio" },
+    myDebts: { ar: "ديوني", en: "My Debts" },
+    owedToMe: { ar: "مستحقاتي", en: "Owed to Me" },
+    owedByMe: { ar: "المستحق علي", en: "Owed by Me" },
+    netBalance: { ar: "الرصيد الصافي", en: "Net Balance" },
+    youOwe: { ar: "أنت مدين بـ", en: "You owe" },
+    owesYou: { ar: "مدين لك بـ", en: "owes you" },
+    noDebts: { ar: "لا توجد ديون", en: "No debts" },
+    noDebtsDesc: { ar: "جميع الحسابات مسددة", en: "All accounts are settled" },
+    settled: { ar: "مسدد", en: "Settled" },
+    unsettled: { ar: "غير مسدد", en: "Unsettled" },
+    markAsSettled: { ar: "تحديد كمسدد", en: "Mark as Settled" },
+    markAsUnsettled: { ar: "تحديد كغير مسدد", en: "Mark as Unsettled" },
+    settleDebt: { ar: "تسديد الدين", en: "Settle Debt" },
+    totalOwed: { ar: "إجمالي المستحق", en: "Total Owed" },
+    totalPaid: { ar: "إجمالي المدفوع", en: "Total Paid" },
+    perPerson: { ar: "لكل شخص", en: "Per Person" },
+    fairShare: { ar: "الحصة العادلة", en: "Fair Share" },
+    difference: { ar: "الفرق", en: "Difference" },
+    from: { ar: "من", en: "From" },
+    to: { ar: "إلى", en: "To" },
+    debtDetails: { ar: "تفاصيل الديون", en: "Debt Details" },
+    settlementHistory: { ar: "سجل التسويات", en: "Settlement History" },
+    counterparty: { ar: "الطرف الآخر", en: "Counterparty" },
+    perEvent: { ar: "حسب الفعالية", en: "Per Event" },
+  },
+
+  settlements: {
+    title: { ar: "التسويات", en: "Settlements" },
+    eventSettlement: { ar: "تسوية الفعالية", en: "Event Settlement" },
+    viewSettlement: { ar: "عرض التسوية", en: "View Settlement" },
+    noSettlements: { ar: "لا توجد تسويات", en: "No settlements" },
+    noSettlementsDesc: { ar: "ستظهر التسويات بعد إضافة مساهمات", en: "Settlements will appear after adding contributions" },
+    transactions: { ar: "المعاملات", en: "Transactions" },
+    noTransactions: { ar: "لا توجد معاملات", en: "No transactions" },
+    allSettled: { ar: "تم تسوية الجميع", en: "All settled" },
+    pendingSettlements: { ar: "تسويات معلقة", en: "Pending Settlements" },
+    unassignedCosts: { ar: "تكاليف غير مخصصة", en: "Unassigned Costs" },
+    unassignedCostsDesc: { ar: "تكاليف لم يتم تخصيصها لأي مشارك", en: "Costs not assigned to any participant" },
+  },
+
+  // Settings
+  settings: {
+    title: { ar: "الإعدادات", en: "Settings" },
+    general: { ar: "عام", en: "General" },
+    appearance: { ar: "المظهر", en: "Appearance" },
+    language: { ar: "اللغة", en: "Language" },
+    selectLanguage: { ar: "اختر اللغة", en: "Select Language" },
+    arabic: { ar: "العربية", en: "Arabic" },
+    english: { ar: "الإنجليزية", en: "English" },
+    theme: { ar: "المظهر", en: "Theme" },
+    lightMode: { ar: "الوضع الفاتح", en: "Light Mode" },
+    darkMode: { ar: "الوضع الداكن", en: "Dark Mode" },
+    systemMode: { ar: "حسب النظام", en: "System Mode" },
+    data: { ar: "البيانات", en: "Data" },
+    exportData: { ar: "تصدير البيانات", en: "Export Data" },
+    exportDesc: { ar: "تنزيل نسخة من جميع بياناتك", en: "Download a copy of all your data" },
+    importData: { ar: "استيراد البيانات", en: "Import Data" },
+    backup: { ar: "نسخ احتياطي", en: "Backup" },
+    restore: { ar: "استعادة", en: "Restore" },
+    about: { ar: "حول التطبيق", en: "About" },
+    version: { ar: "الإصدار", en: "Version" },
+    exportSuccess: { ar: "تم تصدير البيانات بنجاح", en: "Data exported successfully" },
+    exportError: { ar: "حدث خطأ أثناء التصدير", en: "Error exporting data" },
+  },
+
+  // Forms & Validation
+  forms: {
+    required: { ar: "هذا الحقل مطلوب", en: "This field is required" },
+    invalidEmail: { ar: "البريد الإلكتروني غير صالح", en: "Invalid email address" },
+    invalidPhone: { ar: "رقم الهاتف غير صالح", en: "Invalid phone number" },
+    minLength: { ar: "الحد الأدنى للحروف هو", en: "Minimum length is" },
+    maxLength: { ar: "الحد الأقصى للحروف هو", en: "Maximum length is" },
+    minValue: { ar: "الحد الأدنى للقيمة هو", en: "Minimum value is" },
+    maxValue: { ar: "الحد الأقصى للقيمة هو", en: "Maximum value is" },
+    enterName: { ar: "أدخل الاسم", en: "Enter name" },
+    enterDescription: { ar: "أدخل الوصف", en: "Enter description" },
+    enterAmount: { ar: "أدخل المبلغ", en: "Enter amount" },
+    enterQuantity: { ar: "أدخل الكمية", en: "Enter quantity" },
+    selectParticipant: { ar: "اختر المشارك", en: "Select participant" },
+    selectItem: { ar: "اختر المعدة", en: "Select item" },
+    selectCategory: { ar: "اختر التصنيف", en: "Select category" },
+    selectEvent: { ar: "اختر الفعالية", en: "Select event" },
+  },
+
+  // Alerts & Messages
+  alerts: {
+    confirmAction: { ar: "تأكيد الإجراء", en: "Confirm Action" },
+    areYouSure: { ar: "هل أنت متأكد؟", en: "Are you sure?" },
+    actionCannotBeUndone: { ar: "لا يمكن التراجع عن هذا الإجراء", en: "This action cannot be undone" },
+    itemCreated: { ar: "تم إنشاء العنصر بنجاح", en: "Item created successfully" },
+    itemUpdated: { ar: "تم تحديث العنصر بنجاح", en: "Item updated successfully" },
+    itemDeleted: { ar: "تم حذف العنصر بنجاح", en: "Item deleted successfully" },
+    errorOccurred: { ar: "حدث خطأ", en: "An error occurred" },
+    tryAgain: { ar: "حاول مرة أخرى", en: "Try again" },
+    connectionError: { ar: "خطأ في الاتصال", en: "Connection error" },
+    savedSuccessfully: { ar: "تم الحفظ بنجاح", en: "Saved successfully" },
+    deletedSuccessfully: { ar: "تم الحذف بنجاح", en: "Deleted successfully" },
+    loadingError: { ar: "خطأ في تحميل البيانات", en: "Error loading data" },
+    noPermission: { ar: "لا تملك الصلاحية", en: "No permission" },
+    sessionExpired: { ar: "انتهت الجلسة", en: "Session expired" },
+  },
+
+  // Activity Log
+  activity: {
+    title: { ar: "سجل النشاط", en: "Activity Log" },
+    recentActivity: { ar: "النشاط الأخير", en: "Recent Activity" },
+    allActivity: { ar: "جميع النشاطات", en: "All Activity" },
+    noActivity: { ar: "لا يوجد نشاط", en: "No activity" },
+    created: { ar: "تم إنشاء", en: "Created" },
+    updated: { ar: "تم تحديث", en: "Updated" },
+    deleted: { ar: "تم حذف", en: "Deleted" },
+    added: { ar: "تمت إضافة", en: "Added" },
+    removed: { ar: "تمت إزالة", en: "Removed" },
+    settledDebt: { ar: "تم تسديد دين", en: "Settled debt" },
+    unsettledDebt: { ar: "تم إلغاء تسديد دين", en: "Unsettled debt" },
+  },
+
+  // Map
+  map: {
+    selectLocation: { ar: "اختر الموقع على الخريطة", en: "Select location on map" },
+    currentLocation: { ar: "الموقع الحالي", en: "Current Location" },
+    searchLocation: { ar: "ابحث عن موقع", en: "Search location" },
+    latitude: { ar: "خط العرض", en: "Latitude" },
+    longitude: { ar: "خط الطول", en: "Longitude" },
+    openGoogleMaps: { ar: "فتح في خرائط جوجل", en: "Open in Google Maps" },
+    locationSet: { ar: "تم تحديد الموقع", en: "Location set" },
+    locationCleared: { ar: "تم مسح الموقع", en: "Location cleared" },
+  },
+
+  // Calendar
+  calendar: {
+    today: { ar: "اليوم", en: "Today" },
+    month: { ar: "شهر", en: "Month" },
+    week: { ar: "أسبوع", en: "Week" },
+    day: { ar: "يوم", en: "Day" },
+    gregorian: { ar: "ميلادي", en: "Gregorian" },
+    hijri: { ar: "هجري", en: "Hijri" },
+    months: {
+      january: { ar: "يناير", en: "January" },
+      february: { ar: "فبراير", en: "February" },
+      march: { ar: "مارس", en: "March" },
+      april: { ar: "أبريل", en: "April" },
+      may: { ar: "مايو", en: "May" },
+      june: { ar: "يونيو", en: "June" },
+      july: { ar: "يوليو", en: "July" },
+      august: { ar: "أغسطس", en: "August" },
+      september: { ar: "سبتمبر", en: "September" },
+      october: { ar: "أكتوبر", en: "October" },
+      november: { ar: "نوفمبر", en: "November" },
+      december: { ar: "ديسمبر", en: "December" },
+    },
+    days: {
+      sunday: { ar: "الأحد", en: "Sunday" },
+      monday: { ar: "الإثنين", en: "Monday" },
+      tuesday: { ar: "الثلاثاء", en: "Tuesday" },
+      wednesday: { ar: "الأربعاء", en: "Wednesday" },
+      thursday: { ar: "الخميس", en: "Thursday" },
+      friday: { ar: "الجمعة", en: "Friday" },
+      saturday: { ar: "السبت", en: "Saturday" },
+    },
+  },
+
+  // Weather
+  weather: {
+    title: { ar: "الطقس", en: "Weather" },
+    fetchWeather: { ar: "جلب بيانات الطقس", en: "Fetch Weather Data" },
+    temperature: { ar: "درجة الحرارة", en: "Temperature" },
+    humidity: { ar: "الرطوبة", en: "Humidity" },
+    wind: { ar: "الرياح", en: "Wind" },
+    conditions: { ar: "الحالة", en: "Conditions" },
+    forecast: { ar: "التوقعات", en: "Forecast" },
+    noWeatherData: { ar: "لا توجد بيانات طقس", en: "No weather data" },
+    lastUpdated: { ar: "آخر تحديث", en: "Last updated" },
+  },
+} as const;
+
+export type TranslationKey = keyof typeof translations;
+export type Language = "ar" | "en";
+
+type NestedTranslation = {
+  ar: string;
+  en: string;
+} | {
+  [key: string]: NestedTranslation;
+};
+
+export function getTranslation(
+  translations: Record<string, NestedTranslation>,
+  path: string,
+  language: Language
+): string {
+  const keys = path.split(".");
+  let current: NestedTranslation = translations as unknown as NestedTranslation;
+  
+  for (const key of keys) {
+    if (current && typeof current === "object" && key in current) {
+      current = (current as Record<string, NestedTranslation>)[key];
+    } else {
+      return path;
+    }
+  }
+  
+  if (current && typeof current === "object" && "ar" in current && "en" in current) {
+    return (current as { ar: string; en: string })[language];
+  }
+  
+  return path;
+}

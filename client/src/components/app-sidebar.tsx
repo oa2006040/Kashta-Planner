@@ -24,52 +24,54 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-
-const mainNavItems = [
-  {
-    title: "الرئيسية",
-    url: "/",
-    icon: Home,
-  },
-  {
-    title: "الطلعات",
-    url: "/events",
-    icon: Calendar,
-  },
-  {
-    title: "المشاركين",
-    url: "/participants",
-    icon: Users,
-  },
-  {
-    title: "المستلزمات",
-    url: "/items",
-    icon: Package,
-  },
-  {
-    title: "السجل",
-    url: "/history",
-    icon: History,
-  },
-  {
-    title: "كشف الحساب",
-    url: "/statement",
-    icon: Receipt,
-  },
-  {
-    title: "محفظة الديون",
-    url: "/debt",
-    icon: Wallet,
-  },
-  {
-    title: "سجل التسويات",
-    url: "/settlement-log",
-    icon: FileText,
-  },
-];
+import { useLanguage } from "@/components/language-provider";
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { t } = useLanguage();
+
+  const mainNavItems = [
+    {
+      title: t("الرئيسية", "Home"),
+      url: "/",
+      icon: Home,
+    },
+    {
+      title: t("الطلعات", "Events"),
+      url: "/events",
+      icon: Calendar,
+    },
+    {
+      title: t("المشاركين", "Participants"),
+      url: "/participants",
+      icon: Users,
+    },
+    {
+      title: t("المستلزمات", "Items"),
+      url: "/items",
+      icon: Package,
+    },
+    {
+      title: t("السجل", "History"),
+      url: "/history",
+      icon: History,
+    },
+    {
+      title: t("كشف الحساب", "Statement"),
+      url: "/statement",
+      icon: Receipt,
+    },
+    {
+      title: t("محفظة الديون", "Debt Portfolio"),
+      url: "/debt",
+      icon: Wallet,
+    },
+    {
+      title: t("سجل التسويات", "Settlement Log"),
+      url: "/settlement-log",
+      icon: FileText,
+    },
+  ];
 
   return (
     <Sidebar side="right" collapsible="icon">
@@ -83,15 +85,15 @@ export function AppSidebar() {
             <Flame className="h-5 w-5" />
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-lg font-bold">كشتة</span>
-            <span className="text-xs text-muted-foreground">منظم الطلعات</span>
+            <span className="text-lg font-bold">{t("كشتة", "Kashta")}</span>
+            <span className="text-xs text-muted-foreground">{t("منظم الطلعات", "Trip Planner")}</span>
           </div>
         </Link>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>القائمة الرئيسية</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("القائمة الرئيسية", "Main Menu")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNavItems.map((item) => {
@@ -99,7 +101,7 @@ export function AppSidebar() {
                   location === item.url ||
                   (item.url !== "/" && location.startsWith(item.url));
                 return (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
@@ -121,18 +123,18 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>الإعدادات</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("الإعدادات", "Settings")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
                   isActive={location === "/settings"}
-                  tooltip="الإعدادات"
+                  tooltip={t("الإعدادات", "Settings")}
                 >
                   <Link href="/settings" data-testid="link-nav-settings">
                     <Settings className="h-4 w-4" />
-                    <span>الإعدادات</span>
+                    <span>{t("الإعدادات", "Settings")}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -145,7 +147,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2">
           <Star className="h-4 w-4 text-primary" />
           <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-            المطور: اسامة السميطي 2025
+            {t("المطور: اسامة السميطي 2025", "Developer: Osama Alsumiti 2025")}
           </span>
         </div>
       </SidebarFooter>

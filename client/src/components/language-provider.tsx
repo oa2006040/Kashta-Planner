@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { translations, getTranslation } from "@/lib/i18n";
 
 type Language = "ar" | "en";
 
@@ -6,12 +7,14 @@ type LanguageProviderState = {
   language: Language;
   setLanguage: (language: Language) => void;
   t: (ar: string, en: string) => string;
+  tr: (key: string) => string;
 };
 
 const initialState: LanguageProviderState = {
   language: "ar",
   setLanguage: () => null,
   t: (ar) => ar,
+  tr: (key) => key,
 };
 
 const LanguageProviderContext = createContext<LanguageProviderState>(initialState);
@@ -81,6 +84,7 @@ export function LanguageProvider({
     language,
     setLanguage,
     t: (ar: string, en: string) => (language === "ar" ? ar : en),
+    tr: (key: string) => getTranslation(translations, key, language),
   };
 
   return (
