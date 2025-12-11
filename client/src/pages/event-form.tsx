@@ -42,16 +42,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { CategoryIcon } from "@/components/category-icon";
+import { MapPickerDialog } from "@/components/map-picker";
 import type { Event, CategoryWithItems } from "@shared/schema";
 
 const eventFormSchema = z.object({
@@ -84,8 +78,6 @@ export default function EventForm() {
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
-  const [manualLat, setManualLat] = useState("");
-  const [manualLng, setManualLng] = useState("");
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -245,53 +237,14 @@ export default function EventForm() {
     );
   };
 
-  const handleManualCoordinates = async () => {
-    const lat = parseFloat(manualLat);
-    const lng = parseFloat(manualLng);
-    
-    if (isNaN(lat) || isNaN(lng)) {
-      toast({
-        title: "خطأ",
-        description: "يرجى إدخال إحداثيات صحيحة",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      toast({
-        title: "خطأ",
-        description: "الإحداثيات خارج النطاق المسموح",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+  const handleMapSelect = (lat: number, lng: number, locationName: string) => {
     setCoordinates({ lat, lng });
     form.setValue("latitude", lat);
     form.setValue("longitude", lng);
     
-    // Reverse geocode to get location name
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`
-      );
-      if (!response.ok) throw new Error("Geocoding failed");
-      const data = await response.json();
-      const address = data.address || {};
-      const region = address.state || address.region || address.county || address.city || address.town || address.village || "";
-      const country = address.country || "";
-      const locationName = region && country 
-        ? `${region}، ${country}` 
-        : (region || country || "موقع محدد");
+    if (locationName) {
       form.setValue("location", locationName);
-    } catch (err) {
-      form.setValue("location", "موقع محدد");
     }
-    
-    setShowMapPicker(false);
-    setManualLat("");
-    setManualLng("");
     
     toast({
       title: "تم تحديد الموقع",
@@ -304,14 +257,6 @@ export default function EventForm() {
         fetchWeather(lat, lng, dateValue);
       }
     }
-  };
-
-  const openMapPicker = () => {
-    if (coordinates) {
-      setManualLat(coordinates.lat.toString());
-      setManualLng(coordinates.lng.toString());
-    }
-    setShowMapPicker(true);
   };
 
   useEffect(() => {
@@ -539,11 +484,11 @@ export default function EventForm() {
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={openMapPicker}
+                            onClick={() => setShowMapPicker(true)}
                             data-testid="button-open-map-picker"
                           >
                             <Target className="h-4 w-4" />
-                            <span className="mr-2 hidden sm:inline">إحداثيات</span>
+                            <span className="mr-2 hidden sm:inline">الخريطة</span>
                           </Button>
                         </div>
                         {coordinates && (
@@ -877,72 +822,13 @@ export default function EventForm() {
         </CardContent>
       </Card>
 
-      {/* Map Picker Dialog */}
-      <Dialog open={showMapPicker} onOpenChange={setShowMapPicker}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>إدخال الإحداثيات يدوياً</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              أدخل الإحداثيات من Google Maps أو أي تطبيق خرائط آخر
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="lat-input">خط العرض (Latitude)</Label>
-                <Input
-                  id="lat-input"
-                  type="number"
-                  step="any"
-                  placeholder="مثال: 25.2867"
-                  value={manualLat}
-                  onChange={(e) => setManualLat(e.target.value)}
-                  dir="ltr"
-                  data-testid="input-manual-latitude"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lng-input">خط الطول (Longitude)</Label>
-                <Input
-                  id="lng-input"
-                  type="number"
-                  step="any"
-                  placeholder="مثال: 51.5310"
-                  value={manualLng}
-                  onChange={(e) => setManualLng(e.target.value)}
-                  dir="ltr"
-                  data-testid="input-manual-longitude"
-                />
-              </div>
-            </div>
-            <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-1">
-              <p>كيف تحصل على الإحداثيات؟</p>
-              <ol className="list-decimal list-inside space-y-1 mr-2">
-                <li>افتح Google Maps</li>
-                <li>اضغط مطولاً على الموقع المطلوب</li>
-                <li>انسخ الإحداثيات من أسفل الشاشة</li>
-              </ol>
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowMapPicker(false)}
-            >
-              إلغاء
-            </Button>
-            <Button
-              type="button"
-              onClick={handleManualCoordinates}
-              data-testid="button-confirm-coordinates"
-            >
-              <MapPin className="h-4 w-4 ml-2" />
-              تأكيد الموقع
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MapPickerDialog
+        isOpen={showMapPicker}
+        onOpenChange={setShowMapPicker}
+        initialLat={coordinates?.lat}
+        initialLng={coordinates?.lng}
+        onSelect={handleMapSelect}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Loader2 } from "lucide-react";
@@ -65,23 +65,22 @@ export function MapPickerDialog({
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [locationName, setLocationName] = useState<string>("");
 
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedLat(initialLat ?? null);
-      setSelectedLng(initialLng ?? null);
-      setLocationName("");
-    }
-  }, [isOpen, initialLat, initialLng]);
-
-  const handleLocationSelect = async (lat: number, lng: number) => {
-    setSelectedLat(lat);
-    setSelectedLng(lng);
-    
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     setIsLoadingLocation(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`,
+        {
+          headers: {
+            "User-Agent": "KashtaApp/1.0 (trip planning app)"
+          }
+        }
       );
+      
+      if (!response.ok) {
+        throw new Error("Geocoding request failed");
+      }
+      
       const data = await response.json();
       
       if (data.address) {
@@ -101,18 +100,42 @@ export function MapPickerDialog({
         } else if (data.display_name) {
           const parts = data.display_name.split(",");
           setLocationName(parts.slice(0, 2).join("،").trim());
+        } else {
+          setLocationName("موقع محدد");
         }
+      } else {
+        setLocationName("موقع محدد");
       }
     } catch (error) {
       console.error("Error fetching location name:", error);
+      setLocationName("موقع محدد");
     } finally {
       setIsLoadingLocation(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedLat(initialLat ?? null);
+      setSelectedLng(initialLng ?? null);
+      setLocationName("");
+      
+      if (initialLat && initialLng) {
+        reverseGeocode(initialLat, initialLng);
+      }
+    }
+  }, [isOpen, initialLat, initialLng, reverseGeocode]);
+
+  const handleLocationSelect = async (lat: number, lng: number) => {
+    setSelectedLat(lat);
+    setSelectedLng(lng);
+    reverseGeocode(lat, lng);
   };
 
   const handleConfirm = () => {
     if (selectedLat !== null && selectedLng !== null) {
-      onSelect(selectedLat, selectedLng, locationName);
+      const finalLocationName = locationName || "موقع محدد";
+      onSelect(selectedLat, selectedLng, finalLocationName);
       onOpenChange(false);
     }
   };
