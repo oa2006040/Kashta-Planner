@@ -358,29 +358,29 @@ export default function EventForm() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <div className="mb-6">
+    <div className="p-3 sm:p-6 max-w-2xl mx-auto pb-24 sm:pb-6">
+      <div className="mb-4 sm:mb-6">
         <Button
           variant="ghost"
           onClick={() => navigate(isEditing ? `/events/${params?.id}` : "/events")}
-          className="mb-4"
+          className="mb-3 sm:mb-4 h-10 sm:h-9"
           data-testid="button-back"
         >
           <ArrowRight className="h-4 w-4 ml-2" />
           رجوع
         </Button>
-        <h1 className="text-2xl font-bold">
+        <h1 className="text-xl sm:text-2xl font-bold">
           {isEditing ? "تعديل الطلعة" : "طلعة جديدة"}
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm sm:text-base text-muted-foreground">
           {isEditing ? "قم بتعديل تفاصيل الطلعة" : "أدخل تفاصيل الطلعة الجديدة"}
         </p>
       </div>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="p-3 sm:p-6 pt-4 sm:pt-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
               <FormField
                 control={form.control}
                 name="title"
@@ -712,7 +712,8 @@ export default function EventForm() {
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4">
+              {/* Desktop Submit Button */}
+              <div className="hidden sm:flex gap-3 pt-4">
                 <Button 
                   type="submit" 
                   disabled={isPending}
@@ -733,6 +734,34 @@ export default function EventForm() {
                 >
                   إلغاء
                 </Button>
+              </div>
+
+              {/* Mobile Sticky Submit Button */}
+              <div className="fixed bottom-0 left-0 right-0 p-3 bg-background border-t sm:hidden z-50">
+                <div className="flex gap-2 max-w-2xl mx-auto">
+                  <Button 
+                    type="submit" 
+                    disabled={isPending}
+                    className="flex-1 h-12"
+                    data-testid="button-submit-event-mobile"
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 ml-2" />
+                    )}
+                    {isEditing ? "حفظ التغييرات" : "إنشاء الطلعة"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    className="h-12"
+                    onClick={() => navigate(isEditing ? `/events/${params?.id}` : "/events")}
+                    data-testid="button-cancel-mobile"
+                  >
+                    إلغاء
+                  </Button>
+                </div>
               </div>
             </form>
           </Form>

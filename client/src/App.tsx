@@ -7,6 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Flame } from "lucide-react";
+import { Link } from "wouter";
 import Dashboard from "@/pages/dashboard";
 import Events from "@/pages/events";
 import EventForm from "@/pages/event-form";
@@ -59,12 +61,20 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="kashta-ui-theme">
         <TooltipProvider>
-          <SidebarProvider style={style as React.CSSProperties}>
+          <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
             <div className="flex min-h-screen w-full">
               <AppSidebar />
-              <SidebarInset className="flex flex-col flex-1">
-                <header className="flex h-14 items-center justify-between gap-4 border-b px-4 sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <SidebarInset className="flex flex-col flex-1 min-w-0">
+                <header className="flex h-14 sm:h-16 items-center justify-between gap-2 border-b px-3 sm:px-4 sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <SidebarTrigger className="h-10 w-10 sm:h-9 sm:w-9" data-testid="button-sidebar-toggle" />
+                    <Link href="/" className="flex items-center gap-2 sm:hidden" data-testid="link-home-logo-mobile">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                        <Flame className="h-4 w-4" />
+                      </div>
+                      <span className="font-bold">كشتة</span>
+                    </Link>
+                  </div>
                   <ThemeToggle />
                 </header>
                 <main className="flex-1 overflow-auto">
