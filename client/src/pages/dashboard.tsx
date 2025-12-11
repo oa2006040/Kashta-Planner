@@ -277,10 +277,19 @@ export default function Dashboard() {
   const [showAllCancelled, setShowAllCancelled] = useState(false);
   
   // Filter events by status
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
   const ongoingEvents = events?.filter((e) => e.status === "ongoing") || [];
   const upcomingEvents = events?.filter((e) => e.status === "upcoming") || [];
   const completedEvents = events?.filter((e) => e.status === "completed") || [];
-  const cancelledEvents = events?.filter((e) => e.status === "cancelled") || [];
+  // Only show cancelled events with future dates in dashboard
+  const cancelledEvents = events?.filter((e) => {
+    if (e.status !== "cancelled") return false;
+    const eventDate = new Date(e.date);
+    eventDate.setHours(0, 0, 0, 0);
+    return eventDate >= today;
+  }) || [];
   
   // Display logic - separate sections
   const displayedUpcoming = showAllUpcoming ? upcomingEvents : upcomingEvents.slice(0, 2);
