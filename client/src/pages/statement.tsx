@@ -80,8 +80,7 @@ export default function Statement() {
     sum + s.transactions.filter(t => t.isSettled).reduce((tSum, t) => tSum + parseFloat(t.amount), 0)
   , 0) || 0;
 
-  const ArrowIcon = language === "ar" ? ArrowLeft : ArrowRight;
-
+  
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -241,13 +240,23 @@ export default function Statement() {
                           }`}
                           data-testid={`settlement-${settlement.eventId}-${tx.debtorId}-${tx.creditorId}`}
                         >
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <AvatarIcon icon={tx.debtor?.avatar} className="h-6 w-6" />
-                            <span className="font-medium truncate">{tx.debtor?.name}</span>
-                            <ArrowIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <AvatarIcon icon={tx.creditor?.avatar} className="h-6 w-6" />
-                            <span className="font-medium truncate">{tx.creditor?.name}</span>
-                          </div>
+                          {language === "ar" ? (
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <AvatarIcon icon={tx.creditor?.avatar} className="h-6 w-6" />
+                              <span className="font-medium truncate">{tx.creditor?.name}</span>
+                              <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <AvatarIcon icon={tx.debtor?.avatar} className="h-6 w-6" />
+                              <span className="font-medium truncate">{tx.debtor?.name}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <AvatarIcon icon={tx.debtor?.avatar} className="h-6 w-6" />
+                              <span className="font-medium truncate">{tx.debtor?.name}</span>
+                              <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <AvatarIcon icon={tx.creditor?.avatar} className="h-6 w-6" />
+                              <span className="font-medium truncate">{tx.creditor?.name}</span>
+                            </div>
+                          )}
                           <Badge 
                             variant={tx.isSettled ? "default" : "secondary"}
                             className={tx.isSettled ? "bg-green-600" : ""}

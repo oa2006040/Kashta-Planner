@@ -1104,20 +1104,37 @@ export default function EventDetail() {
                         }`}
                         data-testid={`settlement-tx-${tx.debtorId}-${tx.creditorId}`}
                       >
-                        <div className="flex items-center justify-center gap-3 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <AvatarIcon icon={tx.debtor?.avatar} className="h-8 w-8 shrink-0" />
-                            <span className="font-medium">{tx.debtor?.name}</span>
+                        {language === "ar" ? (
+                          <div className="flex items-center justify-center gap-3 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <AvatarIcon icon={tx.creditor?.avatar} className="h-8 w-8 shrink-0" />
+                              <span className="font-medium">{tx.creditor?.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-primary">
+                              <ArrowLeft className="h-5 w-5" />
+                              <span className="text-xs text-muted-foreground">{t("يدفع", "pays")}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <AvatarIcon icon={tx.debtor?.avatar} className="h-8 w-8 shrink-0" />
+                              <span className="font-medium">{tx.debtor?.name}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1 text-primary">
-                            <span className="text-xs text-muted-foreground">{t("يدفع", "pays")}</span>
-                            <ArrowRight className="h-5 w-5 rtl:rotate-180" />
+                        ) : (
+                          <div className="flex items-center justify-center gap-3 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <AvatarIcon icon={tx.debtor?.avatar} className="h-8 w-8 shrink-0" />
+                              <span className="font-medium">{tx.debtor?.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-primary">
+                              <span className="text-xs text-muted-foreground">{t("يدفع", "pays")}</span>
+                              <ArrowRight className="h-5 w-5" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <AvatarIcon icon={tx.creditor?.avatar} className="h-8 w-8 shrink-0" />
+                              <span className="font-medium">{tx.creditor?.name}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <AvatarIcon icon={tx.creditor?.avatar} className="h-8 w-8 shrink-0" />
-                            <span className="font-medium">{tx.creditor?.name}</span>
-                          </div>
-                        </div>
+                        )}
                         <div className="flex items-center gap-2 justify-center">
                           <Badge 
                             variant={tx.isSettled ? "default" : "secondary"}
