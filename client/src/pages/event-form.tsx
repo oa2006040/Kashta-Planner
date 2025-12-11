@@ -178,11 +178,14 @@ export default function EventForm() {
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ar`
           );
+          if (!response.ok) throw new Error("Geocoding failed");
           const data = await response.json();
-          const locationName = data.address?.city || data.address?.town || data.address?.village || data.display_name?.split(",")[0] || "موقع محدد";
-          form.setValue("location", locationName);
-        } catch {
-          form.setValue("location", `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          // Get country name only
+          const countryName = data.address?.country || "موقع محدد";
+          form.setValue("location", countryName);
+        } catch (err) {
+          console.error("Geocoding error:", err);
+          form.setValue("location", "موقع محدد");
         }
         
         setIsLoadingLocation(false);
