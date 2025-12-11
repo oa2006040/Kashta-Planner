@@ -61,6 +61,13 @@ export async function registerRoutes(
     try {
       const data = insertCategorySchema.parse(req.body);
       const category = await storage.createCategory(data);
+      
+      // Log activity
+      await storage.createActivityLog({
+        action: "إضافة فئة",
+        details: `تم إضافة فئة "${category.nameAr}"`,
+      });
+      
       res.status(201).json(category);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -68,6 +75,31 @@ export async function registerRoutes(
       }
       console.error("Error creating category:", error);
       res.status(500).json({ error: "Failed to create category" });
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    try {
+      const category = await storage.getCategory(req.params.id);
+      if (!category) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+      
+      const deleted = await storage.deleteCategory(req.params.id);
+      if (deleted) {
+        // Log activity
+        await storage.createActivityLog({
+          action: "حذف فئة",
+          details: `تم حذف فئة "${category.nameAr}" وجميع مستلزماتها`,
+        });
+        
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: "Category not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ error: "Failed to delete category" });
     }
   });
 

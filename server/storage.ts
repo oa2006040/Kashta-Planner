@@ -44,6 +44,7 @@ export interface IStorage {
   getCategoriesWithItems(): Promise<CategoryWithItems[]>;
   getCategory(id: string): Promise<Category | undefined>;
   createCategory(category: InsertCategory): Promise<Category>;
+  deleteCategory(id: string): Promise<boolean>;
   
   // Items
   getItems(): Promise<Item[]>;
@@ -141,6 +142,14 @@ export class DatabaseStorage implements IStorage {
   async createCategory(category: InsertCategory): Promise<Category> {
     const [created] = await db.insert(categories).values(category).returning();
     return created;
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    // First delete all items in this category
+    await db.delete(items).where(eq(items.categoryId, id));
+    // Then delete the category
+    const result = await db.delete(categories).where(eq(categories.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Items
