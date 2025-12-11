@@ -37,9 +37,11 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatNumber } from "@/lib/constants";
 import { CategoryIcon } from "@/components/category-icon";
+import { useLanguage } from "@/components/language-provider";
 import type { Category, Item, CategoryWithItems } from "@shared/schema";
 
 function ItemCard({ item, category }: { item: Item; category?: Category }) {
+  const { t } = useLanguage();
   return (
     <div 
       className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover-elevate"
@@ -56,7 +58,7 @@ function ItemCard({ item, category }: { item: Item; category?: Category }) {
       </div>
       {item.isCommon && (
         <Badge variant="secondary" className="text-xs shrink-0">
-          شائع
+          {t("شائع", "Common")}
         </Badge>
       )}
     </div>
@@ -65,6 +67,7 @@ function ItemCard({ item, category }: { item: Item; category?: Category }) {
 
 function CategorySection({ category, items }: { category: Category; items: Item[] }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const { t, language } = useLanguage();
 
   return (
     <Card>
@@ -80,9 +83,9 @@ function CategorySection({ category, items }: { category: Category; items: Item[
             <CategoryIcon icon={category.icon} color={category.color} className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <span>{category.nameAr}</span>
+            <span>{language === "ar" ? category.nameAr : category.name || category.nameAr}</span>
             <p className="text-xs font-normal text-muted-foreground mt-0.5">
-              {formatNumber(items.length)} مستلزم
+              {formatNumber(items.length, language)} {t("مستلزم", "item")}
             </p>
           </div>
           <Badge variant="outline">{items.length}</Badge>
@@ -106,6 +109,7 @@ function AddItemDialog({ categories }: { categories: Category[] }) {
   const [categoryId, setCategoryId] = useState("");
   const [isCommon, setIsCommon] = useState(true);
   const { toast } = useToast();
+  const { t, language } = useLanguage();
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -121,16 +125,16 @@ function AddItemDialog({ categories }: { categories: Category[] }) {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
-        title: "تم الإضافة",
-        description: "تم إضافة المستلزم بنجاح",
+        title: t("تم الإضافة", "Added"),
+        description: t("تم إضافة المستلزم بنجاح", "Item added successfully"),
       });
       setOpen(false);
       resetForm();
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء إضافة المستلزم",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء إضافة المستلزم", "An error occurred while adding the item"),
         variant: "destructive",
       });
     },
@@ -153,38 +157,38 @@ function AddItemDialog({ categories }: { categories: Category[] }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button data-testid="button-add-item">
-          <Plus className="h-4 w-4 ml-2" />
-          إضافة مستلزم
+          <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+          {t("إضافة مستلزم", "Add Item")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>إضافة مستلزم جديد</DialogTitle>
+          <DialogTitle>{t("إضافة مستلزم جديد", "Add New Item")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">اسم المستلزم *</Label>
+            <Label htmlFor="name">{t("اسم المستلزم *", "Item Name *")}</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="مثال: شواية كبيرة"
+              placeholder={t("مثال: شواية كبيرة", "Example: Large grill")}
               data-testid="input-item-name"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category">الفئة *</Label>
+            <Label htmlFor="category">{t("الفئة *", "Category *")}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger data-testid="select-item-category">
-                <SelectValue placeholder="اختر الفئة" />
+                <SelectValue placeholder={t("اختر الفئة", "Select category")} />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     <span className="flex items-center gap-2">
                       <CategoryIcon icon={cat.icon} color={cat.color} className="h-4 w-4" />
-                      {cat.nameAr}
+                      {language === "ar" ? cat.nameAr : cat.name || cat.nameAr}
                     </span>
                   </SelectItem>
                 ))}
@@ -193,19 +197,19 @@ function AddItemDialog({ categories }: { categories: Category[] }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">الوصف</Label>
+            <Label htmlFor="description">{t("الوصف", "Description")}</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="وصف اختياري للمستلزم"
+              placeholder={t("وصف اختياري للمستلزم", "Optional item description")}
               className="resize-none"
               data-testid="input-item-description"
             />
           </div>
 
           <div className="flex items-center justify-between">
-            <Label htmlFor="isCommon">مستلزم شائع</Label>
+            <Label htmlFor="isCommon">{t("مستلزم شائع", "Common Item")}</Label>
             <Switch
               id="isCommon"
               checked={isCommon}
@@ -217,7 +221,7 @@ function AddItemDialog({ categories }: { categories: Category[] }) {
           <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button type="button" variant="outline">
-                إلغاء
+                {t("إلغاء", "Cancel")}
               </Button>
             </DialogClose>
             <Button 
@@ -226,11 +230,11 @@ function AddItemDialog({ categories }: { categories: Category[] }) {
               data-testid="button-submit-item"
             >
               {createMutation.isPending ? (
-                <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                <Loader2 className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"} animate-spin`} />
               ) : (
-                <Plus className="h-4 w-4 ml-2" />
+                <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
               )}
-              إضافة
+              {t("إضافة", "Add")}
             </Button>
           </DialogFooter>
         </form>
@@ -242,6 +246,7 @@ function AddItemDialog({ categories }: { categories: Category[] }) {
 export default function Items() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const { t, language } = useLanguage();
 
   const { data: categoriesWithItems, isLoading } = useQuery<CategoryWithItems[]>({
     queryKey: ["/api/categories?withItems=true"],
@@ -262,40 +267,38 @@ export default function Items() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">المستلزمات</h1>
-          <p className="text-muted-foreground">قاعدة بيانات المستلزمات المشتركة</p>
+          <h1 className="text-2xl font-bold">{t("المستلزمات", "Items")}</h1>
+          <p className="text-muted-foreground">{t("قاعدة بيانات المستلزمات المشتركة", "Shared items database")}</p>
         </div>
         {categoriesWithItems && <AddItemDialog categories={categoriesWithItems} />}
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground`} />
           <Input
-            placeholder="ابحث عن مستلزم..."
+            placeholder={t("ابحث عن مستلزم...", "Search for items...")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-9"
+            className={language === "ar" ? "pr-9" : "pl-9"}
             data-testid="input-search-items"
           />
         </div>
         
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-full sm:w-48" data-testid="select-category-filter">
-            <Filter className="h-4 w-4 ml-2" />
-            <SelectValue placeholder="الفئة" />
+            <Filter className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            <SelectValue placeholder={t("الفئة", "Category")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">جميع الفئات</SelectItem>
+            <SelectItem value="all">{t("جميع الفئات", "All Categories")}</SelectItem>
             {categoriesWithItems?.map((cat) => (
               <SelectItem key={cat.id} value={cat.id}>
                 <span className="flex items-center gap-2">
                   <CategoryIcon icon={cat.icon} color={cat.color} className="h-4 w-4" />
-                  {cat.nameAr}
+                  {language === "ar" ? cat.nameAr : cat.name || cat.nameAr}
                 </span>
               </SelectItem>
             ))}
@@ -303,7 +306,6 @@ export default function Items() {
         </Select>
       </div>
 
-      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
@@ -311,8 +313,8 @@ export default function Items() {
               <Package className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{formatNumber(totalItems)}</p>
-              <p className="text-sm text-muted-foreground">إجمالي المستلزمات</p>
+              <p className="text-2xl font-bold">{formatNumber(totalItems, language)}</p>
+              <p className="text-sm text-muted-foreground">{t("إجمالي المستلزمات", "Total Items")}</p>
             </div>
           </CardContent>
         </Card>
@@ -322,14 +324,13 @@ export default function Items() {
               <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{formatNumber(categoriesWithItems?.length || 0)}</p>
-              <p className="text-sm text-muted-foreground">فئة</p>
+              <p className="text-2xl font-bold">{formatNumber(categoriesWithItems?.length || 0, language)}</p>
+              <p className="text-sm text-muted-foreground">{t("فئة", "Categories")}</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Categories */}
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -368,12 +369,12 @@ export default function Items() {
               <Package className="h-10 w-10 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-medium mb-2">
-              {searchQuery || selectedCategory !== "all" ? "لا توجد نتائج" : "لا توجد مستلزمات"}
+              {searchQuery || selectedCategory !== "all" ? t("لا توجد نتائج", "No results") : t("لا توجد مستلزمات", "No items")}
             </h3>
             <p className="text-muted-foreground mb-6 max-w-md">
               {searchQuery || selectedCategory !== "all" 
-                ? "جرب تغيير معايير البحث" 
-                : "أضف المستلزمات لتظهر في قاعدة البيانات المشتركة"}
+                ? t("جرب تغيير معايير البحث", "Try changing search criteria") 
+                : t("أضف المستلزمات لتظهر في قاعدة البيانات المشتركة", "Add items to appear in the shared database")}
             </p>
             {categoriesWithItems && !searchQuery && selectedCategory === "all" && (
               <AddItemDialog categories={categoriesWithItems} />

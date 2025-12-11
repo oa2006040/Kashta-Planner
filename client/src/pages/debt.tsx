@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { 
   Users, 
   ArrowLeft,
+  ArrowRight,
   Loader2,
   TrendingUp,
   TrendingDown,
@@ -15,9 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatNumber } from "@/lib/constants";
+import { useLanguage } from "@/components/language-provider";
 import type { ParticipantDebtSummary } from "@shared/schema";
 
 export default function DebtPage() {
+  const { t, language } = useLanguage();
   const { data: summaries, isLoading, error } = useQuery<ParticipantDebtSummary[]>({
     queryKey: ['/api/debt'],
     refetchInterval: 5000,
@@ -47,7 +50,7 @@ export default function DebtPage() {
       <div className="p-6">
         <Card>
           <CardContent className="p-6 text-center text-destructive">
-            حدث خطأ في تحميل بيانات الديون
+            {t("حدث خطأ في تحميل بيانات الديون", "An error occurred while loading debt data")}
           </CardContent>
         </Card>
       </div>
@@ -62,18 +65,20 @@ export default function DebtPage() {
   const totalCreditsAmount = summaries?.reduce((sum, s) => sum + Math.max(0, s.totalOwedToYou), 0) || 0;
   const totalExpenses = summaries?.reduce((sum, s) => sum + s.totalPaid, 0) || 0;
 
+  const BackArrow = language === "ar" ? ArrowLeft : ArrowRight;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
           <Link href="/">
             <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
+              <BackArrow className="h-5 w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold" data-testid="text-page-title">محفظة الديون</h1>
-            <p className="text-muted-foreground">عرض ديون جميع المشاركين عبر جميع الفعاليات</p>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">{t("محفظة الديون", "Debt Portfolio")}</h1>
+            <p className="text-muted-foreground">{t("عرض ديون جميع المشاركين عبر جميع الفعاليات", "View all participants' debts across all events")}</p>
           </div>
         </div>
       </div>
@@ -83,10 +88,10 @@ export default function DebtPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Wallet className="h-4 w-4" />
-              <span className="text-sm">إجمالي المصروفات</span>
+              <span className="text-sm">{t("إجمالي المصروفات", "Total Expenses")}</span>
             </div>
             <p className="text-2xl font-bold text-primary" data-testid="text-total-expenses">
-              {formatCurrency(totalExpenses)}
+              {formatCurrency(totalExpenses, language)}
             </p>
           </CardContent>
         </Card>
@@ -95,10 +100,10 @@ export default function DebtPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Users className="h-4 w-4" />
-              <span className="text-sm">إجمالي المشاركين</span>
+              <span className="text-sm">{t("إجمالي المشاركين", "Total Participants")}</span>
             </div>
             <p className="text-2xl font-bold" data-testid="text-total-participants">
-              {formatNumber(summaries?.length || 0)}
+              {formatNumber(summaries?.length || 0, language)}
             </p>
           </CardContent>
         </Card>
@@ -107,10 +112,10 @@ export default function DebtPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-green-600 mb-2">
               <TrendingUp className="h-4 w-4" />
-              <span className="text-sm">دائنون</span>
+              <span className="text-sm">{t("دائنون", "Creditors")}</span>
             </div>
             <p className="text-2xl font-bold text-green-600" data-testid="text-creditors-count">
-              {formatNumber(totalCreditors)}
+              {formatNumber(totalCreditors, language)}
             </p>
           </CardContent>
         </Card>
@@ -119,10 +124,10 @@ export default function DebtPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-red-600 mb-2">
               <TrendingDown className="h-4 w-4" />
-              <span className="text-sm">مدينون</span>
+              <span className="text-sm">{t("مدينون", "Debtors")}</span>
             </div>
             <p className="text-2xl font-bold text-red-600" data-testid="text-debtors-count">
-              {formatNumber(totalDebtors)}
+              {formatNumber(totalDebtors, language)}
             </p>
           </CardContent>
         </Card>
@@ -131,10 +136,10 @@ export default function DebtPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Equal className="h-4 w-4" />
-              <span className="text-sm">متعادلون</span>
+              <span className="text-sm">{t("متعادلون", "Settled")}</span>
             </div>
             <p className="text-2xl font-bold" data-testid="text-settled-count">
-              {formatNumber(totalSettled)}
+              {formatNumber(totalSettled, language)}
             </p>
           </CardContent>
         </Card>
@@ -159,7 +164,7 @@ export default function DebtPage() {
                       </CardTitle>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Calendar className="h-3 w-3" />
-                        <span>{formatNumber(summary.eventCount)} فعاليات</span>
+                        <span>{formatNumber(summary.eventCount, language)} {t("فعاليات", "events")}</span>
                       </div>
                     </div>
                   </div>
@@ -167,46 +172,46 @@ export default function DebtPage() {
                     variant={summary.role === 'creditor' ? 'default' : summary.role === 'debtor' ? 'destructive' : 'secondary'}
                     data-testid={`badge-role-${summary.participant.id}`}
                   >
-                    {summary.role === 'creditor' && <TrendingUp className="h-3 w-3 ml-1" />}
-                    {summary.role === 'debtor' && <TrendingDown className="h-3 w-3 ml-1" />}
-                    {summary.role === 'settled' && <Equal className="h-3 w-3 ml-1" />}
-                    {summary.role === 'creditor' ? 'دائن' : summary.role === 'debtor' ? 'مدين' : 'متعادل'}
+                    {summary.role === 'creditor' && <TrendingUp className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />}
+                    {summary.role === 'debtor' && <TrendingDown className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />}
+                    {summary.role === 'settled' && <Equal className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />}
+                    {summary.role === 'creditor' ? t('دائن', 'Creditor') : summary.role === 'debtor' ? t('مدين', 'Debtor') : t('متعادل', 'Settled')}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">إجمالي المدفوع</span>
+                  <span className="text-muted-foreground">{t("إجمالي المدفوع", "Total Paid")}</span>
                   <span className="font-medium" data-testid={`text-paid-${summary.participant.id}`}>
-                    {formatCurrency(summary.totalPaid)}
+                    {formatCurrency(summary.totalPaid, language)}
                   </span>
                 </div>
                 
                 {summary.totalOwed > 0 && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-red-600">عليه للآخرين</span>
+                    <span className="text-red-600">{t("عليه للآخرين", "Owes Others")}</span>
                     <span className="font-medium text-red-600" data-testid={`text-owes-${summary.participant.id}`}>
-                      {formatCurrency(summary.totalOwed)}
+                      {formatCurrency(summary.totalOwed, language)}
                     </span>
                   </div>
                 )}
                 
                 {summary.totalOwedToYou > 0 && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-green-600">له عند الآخرين</span>
+                    <span className="text-green-600">{t("له عند الآخرين", "Owed by Others")}</span>
                     <span className="font-medium text-green-600" data-testid={`text-owed-to-${summary.participant.id}`}>
-                      {formatCurrency(summary.totalOwedToYou)}
+                      {formatCurrency(summary.totalOwedToYou, language)}
                     </span>
                   </div>
                 )}
                 
                 <div className="pt-2 border-t flex items-center justify-between">
-                  <span className="font-medium">صافي الموقف</span>
+                  <span className="font-medium">{t("صافي الموقف", "Net Position")}</span>
                   <span 
                     className={`font-bold ${summary.netPosition > 0 ? 'text-green-600' : summary.netPosition < 0 ? 'text-red-600' : ''}`}
                     data-testid={`text-net-${summary.participant.id}`}
                   >
-                    {summary.netPosition > 0 ? '+' : ''}{formatCurrency(summary.netPosition)}
+                    {summary.netPosition > 0 ? '+' : ''}{formatCurrency(summary.netPosition, language)}
                   </span>
                 </div>
               </CardContent>
@@ -219,9 +224,9 @@ export default function DebtPage() {
         <Card>
           <CardContent className="p-12 text-center">
             <Wallet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-2">لا توجد ديون حالياً</p>
+            <p className="text-lg font-medium mb-2">{t("لا توجد ديون حالياً", "No debts currently")}</p>
             <p className="text-muted-foreground">
-              عندما يتم تسجيل مساهمات للفعاليات، ستظهر هنا ديون المشاركين
+              {t("عندما يتم تسجيل مساهمات للفعاليات، ستظهر هنا ديون المشاركين", "When contributions are recorded for events, participant debts will appear here")}
             </p>
           </CardContent>
         </Card>

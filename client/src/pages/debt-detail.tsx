@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { 
   ArrowLeft,
+  ArrowRight,
   Loader2,
   TrendingUp,
   TrendingDown,
@@ -16,18 +17,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency, formatNumber, formatArabicDate } from "@/lib/constants";
+import { formatCurrency, formatNumber, formatDate } from "@/lib/constants";
+import { useLanguage } from "@/components/language-provider";
 import type { ParticipantDebtPortfolio } from "@shared/schema";
 
 export default function DebtDetailPage() {
   const [, params] = useRoute("/debt/:participantId");
   const participantId = params?.participantId;
+  const { t, language } = useLanguage();
 
   const { data: portfolio, isLoading, error } = useQuery<ParticipantDebtPortfolio>({
     queryKey: ['/api/debt', participantId],
     enabled: !!participantId,
     refetchInterval: 5000,
   });
+
+  const BackArrow = language === "ar" ? ArrowLeft : ArrowRight;
 
   if (isLoading) {
     return (
@@ -55,14 +60,14 @@ export default function DebtDetailPage() {
         <div className="flex items-center gap-4 mb-6">
           <Link href="/debt">
             <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+              <BackArrow className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="text-xl font-bold">خطأ</h1>
+          <h1 className="text-xl font-bold">{t("خطأ", "Error")}</h1>
         </div>
         <Card>
           <CardContent className="p-6 text-center text-destructive">
-            المشارك غير موجود أو حدث خطأ في تحميل البيانات
+            {t("المشارك غير موجود أو حدث خطأ في تحميل البيانات", "Participant not found or an error occurred while loading data")}
           </CardContent>
         </Card>
       </div>
@@ -77,7 +82,7 @@ export default function DebtDetailPage() {
         <div className="flex items-center gap-4">
           <Link href="/debt">
             <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
+              <BackArrow className="h-5 w-5" />
             </Button>
           </Link>
           <div className="flex items-center gap-4">
@@ -93,13 +98,13 @@ export default function DebtDetailPage() {
                   variant={role === 'creditor' ? 'default' : role === 'debtor' ? 'destructive' : 'secondary'}
                   data-testid="badge-role"
                 >
-                  {role === 'creditor' && <TrendingUp className="h-3 w-3 ml-1" />}
-                  {role === 'debtor' && <TrendingDown className="h-3 w-3 ml-1" />}
-                  {role === 'settled' && <Equal className="h-3 w-3 ml-1" />}
-                  {role === 'creditor' ? 'دائن' : role === 'debtor' ? 'مدين' : 'متعادل'}
+                  {role === 'creditor' && <TrendingUp className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />}
+                  {role === 'debtor' && <TrendingDown className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />}
+                  {role === 'settled' && <Equal className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />}
+                  {role === 'creditor' ? t('دائن', 'Creditor') : role === 'debtor' ? t('مدين', 'Debtor') : t('متعادل', 'Settled')}
                 </Badge>
                 <span className="text-muted-foreground text-sm">
-                  {formatNumber(eventBreakdown.length)} فعاليات
+                  {formatNumber(eventBreakdown.length, language)} {t("فعاليات", "events")}
                 </span>
               </div>
             </div>
@@ -112,10 +117,10 @@ export default function DebtDetailPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Wallet className="h-4 w-4" />
-              <span className="text-sm">إجمالي المدفوع</span>
+              <span className="text-sm">{t("إجمالي المدفوع", "Total Paid")}</span>
             </div>
             <p className="text-2xl font-bold" data-testid="text-total-paid">
-              {formatCurrency(totalPaid)}
+              {formatCurrency(totalPaid, language)}
             </p>
           </CardContent>
         </Card>
@@ -124,10 +129,10 @@ export default function DebtDetailPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-red-600 mb-2">
               <TrendingDown className="h-4 w-4" />
-              <span className="text-sm">عليه للآخرين</span>
+              <span className="text-sm">{t("عليه للآخرين", "Owes Others")}</span>
             </div>
             <p className="text-2xl font-bold text-red-600" data-testid="text-total-owed">
-              {formatCurrency(totalOwed)}
+              {formatCurrency(totalOwed, language)}
             </p>
           </CardContent>
         </Card>
@@ -136,10 +141,10 @@ export default function DebtDetailPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-green-600 mb-2">
               <TrendingUp className="h-4 w-4" />
-              <span className="text-sm">له عند الآخرين</span>
+              <span className="text-sm">{t("له عند الآخرين", "Owed by Others")}</span>
             </div>
             <p className="text-2xl font-bold text-green-600" data-testid="text-total-owed-to">
-              {formatCurrency(totalOwedToYou)}
+              {formatCurrency(totalOwedToYou, language)}
             </p>
           </CardContent>
         </Card>
@@ -148,13 +153,13 @@ export default function DebtDetailPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Equal className="h-4 w-4" />
-              <span className="text-sm">صافي الموقف</span>
+              <span className="text-sm">{t("صافي الموقف", "Net Position")}</span>
             </div>
             <p 
               className={`text-2xl font-bold ${netPosition > 0 ? 'text-green-600' : netPosition < 0 ? 'text-red-600' : ''}`}
               data-testid="text-net-position"
             >
-              {netPosition > 0 ? '+' : ''}{formatCurrency(netPosition)}
+              {netPosition > 0 ? '+' : ''}{formatCurrency(netPosition, language)}
             </p>
           </CardContent>
         </Card>
@@ -163,17 +168,17 @@ export default function DebtDetailPage() {
       <Tabs defaultValue="counterparties" className="space-y-4">
         <TabsList>
           <TabsTrigger value="counterparties" data-testid="tab-counterparties">
-            <Users className="h-4 w-4 ml-2" />
-            الديون مع الآخرين
+            <Users className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            {t("الديون مع الآخرين", "Debts with Others")}
           </TabsTrigger>
           <TabsTrigger value="events" data-testid="tab-events">
-            <Calendar className="h-4 w-4 ml-2" />
-            الفعاليات
+            <Calendar className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            {t("الفعاليات", "Events")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="counterparties" className="space-y-4">
-          <h3 className="font-semibold">تفصيل الديون مع كل شخص</h3>
+          <h3 className="font-semibold">{t("تفصيل الديون مع كل شخص", "Debt breakdown with each person")}</h3>
           
           {counterpartyDebts.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -197,13 +202,13 @@ export default function DebtDetailPage() {
                       >
                         {cp.totalOwed > 0 ? (
                           <>
-                            <TrendingDown className="h-3 w-3 ml-1" />
-                            يستحق
+                            <TrendingDown className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                            {t("يستحق", "Due")}
                           </>
                         ) : (
                           <>
-                            <TrendingUp className="h-3 w-3 ml-1" />
-                            مستحق له
+                            <TrendingUp className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                            {t("مستحق له", "Owed")}
                           </>
                         )}
                       </Badge>
@@ -212,18 +217,18 @@ export default function DebtDetailPage() {
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">
-                        {cp.totalOwed > 0 ? 'مبلغ مستحق عليك' : 'مبلغ مستحق لك'}
+                        {cp.totalOwed > 0 ? t('مبلغ مستحق عليك', 'Amount you owe') : t('مبلغ مستحق لك', 'Amount owed to you')}
                       </span>
                       <span 
                         className={`font-bold ${cp.totalOwed > 0 ? 'text-red-600' : 'text-green-600'}`}
                         data-testid={`text-amount-${cp.counterparty.id}`}
                       >
-                        {formatCurrency(Math.abs(cp.totalOwed))}
+                        {formatCurrency(Math.abs(cp.totalOwed), language)}
                       </span>
                     </div>
                     
                     <div className="border-t pt-2">
-                      <p className="text-sm text-muted-foreground mb-2">تفصيل الفعاليات:</p>
+                      <p className="text-sm text-muted-foreground mb-2">{t("تفصيل الفعاليات:", "Events breakdown:")}</p>
                       <div className="space-y-1">
                         {cp.events.map((evt, i) => (
                           <div key={i} className="flex items-center justify-between text-sm">
@@ -233,7 +238,7 @@ export default function DebtDetailPage() {
                               </span>
                             </Link>
                             <span className={evt.amount > 0 ? 'text-red-600' : 'text-green-600'}>
-                              {evt.amount > 0 ? '-' : '+'}{formatCurrency(Math.abs(evt.amount))}
+                              {evt.amount > 0 ? '-' : '+'}{formatCurrency(Math.abs(evt.amount), language)}
                             </span>
                           </div>
                         ))}
@@ -247,9 +252,9 @@ export default function DebtDetailPage() {
             <Card>
               <CardContent className="p-8 text-center">
                 <Equal className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="text-lg font-medium">لا توجد ديون مستحقة</p>
+                <p className="text-lg font-medium">{t("لا توجد ديون مستحقة", "No debts due")}</p>
                 <p className="text-muted-foreground">
-                  هذا المشارك متعادل مع جميع الآخرين
+                  {t("هذا المشارك متعادل مع جميع الآخرين", "This participant is settled with everyone")}
                 </p>
               </CardContent>
             </Card>
@@ -257,7 +262,7 @@ export default function DebtDetailPage() {
         </TabsContent>
 
         <TabsContent value="events" className="space-y-4">
-          <h3 className="font-semibold">تفصيل المساهمات حسب الفعالية</h3>
+          <h3 className="font-semibold">{t("تفصيل المساهمات حسب الفعالية", "Contributions breakdown by event")}</h3>
           
           {eventBreakdown.length > 0 ? (
             <div className="space-y-3">
@@ -274,7 +279,7 @@ export default function DebtDetailPage() {
                           <div>
                             <p className="font-medium">{eb.event.title}</p>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <span>{formatArabicDate(eb.event.date)}</span>
+                              <span>{formatDate(eb.event.date, language)}</span>
                               {eb.event.location && (
                                 <>
                                   <span>•</span>
@@ -288,21 +293,21 @@ export default function DebtDetailPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
-                          <div className="text-left">
-                            <p className="text-sm text-muted-foreground">دفع</p>
-                            <p className="font-medium">{formatCurrency(eb.paid)}</p>
+                          <div className={language === "ar" ? "text-left" : "text-right"}>
+                            <p className="text-sm text-muted-foreground">{t("دفع", "Paid")}</p>
+                            <p className="font-medium">{formatCurrency(eb.paid, language)}</p>
                           </div>
-                          <div className="text-left">
-                            <p className="text-sm text-muted-foreground">الحصة</p>
-                            <p className="font-medium">{formatCurrency(eb.fairShare)}</p>
+                          <div className={language === "ar" ? "text-left" : "text-right"}>
+                            <p className="text-sm text-muted-foreground">{t("الحصة", "Share")}</p>
+                            <p className="font-medium">{formatCurrency(eb.fairShare, language)}</p>
                           </div>
                           <Badge 
                             variant={eb.role === 'creditor' ? 'default' : eb.role === 'debtor' ? 'destructive' : 'secondary'}
                           >
-                            {eb.role === 'creditor' && <TrendingUp className="h-3 w-3 ml-1" />}
-                            {eb.role === 'debtor' && <TrendingDown className="h-3 w-3 ml-1" />}
-                            {eb.role === 'settled' && <Equal className="h-3 w-3 ml-1" />}
-                            {eb.balance > 0 ? '+' : ''}{formatCurrency(eb.balance)}
+                            {eb.role === 'creditor' && <TrendingUp className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />}
+                            {eb.role === 'debtor' && <TrendingDown className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />}
+                            {eb.role === 'settled' && <Equal className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />}
+                            {eb.balance > 0 ? '+' : ''}{formatCurrency(eb.balance, language)}
                           </Badge>
                         </div>
                       </div>
@@ -315,9 +320,9 @@ export default function DebtDetailPage() {
             <Card>
               <CardContent className="p-8 text-center">
                 <Calendar className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="text-lg font-medium">لا توجد فعاليات</p>
+                <p className="text-lg font-medium">{t("لا توجد فعاليات", "No events")}</p>
                 <p className="text-muted-foreground">
-                  هذا المشارك لم يشارك في أي فعالية بعد
+                  {t("هذا المشارك لم يشارك في أي فعالية بعد", "This participant hasn't joined any events yet")}
                 </p>
               </CardContent>
             </Card>

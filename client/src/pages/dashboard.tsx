@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  formatArabicDate,
+  formatDate,
   formatHijriDate,
   formatCurrency,
   formatNumber,
@@ -135,7 +135,7 @@ function getStatusBadge(status: string, t: (ar: string, en: string) => string) {
 }
 
 function EventCard({ event, onStatusChange }: { event: Event; onStatusChange?: (id: number, status: string) => void }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const statusBadge = getStatusBadge(event.status || "upcoming", t);
   const eventDate = new Date(event.date);
   const isUpcoming = event.status === "upcoming";
@@ -177,14 +177,14 @@ function EventCard({ event, onStatusChange }: { event: Event; onStatusChange?: (
 
               <div className="flex items-center gap-1.5 sm:gap-2 text-sm text-muted-foreground">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
-                <span>{formatArabicDate(eventDate)}</span>
+                <span>{formatDate(eventDate, language)}</span>
               </div>
             </div>
 
             <div className="flex flex-col items-center gap-1.5 sm:gap-2 shrink-0">
               <div className="flex h-11 w-11 sm:h-14 sm:w-14 flex-col items-center justify-center rounded-lg sm:rounded-xl bg-primary/10">
                 <span className="text-[10px] sm:text-xs text-muted-foreground">
-                  {eventDate.toLocaleDateString("ar-SA", { weekday: "short" })}
+                  {eventDate.toLocaleDateString(language === "ar" ? "ar-SA" : "en-US", { weekday: "short" })}
                 </span>
                 <span className="text-base sm:text-lg font-bold text-primary">
                   {eventDate.getDate()}
@@ -358,7 +358,7 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between gap-2 sm:gap-4">
                   <div className="space-y-1 sm:space-y-2 min-w-0">
                     <p className="text-xs sm:text-sm text-muted-foreground">{t("إجمالي الطلعات", "Total Events")}</p>
-                    <p className="text-2xl sm:text-3xl font-bold">{formatNumber(stats?.totalEvents || 0)}</p>
+                    <p className="text-2xl sm:text-3xl font-bold">{formatNumber(stats?.totalEvents || 0, language)}</p>
                     <div className="flex flex-wrap gap-1 sm:gap-2 text-[10px] sm:text-xs">
                       <span className="text-green-600 dark:text-green-400">{stats?.ongoingEvents || 0} {t("جارية", "Ongoing")}</span>
                       <span className="text-blue-600 dark:text-blue-400">{stats?.upcomingEvents || 0} {t("قادمة", "Upcoming")}</span>
@@ -381,7 +381,7 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between gap-2 sm:gap-4">
                   <div className="space-y-1 sm:space-y-2 min-w-0">
                     <p className="text-xs sm:text-sm text-muted-foreground">{t("إجمالي المدفوعات", "Total Payments")}</p>
-                    <p className="text-2xl sm:text-3xl font-bold">{formatCurrency(stats?.totalBudget || 0)}</p>
+                    <p className="text-2xl sm:text-3xl font-bold">{formatCurrency(stats?.totalBudget || 0, language)}</p>
                   </div>
                   <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-primary/10 shrink-0">
                     <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
@@ -396,7 +396,7 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between gap-2 sm:gap-4">
                   <div className="space-y-1 sm:space-y-2 min-w-0">
                     <p className="text-xs sm:text-sm text-muted-foreground">{t("الديون المدفوعة", "Paid Debts")}</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(stats?.paidAmount || 0)}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(stats?.paidAmount || 0, language)}</p>
                   </div>
                   <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-green-100 dark:bg-green-900/30 shrink-0">
                     <CheckCircle2 className="h-4 w-4 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
@@ -411,7 +411,7 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between gap-2 sm:gap-4">
                   <div className="space-y-1 sm:space-y-2 min-w-0">
                     <p className="text-xs sm:text-sm text-muted-foreground">{t("الديون غير المدفوعة", "Unpaid Debts")}</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(stats?.unpaidAmount || 0)}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(stats?.unpaidAmount || 0, language)}</p>
                   </div>
                   <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
                     <Clock className="h-4 w-4 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
@@ -728,7 +728,7 @@ export default function Dashboard() {
                             {participant.name}
                           </p>
                           <p className="text-[10px] sm:text-xs text-muted-foreground">
-                            {formatNumber(participant.tripCount || 0)} {t("طلعة", "trips")}
+                            {formatNumber(participant.tripCount || 0, language)} {t("طلعة", "trips")}
                           </p>
                         </div>
                       </div>
@@ -768,7 +768,7 @@ export default function Dashboard() {
                 <div className="border-t border-border pt-2 sm:pt-3 space-y-1">
                   <p className="text-[10px] sm:text-xs text-muted-foreground">{t("التاريخ الميلادي", "Gregorian Date")}</p>
                   <p className="text-sm sm:text-base font-medium">
-                    {formatArabicDate(new Date())}
+                    {formatDate(new Date(), language)}
                   </p>
                 </div>
               </div>

@@ -12,7 +12,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatArabicDate } from "@/lib/constants";
+import { formatDate, formatNumber } from "@/lib/constants";
+import { useLanguage } from "@/components/language-provider";
 import type { ActivityLog } from "@shared/schema";
 
 const ACTION_ICONS: Record<string, React.ElementType> = {
@@ -21,6 +22,11 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   "حذف طلعة": Trash2,
   "إضافة مشارك": Users,
   "إضافة مستلزم": Package,
+  "Create event": Plus,
+  "Update event": Edit2,
+  "Delete event": Trash2,
+  "Add participant": Users,
+  "Add item": Package,
   default: HistoryIcon,
 };
 
@@ -30,10 +36,16 @@ const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
   "حذف طلعة": { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400" },
   "إضافة مشارك": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400" },
   "إضافة مستلزم": { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400" },
+  "Create event": { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400" },
+  "Update event": { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400" },
+  "Delete event": { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400" },
+  "Add participant": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400" },
+  "Add item": { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400" },
   default: { bg: "bg-muted", text: "text-muted-foreground" },
 };
 
 function LogCard({ log }: { log: ActivityLog }) {
+  const { language } = useLanguage();
   const Icon = ACTION_ICONS[log.action] || ACTION_ICONS.default;
   const colors = ACTION_COLORS[log.action] || ACTION_COLORS.default;
   const logDate = new Date(log.createdAt!);
@@ -48,7 +60,7 @@ function LogCard({ log }: { log: ActivityLog }) {
           <p className="font-medium">{log.action}</p>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
-            {logDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+            {logDate.toLocaleTimeString(language === "ar" ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
         {log.details && (
@@ -83,6 +95,7 @@ function groupLogsByDate(logs: ActivityLog[]): Record<string, ActivityLog[]> {
 }
 
 export default function History() {
+  const { t, language } = useLanguage();
   const { data: logs, isLoading } = useQuery<ActivityLog[]>({
     queryKey: ["/api/activity-logs"],
   });
@@ -94,26 +107,23 @@ export default function History() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">سجل النشاط</h1>
-        <p className="text-muted-foreground">تتبع جميع التغييرات والإجراءات</p>
+        <h1 className="text-2xl font-bold">{t("سجل النشاط", "Activity Log")}</h1>
+        <p className="text-muted-foreground">{t("تتبع جميع التغييرات والإجراءات", "Track all changes and actions")}</p>
       </div>
 
-      {/* Stats */}
       <Card>
         <CardContent className="p-4 flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
             <HistoryIcon className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{logs?.length || 0}</p>
-            <p className="text-sm text-muted-foreground">إجمالي السجلات</p>
+            <p className="text-2xl font-bold">{formatNumber(logs?.length || 0, language)}</p>
+            <p className="text-sm text-muted-foreground">{t("إجمالي السجلات", "Total Records")}</p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Logs */}
       {isLoading ? (
         <Card>
           <CardHeader>
@@ -132,8 +142,8 @@ export default function History() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-primary" />
-                  {formatArabicDate(new Date(date))}
-                  <Badge variant="secondary" className="mr-auto">
+                  {formatDate(new Date(date), language)}
+                  <Badge variant="secondary" className={language === "ar" ? "mr-auto" : "ml-auto"}>
                     {groupedLogs[date].length}
                   </Badge>
                 </CardTitle>
@@ -152,9 +162,9 @@ export default function History() {
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
               <HistoryIcon className="h-10 w-10 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium mb-2">لا يوجد سجل</h3>
+            <h3 className="text-lg font-medium mb-2">{t("لا يوجد سجل", "No records")}</h3>
             <p className="text-muted-foreground max-w-md">
-              سيظهر هنا سجل جميع الإجراءات والتغييرات التي تتم على الطلعات والمشاركين
+              {t("سيظهر هنا سجل جميع الإجراءات والتغييرات التي تتم على الطلعات والمشاركين", "All actions and changes to events and participants will appear here")}
             </p>
           </CardContent>
         </Card>
