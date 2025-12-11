@@ -560,17 +560,17 @@ export class DatabaseStorage implements IStorage {
       .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
       .from(contributions);
     
-    // Get paid amount (contributions with status 'fulfilled')
+    // Get paid (settled) debts from settlement records
     const [paidResult] = await db
-      .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
-      .from(contributions)
-      .where(eq(contributions.status, 'fulfilled'));
+      .select({ total: sql<number>`COALESCE(SUM(amount::numeric), 0)::float` })
+      .from(settlementRecords)
+      .where(eq(settlementRecords.isSettled, true));
     
-    // Get unpaid amount (contributions with status 'pending')
+    // Get unpaid (unsettled) debts from settlement records
     const [unpaidResult] = await db
-      .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
-      .from(contributions)
-      .where(eq(contributions.status, 'pending'));
+      .select({ total: sql<number>`COALESCE(SUM(amount::numeric), 0)::float` })
+      .from(settlementRecords)
+      .where(eq(settlementRecords.isSettled, false));
 
     return {
       totalEvents: eventsResult?.count || 0,
