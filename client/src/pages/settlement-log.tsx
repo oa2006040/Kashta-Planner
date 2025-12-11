@@ -56,12 +56,43 @@ export default function SettlementLogPage() {
 
   const paymentCount = logs?.filter(l => l.action === 'payment').length || 0;
   const cancellationCount = logs?.filter(l => l.action === 'cancellation').length || 0;
-  const totalAmount = logs?.reduce((sum, l) => {
-    if (l.action === 'payment') {
-      return sum + parseFloat(l.amount);
+  
+  // Calculate actual paid amount by tracking the latest status of each unique debt
+  // Group by eventId-debtorId-creditorId, only count if the last action is 'payment'
+  const calculateActualPaidAmount = () => {
+    if (!logs || logs.length === 0) return 0;
+    
+    // Sort logs by date (newest first) to easily find latest status
+    const sortedLogs = [...logs].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    
+    // Track unique debts and their current status
+    const debtStatus = new Map<string, { amount: string; isPaid: boolean }>();
+    
+    // Process from newest to oldest, only keep first occurrence (latest status)
+    for (const log of sortedLogs) {
+      const key = `${log.eventId}-${log.debtorId}-${log.creditorId}`;
+      if (!debtStatus.has(key)) {
+        debtStatus.set(key, {
+          amount: log.amount,
+          isPaid: log.action === 'payment'
+        });
+      }
     }
-    return sum;
-  }, 0) || 0;
+    
+    // Sum only the currently paid debts
+    let total = 0;
+    debtStatus.forEach(({ amount, isPaid }) => {
+      if (isPaid) {
+        total += parseFloat(amount);
+      }
+    });
+    
+    return total;
+  };
+  
+  const totalAmount = calculateActualPaidAmount();
 
   return (
     <div className="p-6 space-y-6">
