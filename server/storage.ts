@@ -533,6 +533,21 @@ export class DatabaseStorage implements IStorage {
       .from(events)
       .where(eq(events.status, 'upcoming'));
     
+    const [ongoingResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(events)
+      .where(eq(events.status, 'ongoing'));
+    
+    const [completedResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(events)
+      .where(eq(events.status, 'completed'));
+    
+    const [cancelledResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(events)
+      .where(eq(events.status, 'cancelled'));
+    
     const [participantsResult] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(participants);
@@ -544,13 +559,30 @@ export class DatabaseStorage implements IStorage {
     const [budgetResult] = await db
       .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
       .from(contributions);
+    
+    // Get paid amount (contributions with status 'fulfilled')
+    const [paidResult] = await db
+      .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
+      .from(contributions)
+      .where(eq(contributions.status, 'fulfilled'));
+    
+    // Get unpaid amount (contributions with status 'pending')
+    const [unpaidResult] = await db
+      .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
+      .from(contributions)
+      .where(eq(contributions.status, 'pending'));
 
     return {
       totalEvents: eventsResult?.count || 0,
       upcomingEvents: upcomingResult?.count || 0,
+      ongoingEvents: ongoingResult?.count || 0,
+      completedEvents: completedResult?.count || 0,
+      cancelledEvents: cancelledResult?.count || 0,
       totalParticipants: participantsResult?.count || 0,
       totalItems: itemsResult?.count || 0,
       totalBudget: budgetResult?.total || 0,
+      paidAmount: paidResult?.total || 0,
+      unpaidAmount: unpaidResult?.total || 0,
     };
   }
 

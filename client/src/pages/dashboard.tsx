@@ -34,9 +34,14 @@ import type { Event, Participant, Category } from "@shared/schema";
 interface DashboardStats {
   totalEvents: number;
   upcomingEvents: number;
+  ongoingEvents: number;
+  completedEvents: number;
+  cancelledEvents: number;
   totalParticipants: number;
   totalItems: number;
   totalBudget: number;
+  paidAmount: number;
+  unpaidAmount: number;
 }
 
 function StatCard({
@@ -273,29 +278,64 @@ export default function Dashboard() {
           </>
         ) : (
           <>
-            <StatCard
-              title="إجمالي الطلعات"
-              value={formatNumber(stats?.totalEvents || 0)}
-              icon={Calendar}
-              trend={
-                stats?.totalEvents ? `${stats.upcomingEvents} قادمة` : undefined
-              }
-            />
+            {/* Total Events with breakdown */}
+            <Card className="relative overflow-visible">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">إجمالي الطلعات</p>
+                    <p className="text-3xl font-bold">{formatNumber(stats?.totalEvents || 0)}</p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="text-green-600 dark:text-green-400">{stats?.ongoingEvents || 0} جارية</span>
+                      <span className="text-blue-600 dark:text-blue-400">{stats?.upcomingEvents || 0} قادمة</span>
+                      <span className="text-gray-500">{stats?.completedEvents || 0} منتهية</span>
+                      {(stats?.cancelledEvents || 0) > 0 && (
+                        <span className="text-red-500">{stats?.cancelledEvents} ملغاة</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                    <Calendar className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
             <StatCard
               title="المشاركين"
               value={formatNumber(stats?.totalParticipants || 0)}
               icon={Users}
             />
-            <StatCard
-              title="المستلزمات"
-              value={formatNumber(stats?.totalItems || 0)}
-              icon={Package}
-            />
-            <StatCard
-              title="إجمالي الميزانية"
-              value={formatCurrency(stats?.totalBudget || 0)}
-              icon={TrendingUp}
-            />
+            
+            {/* Paid Amount */}
+            <Card className="relative overflow-visible">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">المدفوع</p>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(stats?.paidAmount || 0)}</p>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30">
+                    <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Unpaid Amount */}
+            <Card className="relative overflow-visible">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">غير المدفوع</p>
+                    <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(stats?.unpaidAmount || 0)}</p>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30">
+                    <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
@@ -590,17 +630,22 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Hijri Date Card */}
+          {/* Date Card - Hijri & Gregorian */}
           <Card className="bg-gradient-to-l from-primary/10 to-transparent">
             <CardContent className="p-4">
-              <div className="text-center space-y-1">
-                <p className="text-xs text-muted-foreground">التاريخ الهجري</p>
-                <p className="text-lg font-semibold">
-                  {formatHijriDate(new Date())}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatArabicDate(new Date())}
-                </p>
+              <div className="text-center space-y-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">التاريخ الهجري</p>
+                  <p className="text-lg font-semibold">
+                    {formatHijriDate(new Date())}
+                  </p>
+                </div>
+                <div className="border-t border-border pt-3 space-y-1">
+                  <p className="text-xs text-muted-foreground">التاريخ الميلادي</p>
+                  <p className="text-base font-medium">
+                    {formatArabicDate(new Date())}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
