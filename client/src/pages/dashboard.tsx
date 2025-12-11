@@ -517,47 +517,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Cancelled Events - Separate Section */}
-          {!eventsLoading && cancelledEvents.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                  <h2 className="text-xl font-semibold">الطلعات الملغاة</h2>
-                  <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
-                    {cancelledEvents.length}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {displayedCancelled.map((event) => (
-                  <EventCard key={event.id} event={event} onStatusChange={handleStatusChange} />
-                ))}
-                {cancelledEvents.length > 2 && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setShowAllCancelled(!showAllCancelled)}
-                    data-testid="button-toggle-cancelled"
-                  >
-                    {showAllCancelled ? (
-                      <>
-                        <ChevronUp className="h-4 w-4 ml-2" />
-                        عرض أقل
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-4 w-4 ml-2" />
-                        عرض الكل ({cancelledEvents.length})
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Completed Events - Show 1 with link to events page */}
           {!eventsLoading && (
             <div className="space-y-4">
@@ -610,6 +569,47 @@ export default function Dashboard() {
                       </Link>
                     </CardContent>
                   </Card>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Cancelled Events - Below Completed */}
+          {!eventsLoading && cancelledEvents.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  <h2 className="text-xl font-semibold">الطلعات الملغاة</h2>
+                  <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    {cancelledEvents.length}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {displayedCancelled.map((event) => (
+                  <EventCard key={event.id} event={event} onStatusChange={handleStatusChange} />
+                ))}
+                {cancelledEvents.length > 2 && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowAllCancelled(!showAllCancelled)}
+                    data-testid="button-toggle-cancelled"
+                  >
+                    {showAllCancelled ? (
+                      <>
+                        <ChevronUp className="h-4 w-4 ml-2" />
+                        عرض أقل
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 ml-2" />
+                        عرض الكل ({cancelledEvents.length})
+                      </>
+                    )}
+                  </Button>
                 )}
               </div>
             </div>
