@@ -1097,21 +1097,32 @@ export default function EventDetail() {
                     {settlement.transactions.map((tx) => (
                       <div 
                         key={`${tx.debtorId}-${tx.creditorId}`}
-                        className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg ${
+                        className={`flex flex-col gap-3 p-3 rounded-lg ${
                           tx.isSettled 
                             ? 'bg-green-50 dark:bg-green-900/10' 
                             : 'bg-muted/50'
                         }`}
                         data-testid={`settlement-tx-${tx.debtorId}-${tx.creditorId}`}
                       >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <AvatarIcon icon={tx.debtor?.avatar} className="h-6 w-6 shrink-0" />
-                          <span className="font-medium text-sm sm:text-base truncate max-w-[80px] sm:max-w-none">{tx.debtor?.name}</span>
-                          <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <AvatarIcon icon={tx.creditor?.avatar} className="h-6 w-6 shrink-0" />
-                          <span className="font-medium text-sm sm:text-base truncate max-w-[80px] sm:max-w-none">{tx.creditor?.name}</span>
+                        <div className="flex items-center justify-center gap-3 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <AvatarIcon icon={tx.debtor?.avatar} className="h-8 w-8 shrink-0" />
+                            <span className="font-medium">{tx.debtor?.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-primary">
+                            <span className="text-xs text-muted-foreground">{t("يدفع", "pays")}</span>
+                            {language === "ar" ? (
+                              <ArrowLeft className="h-5 w-5" />
+                            ) : (
+                              <ArrowRight className="h-5 w-5" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <AvatarIcon icon={tx.creditor?.avatar} className="h-8 w-8 shrink-0" />
+                            <span className="font-medium">{tx.creditor?.name}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 justify-between sm:justify-end">
+                        <div className="flex items-center gap-2 justify-center">
                           <Badge 
                             variant={tx.isSettled ? "default" : "secondary"}
                             className={tx.isSettled ? "bg-green-600" : ""}
