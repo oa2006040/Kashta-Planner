@@ -28,7 +28,7 @@ import { useLanguage } from "@/components/language-provider";
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const mainNavItems = [
     {
@@ -74,7 +74,7 @@ export function AppSidebar() {
   ];
 
   return (
-    <Sidebar side="right" collapsible="icon">
+    <Sidebar side={language === "ar" ? "right" : "left"} collapsible="icon">
       <SidebarHeader className="p-4">
         <Link
           href="/"

@@ -7,6 +7,7 @@ import {
   Check, 
   X, 
   ArrowLeft, 
+  ArrowRight,
   Loader2,
   TrendingUp,
   TrendingDown,
@@ -19,12 +20,14 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { formatArabicDate, formatCurrency, formatNumber } from "@/lib/constants";
+import { formatDate, formatCurrency, formatNumber } from "@/lib/constants";
 import { AvatarIcon } from "@/components/avatar-icon";
+import { useLanguage } from "@/components/language-provider";
 import type { EventSettlement } from "@shared/schema";
 
 export default function Statement() {
   const { toast } = useToast();
+  const { t, language } = useLanguage();
 
   const { data: settlements, isLoading } = useQuery<EventSettlement[]>({
     queryKey: ["/api/settlements"],
@@ -42,14 +45,14 @@ export default function Statement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settlements"] });
       toast({
-        title: "تم التحديث",
-        description: "تم تحديث حالة الدفع",
+        title: t("تم التحديث", "Updated"),
+        description: t("تم تحديث حالة الدفع", "Payment status has been updated"),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تحديث حالة الدفع",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تحديث حالة الدفع", "An error occurred while updating payment status"),
         variant: "destructive",
       });
     },
@@ -77,6 +80,8 @@ export default function Statement() {
     sum + s.transactions.filter(t => t.isSettled).reduce((tSum, t) => tSum + parseFloat(t.amount), 0)
   , 0) || 0;
 
+  const ArrowIcon = language === "ar" ? ArrowLeft : ArrowRight;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -84,8 +89,8 @@ export default function Statement() {
           <Receipt className="h-6 w-6 text-amber-600 dark:text-amber-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">كشف الحساب</h1>
-          <p className="text-muted-foreground">تسوية المصاريف بين المشاركين</p>
+          <h1 className="text-2xl font-bold">{t("كشف الحساب", "Account Statement")}</h1>
+          <p className="text-muted-foreground">{t("تسوية المصاريف بين المشاركين", "Expense settlement between participants")}</p>
         </div>
       </div>
 
@@ -97,8 +102,8 @@ export default function Statement() {
                 <X className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{formatCurrency(totalUnsettled)}</p>
-                <p className="text-sm text-muted-foreground">ديون غير مسددة</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalUnsettled, language)}</p>
+                <p className="text-sm text-muted-foreground">{t("ديون غير مسددة", "Unsettled Debts")}</p>
               </div>
             </CardContent>
           </Card>
@@ -108,8 +113,8 @@ export default function Statement() {
                 <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{formatCurrency(totalSettled)}</p>
-                <p className="text-sm text-muted-foreground">تم تسديدها</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalSettled, language)}</p>
+                <p className="text-sm text-muted-foreground">{t("تم تسديدها", "Settled")}</p>
               </div>
             </CardContent>
           </Card>
@@ -120,14 +125,14 @@ export default function Statement() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Receipt className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">لا توجد تسويات</h3>
+            <h3 className="text-lg font-medium mb-2">{t("لا توجد تسويات", "No Settlements")}</h3>
             <p className="text-muted-foreground mb-4">
-              ستظهر هنا تسويات المصاريف عند إضافة مستلزمات بتكاليف للطلعات
+              {t("ستظهر هنا تسويات المصاريف عند إضافة مستلزمات بتكاليف للطلعات", "Expense settlements will appear here when items with costs are added to events")}
             </p>
             <Link href="/events">
               <Button data-testid="button-go-events">
-                <Calendar className="h-4 w-4 ml-2" />
-                الذهاب للطلعات
+                <Calendar className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                {t("الذهاب للطلعات", "Go to Events")}
               </Button>
             </Link>
           </CardContent>
@@ -153,22 +158,22 @@ export default function Statement() {
                         </Link>
                       </CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        {formatArabicDate(new Date(settlement.eventDate))}
+                        {formatDate(new Date(settlement.eventDate), language)}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-sm flex-wrap">
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Users className="h-4 w-4" />
-                      <span>{formatNumber(settlement.participantCount)}</span>
+                      <span>{formatNumber(settlement.participantCount, language)}</span>
                     </div>
                     <Badge variant="secondary">
-                      الحصة: {formatCurrency(settlement.fairShare)}
+                      {t("الحصة:", "Share:")} {formatCurrency(settlement.fairShare, language)}
                     </Badge>
                     {settlement.unassignedCosts > 0 && (
                       <Badge variant="outline" className="text-orange-600 border-orange-300">
-                        <AlertTriangle className="h-3 w-3 ml-1" />
-                        {formatCurrency(settlement.unassignedCosts)} غير معين
+                        <AlertTriangle className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                        {formatCurrency(settlement.unassignedCosts, language)} {t("غير معين", "unassigned")}
                       </Badge>
                     )}
                   </div>
@@ -191,7 +196,7 @@ export default function Statement() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{balance.participant.name}</p>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className="text-muted-foreground">دفع: {formatCurrency(balance.totalPaid)}</span>
+                          <span className="text-muted-foreground">{t("دفع:", "Paid:")} {formatCurrency(balance.totalPaid, language)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -199,7 +204,7 @@ export default function Statement() {
                           <>
                             <TrendingUp className="h-4 w-4 text-green-600" />
                             <span className="text-sm font-medium text-green-600">
-                              +{formatCurrency(balance.balance)}
+                              +{formatCurrency(balance.balance, language)}
                             </span>
                           </>
                         )}
@@ -207,14 +212,14 @@ export default function Statement() {
                           <>
                             <TrendingDown className="h-4 w-4 text-orange-600" />
                             <span className="text-sm font-medium text-orange-600">
-                              {formatCurrency(balance.balance)}
+                              {formatCurrency(balance.balance, language)}
                             </span>
                           </>
                         )}
                         {balance.role === 'settled' && (
                           <>
                             <Equal className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">متوازن</span>
+                            <span className="text-sm text-muted-foreground">{t("متوازن", "Balanced")}</span>
                           </>
                         )}
                       </div>
@@ -224,7 +229,7 @@ export default function Statement() {
 
                 {settlement.transactions.length > 0 && (
                   <div className="border-t pt-4">
-                    <h4 className="text-sm font-medium mb-3">التحويلات المطلوبة</h4>
+                    <h4 className="text-sm font-medium mb-3">{t("التحويلات المطلوبة", "Required Transfers")}</h4>
                     <div className="space-y-2">
                       {settlement.transactions.map((tx) => (
                         <div 
@@ -239,7 +244,7 @@ export default function Statement() {
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <AvatarIcon icon={tx.debtor?.avatar} className="h-6 w-6" />
                             <span className="font-medium truncate">{tx.debtor?.name}</span>
-                            <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <ArrowIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                             <AvatarIcon icon={tx.creditor?.avatar} className="h-6 w-6" />
                             <span className="font-medium truncate">{tx.creditor?.name}</span>
                           </div>
@@ -247,7 +252,7 @@ export default function Statement() {
                             variant={tx.isSettled ? "default" : "secondary"}
                             className={tx.isSettled ? "bg-green-600" : ""}
                           >
-                            {formatCurrency(tx.amount)}
+                            {formatCurrency(tx.amount, language)}
                           </Badge>
                           <Button
                             size="sm"
@@ -264,13 +269,13 @@ export default function Statement() {
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : tx.isSettled ? (
                               <>
-                                <X className="h-4 w-4 ml-1" />
-                                إلغاء
+                                <X className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                                {t("إلغاء", "Cancel")}
                               </>
                             ) : (
                               <>
-                                <Check className="h-4 w-4 ml-1" />
-                                تم الدفع
+                                <Check className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                                {t("تم الدفع", "Paid")}
                               </>
                             )}
                           </Button>
