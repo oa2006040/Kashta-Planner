@@ -27,7 +27,8 @@ import {
   TrendingDown,
   Equal,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  Navigation
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -565,6 +566,17 @@ export default function EventDetail() {
             <Badge variant="secondary" className={statusBadge.className}>
               {statusBadge.label}
             </Badge>
+            {event.latitude && event.longitude && (
+              <a
+                href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-primary hover:text-primary/80"
+                data-testid="link-header-map"
+              >
+                <Navigation className="h-5 w-5" />
+              </a>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

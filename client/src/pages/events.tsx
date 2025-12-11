@@ -11,7 +11,8 @@ import {
   Clock,
   ChevronLeft,
   LayoutGrid,
-  List
+  List,
+  Navigation
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,18 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
                     <span className="flex items-center gap-1">
                       <MapPin className="h-3.5 w-3.5" />
                       {event.location}
+                      {event.latitude && event.longitude && (
+                        <a
+                          href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-primary hover:text-primary/80"
+                          data-testid={`link-map-${event.id}`}
+                        >
+                          <Navigation className="h-3.5 w-3.5" />
+                        </a>
+                      )}
                     </span>
                   )}
                   <span className="flex items-center gap-1">
@@ -120,6 +133,18 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{event.location}</span>
+                {event.latitude && event.longitude && (
+                  <a
+                    href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-primary hover:text-primary/80 shrink-0"
+                    data-testid={`link-map-grid-${event.id}`}
+                  >
+                    <Navigation className="h-3.5 w-3.5" />
+                  </a>
+                )}
               </div>
             )}
             
