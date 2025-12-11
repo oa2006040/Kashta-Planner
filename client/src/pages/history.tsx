@@ -22,11 +22,6 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   "حذف طلعة": Trash2,
   "إضافة مشارك": Users,
   "إضافة مستلزم": Package,
-  "Create event": Plus,
-  "Update event": Edit2,
-  "Delete event": Trash2,
-  "Add participant": Users,
-  "Add item": Package,
   default: HistoryIcon,
 };
 
@@ -36,19 +31,41 @@ const ACTION_COLORS: Record<string, { bg: string; text: string }> = {
   "حذف طلعة": { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400" },
   "إضافة مشارك": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400" },
   "إضافة مستلزم": { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400" },
-  "Create event": { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400" },
-  "Update event": { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400" },
-  "Delete event": { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400" },
-  "Add participant": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400" },
-  "Add item": { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400" },
   default: { bg: "bg-muted", text: "text-muted-foreground" },
 };
+
+const ACTION_TRANSLATIONS: Record<string, string> = {
+  "إنشاء طلعة": "Create Event",
+  "تحديث طلعة": "Update Event",
+  "حذف طلعة": "Delete Event",
+  "إضافة مشارك": "Add Participant",
+  "إضافة مستلزم": "Add Item",
+};
+
+function translateDetails(details: string, language: "ar" | "en"): string {
+  if (language === "ar") return details;
+  
+  return details
+    .replace(/^تم إنشاء طلعة "(.+)" مع (\d+) مستلزمات$/, 'Created event "$1" with $2 items')
+    .replace(/^تم إنشاء طلعة "(.+)"$/, 'Created event "$1"')
+    .replace(/^تم تحديث طلعة "(.+)"$/, 'Updated event "$1"')
+    .replace(/^تم حذف طلعة "(.+)"$/, 'Deleted event "$1"')
+    .replace(/^تم إضافة "(.+)"$/, 'Added "$1"')
+    .replace(/^تم حذف "(.+)"$/, 'Deleted "$1"')
+    .replace(/^مستلزم جديد "(.+)"$/, 'New item "$1"');
+}
 
 function LogCard({ log }: { log: ActivityLog }) {
   const { language } = useLanguage();
   const Icon = ACTION_ICONS[log.action] || ACTION_ICONS.default;
   const colors = ACTION_COLORS[log.action] || ACTION_COLORS.default;
   const logDate = new Date(log.createdAt!);
+  
+  const displayAction = language === "en" && ACTION_TRANSLATIONS[log.action] 
+    ? ACTION_TRANSLATIONS[log.action] 
+    : log.action;
+  
+  const displayDetails = log.details ? translateDetails(log.details, language) : null;
 
   return (
     <div className="flex gap-4 p-4 rounded-lg bg-muted/30" data-testid={`log-${log.id}`}>
@@ -57,14 +74,14 @@ function LogCard({ log }: { log: ActivityLog }) {
       </div>
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-start justify-between gap-2 flex-wrap">
-          <p className="font-medium">{log.action}</p>
+          <p className="font-medium">{displayAction}</p>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
             {logDate.toLocaleTimeString(language === "ar" ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
-        {log.details && (
-          <p className="text-sm text-muted-foreground">{log.details}</p>
+        {displayDetails && (
+          <p className="text-sm text-muted-foreground">{displayDetails}</p>
         )}
       </div>
     </div>

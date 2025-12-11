@@ -100,7 +100,7 @@ function ParticipantCard({
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
                 <Calendar className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
-                {formatNumber(participant.tripCount || 0)} {t("طلعة", "trips")}
+                {formatNumber(participant.tripCount || 0, language)} {t("طلعة", "trips")}
               </Badge>
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function Participants() {
               <Users className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{formatNumber(participants?.length || 0)}</p>
+              <p className="text-2xl font-bold">{formatNumber(participants?.length || 0, language)}</p>
               <p className="text-sm text-muted-foreground">{t("إجمالي المشاركين", "Total Participants")}</p>
             </div>
           </CardContent>

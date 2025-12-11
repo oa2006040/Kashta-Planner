@@ -104,6 +104,7 @@ function ContributionItem({
   onUnassign,
   isAssigning 
 }: ContributionItemProps) {
+  const { t, language } = useLanguage();
   const [showAssign, setShowAssign] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<string>("");
   const [includeCost, setIncludeCost] = useState(false);
@@ -145,8 +146,8 @@ function ContributionItem({
               <p className="font-medium truncate">{contribution.item?.name}</p>
               {category && (
                 <Badge variant="outline" className="text-xs">
-                  <CategoryIcon icon={category.icon} color={category.color} className="h-3 w-3 ml-1" />
-                  {category.nameAr}
+                  <CategoryIcon icon={category.icon} color={category.color} className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                  {language === "ar" ? category.nameAr : (category.name || category.nameAr)}
                 </Badge>
               )}
             </div>
@@ -161,7 +162,7 @@ function ContributionItem({
         <div className="flex items-center gap-2 shrink-0">
           {parseFloat(contribution.cost || "0") > 0 && (
             <Badge variant="secondary" className="text-xs">
-              {formatCurrency(contribution.cost || 0)}
+              {formatCurrency(contribution.cost || 0, language)}
             </Badge>
           )}
           {!hasParticipant && (
@@ -171,8 +172,8 @@ function ContributionItem({
               onClick={() => setShowAssign(!showAssign)}
               data-testid={`button-assign-${contribution.id}`}
             >
-              <UserPlus className="h-4 w-4 ml-1" />
-              تعيين
+              <UserPlus className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+              {t("تعيين", "Assign")}
             </Button>
           )}
           <AlertDialog>
@@ -189,23 +190,23 @@ function ContributionItem({
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {hasParticipant ? "إلغاء تعيين المستلزم" : "حذف المستلزم"}
+                  {hasParticipant ? t("إلغاء تعيين المستلزم", "Unassign Item") : t("حذف المستلزم", "Delete Item")}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {hasParticipant ? (
                     <>
-                      هل تريد إلغاء تعيين "{contribution.item?.name}"؟
+                      {t(`هل تريد إلغاء تعيين "${contribution.item?.name}"؟`, `Unassign "${contribution.item?.name}"?`)}
                       <span className="block mt-2 text-muted-foreground">
-                        سيتم إزالة المسؤول ({contribution.participant?.name}) ونقل المستلزم للقائمة المتبقية.
+                        {t(`سيتم إزالة المسؤول (${contribution.participant?.name}) ونقل المستلزم للقائمة المتبقية.`, `The assignee (${contribution.participant?.name}) will be removed and the item will move to the remaining list.`)}
                       </span>
                     </>
                   ) : (
-                    <>هل تريد حذف "{contribution.item?.name}" من الطلعة نهائياً؟</>
+                    <>{t(`هل تريد حذف "${contribution.item?.name}" من الطلعة نهائياً؟`, `Delete "${contribution.item?.name}" from this event permanently?`)}</>
                   )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => hasParticipant ? onUnassign(contribution.id) : onDelete(contribution.id)}
                   className={hasParticipant 
@@ -213,7 +214,7 @@ function ContributionItem({
                     : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   }
                 >
-                  {hasParticipant ? "إلغاء التعيين" : "حذف"}
+                  {hasParticipant ? t("إلغاء التعيين", "Unassign") : t("حذف", "Delete")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -226,7 +227,7 @@ function ContributionItem({
           <div className="flex flex-col sm:flex-row gap-2">
             <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
               <SelectTrigger className="flex-1" data-testid={`select-participant-${contribution.id}`}>
-                <SelectValue placeholder="اختر المشارك" />
+                <SelectValue placeholder={t("اختر المشارك", "Select participant")} />
               </SelectTrigger>
               <SelectContent>
                 {participants.map((p) => (
