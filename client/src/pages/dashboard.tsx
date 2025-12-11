@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
@@ -9,9 +10,13 @@ import {
   MapPin,
   Clock,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Flame,
   Star,
   Sparkles,
+  CheckCircle2,
+  PlayCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -207,10 +212,17 @@ export default function Dashboard() {
     refetchInterval: 5000,
   });
 
-  // Filter for upcoming events only
-  const upcomingEvents = events
-    ?.filter((e) => e.status === "upcoming")
-    .slice(0, 5);
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  
+  // Filter events by status
+  const ongoingEvents = events?.filter((e) => e.status === "ongoing") || [];
+  const upcomingEvents = events?.filter((e) => e.status === "upcoming") || [];
+  const completedEvents = events?.filter((e) => e.status === "completed") || [];
+  
+  // Display logic
+  const displayedUpcoming = showAllUpcoming ? upcomingEvents : upcomingEvents.slice(0, 2);
+  const displayedCompleted = completedEvents.slice(0, 1);
+  
   const recentParticipants = participants?.slice(0, 5);
 
   return (
@@ -290,52 +302,136 @@ export default function Dashboard() {
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Upcoming Events */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Star className="h-5 w-5 text-primary" />
-              الطلعات القادمة
-            </h2>
-            <Link href="/events">
-              <Button variant="ghost" size="sm" data-testid="link-all-events">
-                عرض الكل
-                <ChevronLeft className="h-4 w-4 mr-1" />
-              </Button>
-            </Link>
+        {/* Events Column */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Ongoing Events - Show All */}
+          {eventsLoading ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <PlayCircle className="h-5 w-5 text-green-500" />
+                <h2 className="text-xl font-semibold">الطلعات الجارية</h2>
+              </div>
+              <EventCardSkeleton />
+              <EventCardSkeleton />
+            </div>
+          ) : ongoingEvents.length > 0 ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <PlayCircle className="h-5 w-5 text-green-500" />
+                <h2 className="text-xl font-semibold">الطلعات الجارية</h2>
+                <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                  {ongoingEvents.length}
+                </Badge>
+              </div>
+              <div className="space-y-3">
+                {ongoingEvents.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Upcoming Events - Show 2 with expand */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold">الطلعات القادمة</h2>
+                {upcomingEvents.length > 0 && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    {upcomingEvents.length}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {eventsLoading ? (
+                <>
+                  <EventCardSkeleton />
+                  <EventCardSkeleton />
+                </>
+              ) : displayedUpcoming.length > 0 ? (
+                <>
+                  {displayedUpcoming.map((event) => (
+                    <EventCard key={event.id} event={event} />
+                  ))}
+                  {upcomingEvents.length > 2 && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setShowAllUpcoming(!showAllUpcoming)}
+                      data-testid="button-toggle-upcoming"
+                    >
+                      {showAllUpcoming ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 ml-2" />
+                          عرض أقل
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 ml-2" />
+                          عرض الكل ({upcomingEvents.length})
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                      <Calendar className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="font-medium mb-2">لا توجد طلعات قادمة</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      ابدأ بإنشاء طلعة جديدة لك ولأصدقائك
+                    </p>
+                    <Link href="/events/new">
+                      <Button size="sm" data-testid="button-create-first-event">
+                        <Plus className="h-4 w-4 ml-2" />
+                        إنشاء طلعة
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {eventsLoading ? (
-              <>
-                <EventCardSkeleton />
-                <EventCardSkeleton />
-                <EventCardSkeleton />
-              </>
-            ) : upcomingEvents && upcomingEvents.length > 0 ? (
-              upcomingEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-                    <Calendar className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="font-medium mb-2">لا توجد طلعات قادمة</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    ابدأ بإنشاء طلعة جديدة لك ولأصدقائك
-                  </p>
-                  <Link href="/events/new">
-                    <Button size="sm" data-testid="button-create-first-event">
-                      <Plus className="h-4 w-4 ml-2" />
-                      إنشاء طلعة
+          {/* Completed Events - Show 1 with link to events page */}
+          {!eventsLoading && completedEvents.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
+                  <h2 className="text-xl font-semibold">الطلعات المنتهية</h2>
+                  <Badge variant="secondary" className="bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300">
+                    {completedEvents.length}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {displayedCompleted.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+                {completedEvents.length > 1 && (
+                  <Link href="/events">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      data-testid="button-view-all-completed"
+                    >
+                      <ChevronDown className="h-4 w-4 ml-2" />
+                      عرض كل الطلعات ({completedEvents.length})
                     </Button>
                   </Link>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar */}
