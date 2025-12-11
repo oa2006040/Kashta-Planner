@@ -52,45 +52,9 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatNumber } from "@/lib/constants";
-import { CategoryIcon } from "@/components/category-icon";
+import { CategoryIcon, AVAILABLE_ICON_NAMES } from "@/components/category-icon";
 import { useLanguage } from "@/components/language-provider";
 import type { Category, Item, CategoryWithItems } from "@shared/schema";
-
-const AVAILABLE_ICONS = [
-  "coffee", "utensils", "flame", "tent", "car", "gamepad-2", "first-aid", "sparkles",
-  "cup-soda", "beer", "wine", "sandwich", "pizza", "cake", "apple", "banana", "cherry",
-  "cookie", "croissant", "egg", "fish", "grape", "ice-cream", "lollipop", "milk", "popcorn", "salad",
-  "soup", "drumstick", "bacon", "beef", "carrot", "citrus", "hot-dog",
-  "home", "building", "building-2", "warehouse", "store", "hotel", "castle", "church", "school", "hospital",
-  "camping", "mountain", "mountain-snow", "trees", "tree-palm", "tree-deciduous", "tree-pine", "flower", "flower-2", "leaf", "clover",
-  "sun", "moon", "star", "cloud", "cloud-rain", "cloud-snow", "wind", "rainbow", "umbrella", "thermometer",
-  "map", "map-pin", "compass", "globe", "navigation", "signpost", "route", "milestone",
-  "truck", "bus", "train", "plane", "ship", "bike", "motorcycle", "tractor", "forklift", "ambulance",
-  "shirt", "footprints", "glasses", "watch", "crown", "gem", "ring", "necklace", "hat", "boot",
-  "scissors", "ruler", "pencil", "pen", "highlighter", "eraser", "paperclip", "pin", "thumbtack", "bookmark",
-  "book", "notebook", "book-open", "library", "graduation-cap", "backpack", "briefcase", "folder", "file", "clipboard",
-  "camera", "video", "film", "tv", "monitor", "laptop", "tablet", "smartphone", "headphones", "speaker",
-  "music", "music-2", "music-3", "music-4", "mic", "mic-2", "radio", "volume-2", "bell", "alarm-clock",
-  "phone", "mail", "message-circle", "message-square", "inbox", "send", "at-sign", "hash", "link", "qr-code",
-  "wifi", "bluetooth", "signal", "satellite", "antenna", "cast", "screen-share", "airplay", "download", "upload",
-  "key", "lock", "unlock", "shield", "shield-check", "eye", "eye-off", "fingerprint", "scan", "id-card",
-  "heart", "heart-pulse", "activity", "stethoscope", "syringe", "pill", "capsule", "bandage", "thermometer-sun", "brain",
-  "dumbbell", "weight", "trophy", "medal", "target", "bullseye", "flag", "flag-triangle", "pennant", "award",
-  "dice-1", "dice-2", "dice-3", "dice-4", "dice-5", "dice-6", "puzzle", "joystick", "game-controller", "chess",
-  "palette", "brush", "paint-bucket", "spray-can", "stamp", "crop", "layers", "shapes", "circle", "square",
-  "triangle", "hexagon", "octagon", "pentagon", "diamond", "heart-handshake", "handshake", "users", "user", "user-plus",
-  "baby", "person-standing", "accessibility", "dog", "cat", "bird", "fish-symbol", "bug", "rabbit", "turtle",
-  "wrench", "hammer", "screwdriver", "drill", "saw", "axe", "shovel", "pickaxe", "flashlight", "lantern",
-  "plug", "battery", "battery-charging", "zap", "power", "lightbulb", "lamp", "lamp-desk", "fan", "air-vent",
-  "droplet", "droplets", "waves", "anchor", "life-buoy", "sailboat", "fishing", "shell", "palm-tree", "cactus",
-  "flame", "fire-extinguisher", "smoke", "wind", "tornado", "snowflake", "sun-snow", "sunrise", "sunset", "moon-star",
-  "gift", "party-popper", "balloon", "cake-slice", "candy", "candy-cane", "ribbon", "bow", "box", "package",
-  "shopping-bag", "shopping-cart", "shopping-basket", "wallet", "credit-card", "banknote", "coins", "piggy-bank", "receipt", "calculator",
-  "clock", "timer", "hourglass", "calendar", "calendar-days", "calendar-check", "alarm-clock", "watch", "stopwatch", "timer-off",
-  "flag-checkered", "rocket", "satellite-dish", "radio-tower", "construction", "cone", "barrier", "traffic-cone", "hard-hat", "vest",
-  "recycle", "leaf", "sprout", "seedling", "plant", "flower-lotus", "clover", "shamrock", "herb", "wheat",
-  "microscope", "telescope", "binoculars", "magnifying-glass", "search", "zoom-in", "zoom-out", "focus", "scan-line", "crosshair"
-];
 
 const AVAILABLE_COLORS = [
   "#6B4423", "#8B4513", "#A0522D", "#CD853F", "#DEB887",
@@ -356,7 +320,7 @@ function AddCategoryDialog() {
   const { toast } = useToast();
   const { t, language } = useLanguage();
 
-  const filteredIcons = AVAILABLE_ICONS.filter(icon => 
+  const filteredIcons = AVAILABLE_ICON_NAMES.filter(icon => 
     icon.toLowerCase().includes(iconSearch.toLowerCase())
   );
 
