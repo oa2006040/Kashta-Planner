@@ -762,7 +762,7 @@ export default function Dashboard() {
                 <div className="space-y-1">
                   <p className="text-[10px] sm:text-xs text-muted-foreground">{t("التاريخ الهجري", "Hijri Date")}</p>
                   <p className="text-base sm:text-lg font-semibold">
-                    {formatHijriDate(new Date())}
+                    {formatHijriDate(new Date(), language)}
                   </p>
                 </div>
                 <div className="border-t border-border pt-2 sm:pt-3 space-y-1">
