@@ -215,9 +215,10 @@ export function formatArabicDateShort(date: Date | string): string {
   }).format(d);
 }
 
-export function formatHijriDate(date: Date | string): string {
+export function formatHijriDate(date: Date | string, language: "ar" | "en" = "ar"): string {
   const d = new Date(date);
-  return new Intl.DateTimeFormat("ar-SA-u-ca-islamic", {
+  const locale = language === "ar" ? "ar-SA-u-ca-islamic" : "en-u-ca-islamic";
+  return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",

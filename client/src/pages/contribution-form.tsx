@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { ArrowRight, Package, Check, Plus } from "lucide-react";
+import { ArrowRight, ArrowLeft, Package, Check, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,12 +20,14 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { CategoryIcon } from "@/components/category-icon";
 import { AvatarIcon } from "@/components/avatar-icon";
+import { useLanguage } from "@/components/language-provider";
 import type { CategoryWithItems, Item, Participant, EventWithDetails } from "@shared/schema";
 
 export default function ContributionForm() {
   const [, params] = useRoute("/events/:id/items");
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { t, language } = useLanguage();
   const eventId = params?.id;
 
   const [selectedItems, setSelectedItems] = useState<Map<string, { 
@@ -71,8 +70,8 @@ export default function ContributionForm() {
   const handleSubmit = async () => {
     if (selectedItems.size === 0) {
       toast({
-        title: "تنبيه",
-        description: "الرجاء اختيار مستلزم واحد على الأقل",
+        title: t("تنبيه", "Notice"),
+        description: t("الرجاء اختيار مستلزم واحد على الأقل", "Please select at least one item"),
         variant: "destructive",
       });
       return;
@@ -91,15 +90,15 @@ export default function ContributionForm() {
       await Promise.all(promises);
 
       toast({
-        title: "تم بنجاح",
-        description: `تم إضافة ${selectedItems.size} مستلزم للطلعة`,
+        title: t("تم بنجاح", "Success"),
+        description: t(`تم إضافة ${selectedItems.size} مستلزم للطلعة`, `Added ${selectedItems.size} item(s) to the event`),
       });
 
       navigate(`/events/${eventId}`);
     } catch (error) {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء إضافة المستلزمات",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء إضافة المستلزمات", "An error occurred while adding items"),
         variant: "destructive",
       });
     }
@@ -123,6 +122,7 @@ export default function ContributionForm() {
   };
 
   const isLoading = eventLoading || categoriesLoading;
+  const BackArrow = language === "ar" ? ArrowRight : ArrowLeft;
 
   if (isLoading) {
     return (
@@ -142,9 +142,9 @@ export default function ContributionForm() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Package className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">الطلعة غير موجودة</h3>
+            <h3 className="text-lg font-medium mb-2">{t("الطلعة غير موجودة", "Event not found")}</h3>
             <Link href="/events">
-              <Button>العودة للطلعات</Button>
+              <Button>{t("العودة للطلعات", "Back to Events")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -163,10 +163,10 @@ export default function ContributionForm() {
           onClick={() => navigate(`/events/${eventId}`)}
           data-testid="button-back"
         >
-          <ArrowRight className="h-5 w-5" />
+          <BackArrow className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">إضافة مستلزمات</h1>
+          <h1 className="text-2xl font-bold">{t("إضافة مستلزمات", "Add Items")}</h1>
           <p className="text-muted-foreground">{event.title}</p>
         </div>
       </div>
@@ -181,8 +181,8 @@ export default function ContributionForm() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <CategoryIcon icon={category.icon} color={category.color} className="h-5 w-5" />
-                  {category.nameAr}
-                  <Badge variant="secondary" className="mr-auto">
+                  {language === "ar" ? category.nameAr : (category.name || category.nameAr)}
+                  <Badge variant="secondary" className={language === "ar" ? "mr-auto" : "ml-auto"}>
                     {availableItems.length}
                   </Badge>
                 </CardTitle>
@@ -224,7 +224,7 @@ export default function ContributionForm() {
                                   data-testid={`checkbox-include-participant-${item.id}`}
                                 />
                                 <Label htmlFor={`participant-toggle-${item.id}`} className="text-sm cursor-pointer flex-1">
-                                  تعيين مسؤول
+                                  {t("تعيين مسؤول", "Assign responsible")}
                                 </Label>
                                 <Checkbox
                                   id={`cost-toggle-${item.id}`}
@@ -233,7 +233,7 @@ export default function ContributionForm() {
                                   data-testid={`checkbox-include-cost-${item.id}`}
                                 />
                                 <Label htmlFor={`cost-toggle-${item.id}`} className="text-sm cursor-pointer">
-                                  إضافة تكلفة
+                                  {t("إضافة تكلفة", "Add cost")}
                                 </Label>
                               </div>
                               
@@ -241,13 +241,13 @@ export default function ContributionForm() {
                                 <div className="grid gap-3 sm:grid-cols-2">
                                   {itemData?.includeParticipant && (
                                     <div className="space-y-1.5">
-                                      <Label className="text-xs">المسؤول</Label>
+                                      <Label className="text-xs">{t("المسؤول", "Responsible")}</Label>
                                       <Select
                                         value={itemData?.participantId || ""}
                                         onValueChange={(v) => updateItemData(item.id, "participantId", v)}
                                       >
                                         <SelectTrigger data-testid={`select-participant-${item.id}`}>
-                                          <SelectValue placeholder="اختر مشارك" />
+                                          <SelectValue placeholder={t("اختر مشارك", "Select participant")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                           {participants?.map((p) => (
@@ -264,7 +264,7 @@ export default function ContributionForm() {
                                   )}
                                   {itemData?.includeCost && (
                                     <div className="space-y-1.5">
-                                      <Label className="text-xs">التكلفة (ر.ق)</Label>
+                                      <Label className="text-xs">{t("التكلفة (ر.ق)", "Cost (QAR)")}</Label>
                                       <Input
                                         type="number"
                                         placeholder="0.000"
@@ -295,7 +295,7 @@ export default function ContributionForm() {
             <CardContent className="flex items-center justify-between gap-4 py-4">
               <div className="flex items-center gap-2">
                 <Check className="h-5 w-5" />
-                <span>{selectedItems.size} مستلزم محدد</span>
+                <span>{selectedItems.size} {t("مستلزم محدد", "item(s) selected")}</span>
               </div>
               <Button
                 variant="secondary"
@@ -303,7 +303,7 @@ export default function ContributionForm() {
                 disabled={addContributionMutation.isPending}
                 data-testid="button-save-contributions"
               >
-                {addContributionMutation.isPending ? "جاري الحفظ..." : "إضافة للطلعة"}
+                {addContributionMutation.isPending ? t("جاري الحفظ...", "Saving...") : t("إضافة للطلعة", "Add to Event")}
               </Button>
             </CardContent>
           </Card>
@@ -313,7 +313,7 @@ export default function ContributionForm() {
       {selectedItems.size === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p>اختر المستلزمات التي تريد إضافتها للطلعة</p>
+          <p>{t("اختر المستلزمات التي تريد إضافتها للطلعة", "Select items you want to add to the event")}</p>
         </div>
       )}
     </div>

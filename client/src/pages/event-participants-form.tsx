@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowRight, Users, Check, Plus, Package, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowRight, ArrowLeft, Users, Check, Plus, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,12 +14,14 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AvatarIcon } from "@/components/avatar-icon";
 import { CategoryIcon } from "@/components/category-icon";
+import { useLanguage } from "@/components/language-provider";
 import type { Participant, EventWithDetails, CategoryWithItems } from "@shared/schema";
 
 export default function EventParticipantsForm() {
   const [, params] = useRoute("/events/:id/participants");
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { t, language } = useLanguage();
   const eventId = params?.id;
 
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
@@ -57,8 +59,8 @@ export default function EventParticipantsForm() {
   const handleSubmit = async () => {
     if (!selectedParticipantId) {
       toast({
-        title: "تنبيه",
-        description: "الرجاء اختيار مشارك",
+        title: t("تنبيه", "Notice"),
+        description: t("الرجاء اختيار مشارك", "Please select a participant"),
         variant: "destructive",
       });
       return;
@@ -66,15 +68,14 @@ export default function EventParticipantsForm() {
 
     if (selectedItems.size === 0) {
       toast({
-        title: "تنبيه",
-        description: "يجب اختيار مستلزم واحد على الأقل للمشارك",
+        title: t("تنبيه", "Notice"),
+        description: t("يجب اختيار مستلزم واحد على الأقل للمشارك", "Please select at least one item for the participant"),
         variant: "destructive",
       });
       return;
     }
 
     try {
-      // Sanitize costs: convert empty strings to "0" and ensure numeric values
       const sanitizedCosts: Record<string, string> = {};
       Array.from(selectedItems).forEach((itemId) => {
         const cost = itemCosts[itemId];
@@ -88,15 +89,15 @@ export default function EventParticipantsForm() {
       });
 
       toast({
-        title: "تم بنجاح",
-        description: `تم إضافة المشارك مع ${selectedItems.size} مستلزم`,
+        title: t("تم بنجاح", "Success"),
+        description: t(`تم إضافة المشارك مع ${selectedItems.size} مستلزم`, `Added participant with ${selectedItems.size} item(s)`),
       });
 
       navigate(`/events/${eventId}`);
     } catch (error) {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء إضافة المشارك",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء إضافة المشارك", "An error occurred while adding the participant"),
         variant: "destructive",
       });
     }
@@ -127,6 +128,7 @@ export default function EventParticipantsForm() {
   };
 
   const isLoading = eventLoading || participantsLoading || categoriesLoading;
+  const BackArrow = language === "ar" ? ArrowRight : ArrowLeft;
 
   if (isLoading) {
     return (
@@ -146,9 +148,9 @@ export default function EventParticipantsForm() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Users className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">الطلعة غير موجودة</h3>
+            <h3 className="text-lg font-medium mb-2">{t("الطلعة غير موجودة", "Event not found")}</h3>
             <Link href="/events">
-              <Button>العودة للطلعات</Button>
+              <Button>{t("العودة للطلعات", "Back to Events")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -178,10 +180,10 @@ export default function EventParticipantsForm() {
           onClick={() => navigate(`/events/${eventId}`)}
           data-testid="button-back"
         >
-          <ArrowRight className="h-5 w-5" />
+          <BackArrow className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">إضافة مشارك</h1>
+          <h1 className="text-2xl font-bold">{t("إضافة مشارك", "Add Participant")}</h1>
           <p className="text-muted-foreground">{event.title}</p>
         </div>
       </div>
@@ -190,11 +192,11 @@ export default function EventParticipantsForm() {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-5 w-5" />
-            الخطوة 1: اختر المشارك
+            {t("الخطوة 1: اختر المشارك", "Step 1: Select Participant")}
             {selectedParticipantId && (
-              <Badge className="mr-auto bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                <Check className="h-3 w-3 ml-1" />
-                تم الاختيار
+              <Badge className={`${language === "ar" ? "mr-auto" : "ml-auto"} bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300`}>
+                <Check className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                {t("تم الاختيار", "Selected")}
               </Badge>
             )}
           </CardTitle>
@@ -231,7 +233,7 @@ export default function EventParticipantsForm() {
                       )}
                     </div>
                     <Badge variant="secondary">
-                      {participant.tripCount || 0} طلعات
+                      {participant.tripCount || 0} {t("طلعات", "trips")}
                     </Badge>
                   </div>
                 </div>
@@ -240,11 +242,11 @@ export default function EventParticipantsForm() {
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Users className="h-10 w-10 text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground mb-3">لا يوجد مشاركين متاحين</p>
+              <p className="text-sm text-muted-foreground mb-3">{t("لا يوجد مشاركين متاحين", "No participants available")}</p>
               <Link href="/participants/new">
                 <Button size="sm">
-                  <Plus className="h-4 w-4 ml-2" />
-                  إضافة مشارك جديد
+                  <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                  {t("إضافة مشارك جديد", "Add New Participant")}
                 </Button>
               </Link>
             </div>
@@ -257,15 +259,15 @@ export default function EventParticipantsForm() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Package className="h-5 w-5" />
-              الخطوة 2: اختر المستلزمات
-              <Badge variant="secondary" className="mr-auto">
-                {selectedItems.size} محدد
+              {t("الخطوة 2: اختر المستلزمات", "Step 2: Select Items")}
+              <Badge variant="secondary" className={language === "ar" ? "mr-auto" : "ml-auto"}>
+                {selectedItems.size} {t("محدد", "selected")}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground mb-4">
-              اختر المستلزمات التي سيكون {selectedParticipant?.name} مسؤولاً عنها (مطلوب مستلزم واحد على الأقل)
+              {t(`اختر المستلزمات التي سيكون ${selectedParticipant?.name} مسؤولاً عنها (مطلوب مستلزم واحد على الأقل)`, `Select items ${selectedParticipant?.name} will be responsible for (at least one required)`)}
             </p>
             
             {categories?.map((category) => {
@@ -281,7 +283,7 @@ export default function EventParticipantsForm() {
                     <div className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover-elevate">
                       <div className="flex items-center gap-3">
                         <CategoryIcon icon={category.icon} className="h-4 w-4" />
-                        <span className="font-medium">{category.nameAr}</span>
+                        <span className="font-medium">{language === "ar" ? category.nameAr : (category.name || category.nameAr)}</span>
                         {selectedInCategory > 0 && (
                           <Badge className="bg-primary/10 text-primary">
                             {selectedInCategory}
@@ -305,7 +307,7 @@ export default function EventParticipantsForm() {
                       return (
                         <div
                           key={item.id}
-                          className={`p-3 mr-4 rounded-lg border transition-colors ${
+                          className={`p-3 ${language === "ar" ? "mr-4" : "ml-4"} rounded-lg border transition-colors ${
                             isSelected ? "border-primary bg-primary/5" : "border-border"
                           }`}
                         >
@@ -323,14 +325,14 @@ export default function EventParticipantsForm() {
                               <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
-                                  placeholder="التكلفة"
+                                  placeholder={t("التكلفة", "Cost")}
                                   value={itemCosts[item.id] || ""}
                                   onChange={(e) => setCost(item.id, e.target.value)}
                                   className="w-24 text-left"
                                   dir="ltr"
                                   data-testid={`input-cost-${item.id}`}
                                 />
-                                <span className="text-sm text-muted-foreground">ر.ق</span>
+                                <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
                               </div>
                             )}
                           </div>
@@ -355,7 +357,7 @@ export default function EventParticipantsForm() {
                 </div>
                 <span>{selectedParticipant?.name}</span>
                 <Badge variant="secondary" className="bg-primary-foreground/20 text-primary-foreground">
-                  {selectedItems.size} مستلزم
+                  {selectedItems.size} {t("مستلزم", "item(s)")}
                 </Badge>
               </div>
               <Button
@@ -364,7 +366,7 @@ export default function EventParticipantsForm() {
                 disabled={addParticipantMutation.isPending}
                 data-testid="button-save-participant"
               >
-                {addParticipantMutation.isPending ? "جاري الحفظ..." : "إضافة للطلعة"}
+                {addParticipantMutation.isPending ? t("جاري الحفظ...", "Saving...") : t("إضافة للطلعة", "Add to Event")}
               </Button>
             </CardContent>
           </Card>

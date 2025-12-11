@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { 
   ArrowRight, 
+  ArrowLeft,
   Calendar,
   MapPin,
   FileText,
@@ -46,27 +47,29 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { CategoryIcon } from "@/components/category-icon";
 import { MapPickerDialog } from "@/components/map-picker";
+import { useLanguage } from "@/components/language-provider";
 import type { Event, CategoryWithItems } from "@shared/schema";
-
-const eventFormSchema = z.object({
-  title: z.string().min(1, "يرجى إدخال اسم الطلعة"),
-  description: z.string().optional(),
-  location: z.string().optional(),
-  latitude: z.coerce.number().optional(),
-  longitude: z.coerce.number().optional(),
-  date: z.string().min(1, "يرجى اختيار التاريخ"),
-  endDate: z.string().optional(),
-  weather: z.string().optional(),
-  temperature: z.coerce.number().optional(),
-});
-
-type EventFormData = z.infer<typeof eventFormSchema>;
 
 export default function EventForm() {
   const [, navigate] = useLocation();
   const [, params] = useRoute("/events/:id/edit");
   const isEditing = !!params?.id;
   const { toast } = useToast();
+  const { t, language } = useLanguage();
+
+  const eventFormSchema = z.object({
+    title: z.string().min(1, t("يرجى إدخال اسم الطلعة", "Please enter event name")),
+    description: z.string().optional(),
+    location: z.string().optional(),
+    latitude: z.coerce.number().optional(),
+    longitude: z.coerce.number().optional(),
+    date: z.string().min(1, t("يرجى اختيار التاريخ", "Please select a date")),
+    endDate: z.string().optional(),
+    weather: z.string().optional(),
+    temperature: z.coerce.number().optional(),
+  });
+
+  type EventFormData = z.infer<typeof eventFormSchema>;
   
   const [selectContributions, setSelectContributions] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -80,6 +83,7 @@ export default function EventForm() {
   const [showMapPicker, setShowMapPicker] = useState(false);
 
   const todayStr = new Date().toISOString().split("T")[0];
+  const BackArrow = language === "ar" ? ArrowRight : ArrowLeft;
 
   const { data: event, isLoading: eventLoading } = useQuery<Event>({
     queryKey: ["/api/events", params?.id],
@@ -146,13 +150,13 @@ export default function EventForm() {
       form.setValue("temperature", data.temperature);
       
       toast({
-        title: "تم جلب الطقس",
+        title: t("تم جلب الطقس", "Weather fetched"),
         description: `${data.weather} - ${data.temperature}°C`,
       });
     } catch (error) {
       toast({
-        title: "خطأ",
-        description: "لم نتمكن من جلب بيانات الطقس",
+        title: t("خطأ", "Error"),
+        description: t("لم نتمكن من جلب بيانات الطقس", "Could not fetch weather data"),
         variant: "destructive",
       });
     } finally {
@@ -163,8 +167,8 @@ export default function EventForm() {
   const getDeviceLocation = () => {
     if (!navigator.geolocation) {
       toast({
-        title: "خطأ",
-        description: "المتصفح لا يدعم تحديد الموقع",
+        title: t("خطأ", "Error"),
+        description: t("المتصفح لا يدعم تحديد الموقع", "Browser does not support location"),
         variant: "destructive",
       });
       return;
@@ -180,28 +184,27 @@ export default function EventForm() {
         
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ar`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=${language}`
           );
           if (!response.ok) throw new Error("Geocoding failed");
           const data = await response.json();
-          // Get region/area + country
           const address = data.address || {};
           const region = address.state || address.region || address.county || address.city || address.town || address.village || "";
           const country = address.country || "";
           const locationName = region && country 
             ? `${region}، ${country}` 
-            : (region || country || "موقع محدد");
+            : (region || country || t("موقع محدد", "Selected location"));
           form.setValue("location", locationName);
         } catch (err) {
           console.error("Geocoding error:", err);
-          form.setValue("location", "موقع محدد");
+          form.setValue("location", t("موقع محدد", "Selected location"));
         }
         
         setIsLoadingLocation(false);
         
         toast({
-          title: "تم تحديد الموقع",
-          description: "تم الحصول على موقعك بنجاح",
+          title: t("تم تحديد الموقع", "Location set"),
+          description: t("تم الحصول على موقعك بنجاح", "Your location was obtained successfully"),
         });
         
         if (includeWeather) {
@@ -213,22 +216,22 @@ export default function EventForm() {
       },
       (error) => {
         setIsLoadingLocation(false);
-        let errorMessage = "حدث خطأ أثناء تحديد الموقع";
+        let errorMessage = t("حدث خطأ أثناء تحديد الموقع", "Error determining location");
         
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = "يرجى السماح بالوصول إلى موقعك من إعدادات المتصفح";
+            errorMessage = t("يرجى السماح بالوصول إلى موقعك من إعدادات المتصفح", "Please allow location access in browser settings");
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = "لا يمكن تحديد موقعك حالياً. تأكد من تفعيل GPS";
+            errorMessage = t("لا يمكن تحديد موقعك حالياً. تأكد من تفعيل GPS", "Cannot determine location. Make sure GPS is enabled");
             break;
           case error.TIMEOUT:
-            errorMessage = "انتهت المهلة الزمنية لتحديد الموقع. حاول مرة أخرى";
+            errorMessage = t("انتهت المهلة الزمنية لتحديد الموقع. حاول مرة أخرى", "Location timeout. Please try again");
             break;
         }
         
         toast({
-          title: "خطأ في تحديد الموقع",
+          title: t("خطأ في تحديد الموقع", "Location error"),
           description: errorMessage,
           variant: "destructive",
         });
@@ -247,8 +250,8 @@ export default function EventForm() {
     }
     
     toast({
-      title: "تم تحديد الموقع",
-      description: "تم إضافة الإحداثيات بنجاح",
+      title: t("تم تحديد الموقع", "Location set"),
+      description: t("تم إضافة الإحداثيات بنجاح", "Coordinates added successfully"),
     });
     
     if (includeWeather) {
@@ -294,15 +297,15 @@ export default function EventForm() {
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       const event = await response.json();
       toast({
-        title: "تم إنشاء الطلعة",
-        description: "تم إنشاء الطلعة بنجاح",
+        title: t("تم إنشاء الطلعة", "Event created"),
+        description: t("تم إنشاء الطلعة بنجاح", "Event created successfully"),
       });
       navigate(`/events/${event.id}`);
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء إنشاء الطلعة",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء إنشاء الطلعة", "Error creating event"),
         variant: "destructive",
       });
     },
@@ -325,15 +328,15 @@ export default function EventForm() {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
       toast({
-        title: "تم التحديث",
-        description: "تم تحديث الطلعة بنجاح",
+        title: t("تم التحديث", "Updated"),
+        description: t("تم تحديث الطلعة بنجاح", "Event updated successfully"),
       });
       navigate(`/events/${params?.id}`);
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تحديث الطلعة",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تحديث الطلعة", "Error updating event"),
         variant: "destructive",
       });
     },
@@ -397,14 +400,14 @@ export default function EventForm() {
           className="mb-3 sm:mb-4 h-10 sm:h-9"
           data-testid="button-back"
         >
-          <ArrowRight className="h-4 w-4 ml-2" />
-          رجوع
+          <BackArrow className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+          {t("رجوع", "Back")}
         </Button>
         <h1 className="text-xl sm:text-2xl font-bold">
-          {isEditing ? "تعديل الطلعة" : "طلعة جديدة"}
+          {isEditing ? t("تعديل الطلعة", "Edit Event") : t("طلعة جديدة", "New Event")}
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
-          {isEditing ? "قم بتعديل تفاصيل الطلعة" : "أدخل تفاصيل الطلعة الجديدة"}
+          {isEditing ? t("قم بتعديل تفاصيل الطلعة", "Edit event details") : t("أدخل تفاصيل الطلعة الجديدة", "Enter new event details")}
         </p>
       </div>
 
@@ -417,10 +420,10 @@ export default function EventForm() {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>اسم الطلعة *</FormLabel>
+                    <FormLabel>{t("اسم الطلعة", "Event Name")} *</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="مثال: كشتة نهاية الأسبوع" 
+                        placeholder={t("مثال: كشتة نهاية الأسبوع", "Example: Weekend Trip")} 
                         {...field}
                         data-testid="input-event-title"
                       />
@@ -435,10 +438,10 @@ export default function EventForm() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الوصف</FormLabel>
+                    <FormLabel>{t("الوصف", "Description")}</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="أضف وصفاً للطلعة..." 
+                        placeholder={t("أضف وصفاً للطلعة...", "Add event description...")} 
                         className="resize-none"
                         {...field}
                         data-testid="input-event-description"
@@ -454,15 +457,15 @@ export default function EventForm() {
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الموقع</FormLabel>
+                    <FormLabel>{t("الموقع", "Location")}</FormLabel>
                     <FormControl>
                       <div className="flex flex-col gap-2">
                         <div className="flex gap-2">
                           <div className="relative flex-1">
-                            <MapPin className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <MapPin className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground`} />
                             <Input 
-                              placeholder="مثال: روضة خريم" 
-                              className="pr-9"
+                              placeholder={t("مثال: روضة خريم", "Example: Desert Camp")} 
+                              className={language === "ar" ? "pr-9" : "pl-9"}
                               {...field}
                               data-testid="input-event-location"
                             />
@@ -479,7 +482,7 @@ export default function EventForm() {
                             ) : (
                               <Navigation className="h-4 w-4" />
                             )}
-                            <span className="mr-2 hidden sm:inline">موقعي</span>
+                            <span className={`${language === "ar" ? "mr-2" : "ml-2"} hidden sm:inline`}>{t("موقعي", "My Location")}</span>
                           </Button>
                           <Button
                             type="button"
@@ -488,7 +491,7 @@ export default function EventForm() {
                             data-testid="button-open-map-picker"
                           >
                             <Target className="h-4 w-4" />
-                            <span className="mr-2 hidden sm:inline">الخريطة</span>
+                            <span className={`${language === "ar" ? "mr-2" : "ml-2"} hidden sm:inline`}>{t("الخريطة", "Map")}</span>
                           </Button>
                         </div>
                         {coordinates && (
@@ -504,7 +507,7 @@ export default function EventForm() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <ExternalLink className="h-3 w-3" />
-                              فتح في الخريطة
+                              {t("فتح في الخريطة", "Open in Maps")}
                             </a>
                           </div>
                         )}
@@ -520,13 +523,13 @@ export default function EventForm() {
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>تاريخ البداية *</FormLabel>
+                    <FormLabel>{t("تاريخ البداية", "Start Date")} *</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Calendar className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground`} />
                         <Input 
                           type="date" 
-                          className="pr-9"
+                          className={language === "ar" ? "pr-9" : "pl-9"}
                           min={isEditing ? undefined : todayStr}
                           {...field}
                           data-testid="input-event-date"
@@ -542,7 +545,7 @@ export default function EventForm() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="include-end-date">تحديد تاريخ نهاية</Label>
+                    <Label htmlFor="include-end-date">{t("تحديد تاريخ نهاية", "Set End Date")}</Label>
                   </div>
                   <Switch
                     id="include-end-date"
@@ -558,13 +561,13 @@ export default function EventForm() {
                     name="endDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>تاريخ النهاية</FormLabel>
+                        <FormLabel>{t("تاريخ النهاية", "End Date")}</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Calendar className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground`} />
                             <Input 
                               type="date" 
-                              className="pr-9"
+                              className={language === "ar" ? "pr-9" : "pl-9"}
                               min={form.getValues("date") || todayStr}
                               {...field}
                               data-testid="input-event-end-date"
@@ -582,7 +585,7 @@ export default function EventForm() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
                     <Cloud className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="include-weather">جلب الطقس تلقائياً</Label>
+                    <Label htmlFor="include-weather">{t("جلب الطقس تلقائياً", "Auto-fetch Weather")}</Label>
                   </div>
                   <Switch
                     id="include-weather"
@@ -595,7 +598,7 @@ export default function EventForm() {
                 
                 {!coordinates && (
                   <p className="text-xs text-muted-foreground">
-                    حدد الموقع أولاً لجلب بيانات الطقس تلقائياً
+                    {t("حدد الموقع أولاً لجلب بيانات الطقس تلقائياً", "Set location first to auto-fetch weather data")}
                   </p>
                 )}
                 
@@ -603,8 +606,8 @@ export default function EventForm() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     {isLoadingWeather ? (
                       <div className="col-span-2 flex items-center justify-center p-4">
-                        <Loader2 className="h-5 w-5 animate-spin ml-2" />
-                        <span className="text-sm text-muted-foreground">جاري جلب الطقس...</span>
+                        <Loader2 className={`h-5 w-5 animate-spin ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                        <span className="text-sm text-muted-foreground">{t("جاري جلب الطقس...", "Fetching weather...")}</span>
                       </div>
                     ) : (
                       <>
@@ -615,11 +618,11 @@ export default function EventForm() {
                             <FormItem>
                               <FormLabel className="flex items-center gap-2">
                                 <Cloud className="h-4 w-4" />
-                                الطقس
+                                {t("الطقس", "Weather")}
                               </FormLabel>
                               <FormControl>
                                 <Input 
-                                  placeholder="صافي"
+                                  placeholder={t("صافي", "Clear")}
                                   {...field}
                                   readOnly
                                   className="bg-muted"
@@ -638,7 +641,7 @@ export default function EventForm() {
                             <FormItem>
                               <FormLabel className="flex items-center gap-2">
                                 <Thermometer className="h-4 w-4" />
-                                درجة الحرارة
+                                {t("درجة الحرارة", "Temperature")}
                               </FormLabel>
                               <FormControl>
                                 <div className="relative">
@@ -651,7 +654,7 @@ export default function EventForm() {
                                     onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                                     data-testid="input-event-temperature"
                                   />
-                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">°C</span>
+                                  <span className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 text-muted-foreground`}>°C</span>
                                 </div>
                               </FormControl>
                               <FormMessage />
@@ -678,16 +681,16 @@ export default function EventForm() {
                       className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
                     >
                       <Package className="h-4 w-4 text-muted-foreground" />
-                      تحديد المستلزمات المطلوبة
+                      {t("تحديد المستلزمات المطلوبة", "Select Required Items")}
                     </label>
                   </div>
 
                   {selectContributions && (
-                    <div className="space-y-3 pr-6">
+                    <div className={`space-y-3 ${language === "ar" ? "pr-6" : "pl-6"}`}>
                       {selectedItems.size > 0 && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Badge variant="secondary">{selectedItems.size}</Badge>
-                          <span>مستلزم محدد</span>
+                          <span>{t("مستلزم محدد", "items selected")}</span>
                         </div>
                       )}
 
@@ -714,7 +717,7 @@ export default function EventForm() {
                                 </Button>
                               </CollapsibleTrigger>
                               <CategoryIcon icon={category.icon} color={category.color} className="h-5 w-5" />
-                              <span className="font-medium flex-1">{category.nameAr}</span>
+                              <span className="font-medium flex-1">{language === "ar" ? category.nameAr : (category.name || category.nameAr)}</span>
                               {selectedCount > 0 && (
                                 <Badge variant="secondary" className="text-xs">
                                   {selectedCount}/{categoryItems.length}
@@ -731,10 +734,10 @@ export default function EventForm() {
                                 className="text-xs"
                                 data-testid={`button-select-all-${category.id}`}
                               >
-                                {allSelected ? "إلغاء الكل" : "تحديد الكل"}
+                                {allSelected ? t("إلغاء الكل", "Deselect All") : t("تحديد الكل", "Select All")}
                               </Button>
                             </div>
-                            <CollapsibleContent className="space-y-1 pr-6 pt-2">
+                            <CollapsibleContent className={`space-y-1 ${language === "ar" ? "pr-6" : "pl-6"} pt-2`}>
                               {categoryItems.map((item) => (
                                 <div
                                   key={item.id}
@@ -774,11 +777,11 @@ export default function EventForm() {
                   data-testid="button-submit-event"
                 >
                   {isPending ? (
-                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                    <Loader2 className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"} animate-spin`} />
                   ) : (
-                    <Save className="h-4 w-4 ml-2" />
+                    <Save className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
                   )}
-                  {isEditing ? "حفظ التغييرات" : "إنشاء الطلعة"}
+                  {isEditing ? t("حفظ التغييرات", "Save Changes") : t("إنشاء الطلعة", "Create Event")}
                 </Button>
                 <Button 
                   type="button" 
@@ -786,7 +789,7 @@ export default function EventForm() {
                   onClick={() => navigate(isEditing ? `/events/${params?.id}` : "/events")}
                   data-testid="button-cancel"
                 >
-                  إلغاء
+                  {t("إلغاء", "Cancel")}
                 </Button>
               </div>
 
@@ -800,11 +803,11 @@ export default function EventForm() {
                     data-testid="button-submit-event-mobile"
                   >
                     {isPending ? (
-                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                      <Loader2 className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"} animate-spin`} />
                     ) : (
-                      <Save className="h-4 w-4 ml-2" />
+                      <Save className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
                     )}
-                    {isEditing ? "حفظ التغييرات" : "إنشاء الطلعة"}
+                    {isEditing ? t("حفظ التغييرات", "Save Changes") : t("إنشاء الطلعة", "Create Event")}
                   </Button>
                   <Button 
                     type="button" 
@@ -813,7 +816,7 @@ export default function EventForm() {
                     onClick={() => navigate(isEditing ? `/events/${params?.id}` : "/events")}
                     data-testid="button-cancel-mobile"
                   >
-                    إلغاء
+                    {t("إلغاء", "Cancel")}
                   </Button>
                 </div>
               </div>

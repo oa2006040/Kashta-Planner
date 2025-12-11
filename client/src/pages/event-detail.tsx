@@ -57,23 +57,24 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { formatArabicDate, formatHijriDate, formatCurrency, formatNumber } from "@/lib/constants";
+import { formatDate, formatHijriDate, formatCurrency, formatNumber } from "@/lib/constants";
 import { CategoryIcon } from "@/components/category-icon";
 import { AvatarIcon } from "@/components/avatar-icon";
+import { useLanguage } from "@/components/language-provider";
 import type { EventWithDetails, Contribution, Participant, Category, EventSettlement } from "@shared/schema";
 
-function getStatusBadge(status: string) {
+function getStatusBadge(status: string, t: (ar: string, en: string) => string) {
   switch (status) {
     case 'upcoming':
-      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: 'قادمة' };
+      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: t('قادمة', 'Upcoming') };
     case 'ongoing':
-      return { className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', label: 'جارية' };
+      return { className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', label: t('جارية', 'Ongoing') };
     case 'completed':
-      return { className: 'bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300', label: 'منتهية' };
+      return { className: 'bg-gray-100 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300', label: t('منتهية', 'Completed') };
     case 'cancelled':
-      return { className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', label: 'ملغاة' };
+      return { className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', label: t('ملغاة', 'Cancelled') };
     default:
-      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: 'قادمة' };
+      return { className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', label: t('قادمة', 'Upcoming') };
   }
 }
 
@@ -299,6 +300,8 @@ export default function EventDetail() {
   const [, params] = useRoute("/events/:id");
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { t, language } = useLanguage();
+  const BackArrow = language === "ar" ? ArrowRight : ArrowLeft;
 
   const { data: event, isLoading } = useQuery<EventWithDetails>({
     queryKey: ["/api/events", params?.id],
@@ -327,14 +330,14 @@ export default function EventDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id, "settlement"] });
       toast({
-        title: "تم التحديث",
-        description: "تم تحديث حالة الدفع",
+        title: t("تم التحديث", "Updated"),
+        description: t("تم تحديث حالة الدفع", "Payment status updated"),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تحديث حالة الدفع",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تحديث حالة الدفع", "Error updating payment status"),
         variant: "destructive",
       });
     },
@@ -348,20 +351,20 @@ export default function EventDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
-        title: "تم الحذف",
-        description: "تم حذف الطلعة بنجاح",
+        title: t("تم الحذف", "Deleted"),
+        description: t("تم حذف الطلعة بنجاح", "Event deleted successfully"),
       });
       navigate("/events");
     },
     onError: (error: Error) => {
-      let errorMessage = "حدث خطأ أثناء حذف الطلعة";
+      let errorMessage = t("حدث خطأ أثناء حذف الطلعة", "Error deleting event");
       if (error.message.includes("400")) {
         errorMessage = error.message.includes("تسويات") || error.message.includes("ديون")
-          ? "لا يمكن حذف الطلعة لأنها تحتوي على تسويات وديون"
-          : "لا يمكن حذف الطلعة لأنها تحتوي على مساهمات بتكاليف";
+          ? t("لا يمكن حذف الطلعة لأنها تحتوي على تسويات وديون", "Cannot delete event with settlements and debts")
+          : t("لا يمكن حذف الطلعة لأنها تحتوي على مساهمات بتكاليف", "Cannot delete event with cost contributions");
       }
       toast({
-        title: "خطأ",
+        title: t("خطأ", "Error"),
         description: errorMessage,
         variant: "destructive",
       });
@@ -377,16 +380,16 @@ export default function EventDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
-        title: "تم الإلغاء",
-        description: "تم إلغاء الطلعة بنجاح",
+        title: t("تم الإلغاء", "Cancelled"),
+        description: t("تم إلغاء الطلعة بنجاح", "Event cancelled successfully"),
       });
     },
     onError: (error: Error) => {
       const errorMessage = error.message.includes("400") || error.message.includes("تسويات")
-        ? "لا يمكن إلغاء الطلعة لأنها تحتوي على تسويات وديون"
-        : "حدث خطأ أثناء إلغاء الطلعة";
+        ? t("لا يمكن إلغاء الطلعة لأنها تحتوي على تسويات وديون", "Cannot cancel event with settlements and debts")
+        : t("حدث خطأ أثناء إلغاء الطلعة", "Error cancelling event");
       toast({
-        title: "خطأ",
+        title: t("خطأ", "Error"),
         description: errorMessage,
         variant: "destructive",
       });
@@ -400,14 +403,14 @@ export default function EventDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
       toast({
-        title: "تم الحذف",
-        description: "تم إزالة المشارك ومستلزماته من الطلعة",
+        title: t("تم الحذف", "Deleted"),
+        description: t("تم إزالة المشارك ومستلزماته من الطلعة", "Participant and their items removed from event"),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء إزالة المشارك",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء إزالة المشارك", "Error removing participant"),
         variant: "destructive",
       });
     },
@@ -421,14 +424,14 @@ export default function EventDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
-        title: "تم الحذف",
-        description: "تم حذف المستلزم من الطلعة",
+        title: t("تم الحذف", "Deleted"),
+        description: t("تم حذف المستلزم من الطلعة", "Item removed from event"),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء حذف المستلزم",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء حذف المستلزم", "Error removing item"),
         variant: "destructive",
       });
     },
@@ -443,14 +446,14 @@ export default function EventDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/participants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
-        title: "تم إلغاء التعيين",
-        description: "تم نقل المستلزم إلى قائمة المتبقية",
+        title: t("تم إلغاء التعيين", "Unassigned"),
+        description: t("تم نقل المستلزم إلى قائمة المتبقية", "Item moved to remaining list"),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء إلغاء التعيين",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء إلغاء التعيين", "Error unassigning item"),
         variant: "destructive",
       });
     },
@@ -472,14 +475,14 @@ export default function EventDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/participants"] });
       toast({
-        title: "تم التعيين",
-        description: "تم تعيين المشارك للمستلزم بنجاح",
+        title: t("تم التعيين", "Assigned"),
+        description: t("تم تعيين المشارك للمستلزم بنجاح", "Participant assigned to item successfully"),
       });
     },
     onError: () => {
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تعيين المشارك",
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تعيين المشارك", "Error assigning participant"),
         variant: "destructive",
       });
     },
@@ -509,10 +512,10 @@ export default function EventDetail() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Calendar className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">الطلعة غير موجودة</h3>
-            <p className="text-muted-foreground mb-4">لم يتم العثور على هذه الطلعة</p>
+            <h3 className="text-lg font-medium mb-2">{t("الطلعة غير موجودة", "Event Not Found")}</h3>
+            <p className="text-muted-foreground mb-4">{t("لم يتم العثور على هذه الطلعة", "This event could not be found")}</p>
             <Link href="/events">
-              <Button>العودة للطلعات</Button>
+              <Button>{t("العودة للطلعات", "Back to Events")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -520,7 +523,7 @@ export default function EventDetail() {
     );
   }
 
-  const statusBadge = getStatusBadge(event.status || 'upcoming');
+  const statusBadge = getStatusBadge(event.status || 'upcoming', t);
   const eventDate = new Date(event.date);
   const totalBudget = event.contributions?.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0) || 0;
   const participantCount = event.eventParticipants?.length || 0;
@@ -553,7 +556,7 @@ export default function EventDetail() {
           onClick={() => navigate("/events")}
           data-testid="button-back"
         >
-          <ArrowRight className="h-5 w-5" />
+          <BackArrow className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
@@ -578,18 +581,18 @@ export default function EventDetail() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>إلغاء الطلعة</AlertDialogTitle>
+                  <AlertDialogTitle>{t("إلغاء الطلعة", "Cancel Event")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    هل أنت متأكد من إلغاء هذه الطلعة؟ سيتم تغيير حالتها إلى "ملغاة".
+                    {t("هل أنت متأكد من إلغاء هذه الطلعة؟ سيتم تغيير حالتها إلى \"ملغاة\".", "Are you sure you want to cancel this event? Its status will be changed to \"Cancelled\".")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="gap-2">
-                  <AlertDialogCancel>تراجع</AlertDialogCancel>
+                  <AlertDialogCancel>{t("تراجع", "Cancel")}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => cancelEventMutation.mutate()}
                     className="bg-destructive text-destructive-foreground"
                   >
-                    إلغاء الطلعة
+                    {t("إلغاء الطلعة", "Cancel Event")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -603,18 +606,18 @@ export default function EventDetail() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>حذف الطلعة</AlertDialogTitle>
+                <AlertDialogTitle>{t("حذف الطلعة", "Delete Event")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  هل أنت متأكد من حذف هذه الطلعة؟ لا يمكن التراجع عن هذا الإجراء.
+                  {t("هل أنت متأكد من حذف هذه الطلعة؟ لا يمكن التراجع عن هذا الإجراء.", "Are you sure you want to delete this event? This action cannot be undone.")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className="gap-2">
-                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => deleteMutation.mutate()}
                   className="bg-destructive text-destructive-foreground"
                 >
-                  حذف
+                  {t("حذف", "Delete")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -640,7 +643,7 @@ export default function EventDetail() {
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="h-4 w-4" />
-              <span>{formatArabicDate(eventDate)}</span>
+              <span>{formatDate(eventDate, language)}</span>
             </div>
             {event.location && (
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -681,7 +684,7 @@ export default function EventDetail() {
           </div>
 
           <div className="text-xs text-muted-foreground">
-            التاريخ الهجري: {formatHijriDate(eventDate)}
+            {t("التاريخ الهجري", "Hijri Date")}: {formatHijriDate(eventDate, language)}
           </div>
         </CardContent>
       </Card>
@@ -694,8 +697,8 @@ export default function EventDetail() {
               <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{formatNumber(participantCount)}</p>
-              <p className="text-sm text-muted-foreground">مشارك</p>
+              <p className="text-2xl font-bold">{formatNumber(participantCount, language)}</p>
+              <p className="text-sm text-muted-foreground">{t("مشارك", "Participants")}</p>
             </div>
           </CardContent>
         </Card>
@@ -705,8 +708,8 @@ export default function EventDetail() {
               <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{formatNumber(fulfilledCount)}</p>
-              <p className="text-sm text-muted-foreground">مكتمل</p>
+              <p className="text-2xl font-bold">{formatNumber(fulfilledCount, language)}</p>
+              <p className="text-sm text-muted-foreground">{t("مكتمل", "Fulfilled")}</p>
             </div>
           </CardContent>
         </Card>
@@ -716,8 +719,8 @@ export default function EventDetail() {
               <Circle className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{formatNumber(unfulfilledCount)}</p>
-              <p className="text-sm text-muted-foreground">متبقي</p>
+              <p className="text-2xl font-bold">{formatNumber(unfulfilledCount, language)}</p>
+              <p className="text-sm text-muted-foreground">{t("متبقي", "Remaining")}</p>
             </div>
           </CardContent>
         </Card>
@@ -727,8 +730,8 @@ export default function EventDetail() {
               <DollarSign className="h-6 w-6 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{formatCurrency(totalBudget)}</p>
-              <p className="text-sm text-muted-foreground">الميزانية</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalBudget, language)}</p>
+              <p className="text-sm text-muted-foreground">{t("الميزانية", "Budget")}</p>
             </div>
           </CardContent>
         </Card>
@@ -738,30 +741,30 @@ export default function EventDetail() {
       <Tabs defaultValue="items" className="space-y-4">
         <TabsList>
           <TabsTrigger value="items" data-testid="tab-items">
-            <Package className="h-4 w-4 ml-2" />
-            المستلزمات
+            <Package className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            {t("المستلزمات", "Items")}
           </TabsTrigger>
           <TabsTrigger value="participants" data-testid="tab-participants">
-            <Users className="h-4 w-4 ml-2" />
-            المشاركين
+            <Users className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            {t("المشاركين", "Participants")}
           </TabsTrigger>
           <TabsTrigger value="budget" data-testid="tab-budget">
-            <DollarSign className="h-4 w-4 ml-2" />
-            الميزانية
+            <DollarSign className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            {t("الميزانية", "Budget")}
           </TabsTrigger>
           <TabsTrigger value="settlement" data-testid="tab-settlement">
-            <Receipt className="h-4 w-4 ml-2" />
-            التسوية
+            <Receipt className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+            {t("التسوية", "Settlement")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="space-y-6">
           <div className="flex items-center justify-between gap-4">
-            <h3 className="font-semibold">المستلزمات المطلوبة</h3>
+            <h3 className="font-semibold">{t("المستلزمات المطلوبة", "Required Items")}</h3>
             <Link href={`/events/${event.id}/items`}>
               <Button size="sm" data-testid="button-add-items">
-                <Plus className="h-4 w-4 ml-2" />
-                إضافة مستلزمات
+                <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                {t("إضافة مستلزمات", "Add Items")}
               </Button>
             </Link>
           </div>
@@ -772,7 +775,7 @@ export default function EventDetail() {
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <h4 className="font-medium text-green-700 dark:text-green-400">
-                  المستلزمات المكتملة ({fulfilledCount})
+                  {t("المستلزمات المكتملة", "Fulfilled Items")} ({formatNumber(fulfilledCount, language)})
                 </h4>
               </div>
               <div className="space-y-2">
@@ -802,9 +805,9 @@ export default function EventDetail() {
               <div className="flex items-center gap-2">
                 <Circle className="h-5 w-5 text-orange-600" />
                 <h4 className="font-medium text-orange-700 dark:text-orange-400">
-                  المستلزمات المتبقية ({unfulfilledCount})
+                  {t("المستلزمات المتبقية", "Remaining Items")} ({formatNumber(unfulfilledCount, language)})
                 </h4>
-                <span className="text-sm text-muted-foreground">- قم بتعيين مشارك لكل مستلزم</span>
+                <span className="text-sm text-muted-foreground">- {t("قم بتعيين مشارك لكل مستلزم", "Assign a participant to each item")}</span>
               </div>
               <div className="space-y-2">
                 {unfulfilledContributions.map((contribution) => {
@@ -832,14 +835,14 @@ export default function EventDetail() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Package className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="font-medium mb-2">لا توجد مستلزمات</h3>
+                <h3 className="font-medium mb-2">{t("لا توجد مستلزمات", "No Items")}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  أضف المستلزمات المطلوبة للطلعة
+                  {t("أضف المستلزمات المطلوبة للطلعة", "Add the required items for this event")}
                 </p>
                 <Link href={`/events/${event.id}/items`}>
                   <Button size="sm">
-                    <Plus className="h-4 w-4 ml-2" />
-                    إضافة مستلزمات
+                    <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                    {t("إضافة مستلزمات", "Add Items")}
                   </Button>
                 </Link>
               </CardContent>
@@ -849,11 +852,11 @@ export default function EventDetail() {
 
         <TabsContent value="participants" className="space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <h3 className="font-semibold">المشاركين في الطلعة</h3>
+            <h3 className="font-semibold">{t("المشاركين في الطلعة", "Event Participants")}</h3>
             <Link href={`/events/${event.id}/participants`}>
               <Button size="sm" data-testid="button-add-participants">
-                <Plus className="h-4 w-4 ml-2" />
-                إضافة مشاركين
+                <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                {t("إضافة مشاركين", "Add Participants")}
               </Button>
             </Link>
           </div>
@@ -877,11 +880,11 @@ export default function EventDetail() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{ep.participant?.name}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{participantContributions.length} مستلزم</span>
+                          <span>{formatNumber(participantContributions.length, language)} {t("مستلزم", "items")}</span>
                           {participantTotal > 0 && (
                             <>
                               <span>•</span>
-                              <span>{formatCurrency(participantTotal)}</span>
+                              <span>{formatCurrency(participantTotal, language)}</span>
                             </>
                           )}
                         </div>
@@ -899,23 +902,23 @@ export default function EventDetail() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>إزالة المشارك</AlertDialogTitle>
+                            <AlertDialogTitle>{t("إزالة المشارك", "Remove Participant")}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              هل أنت متأكد من إزالة {ep.participant?.name} من الطلعة؟
+                              {t(`هل أنت متأكد من إزالة ${ep.participant?.name} من الطلعة؟`, `Are you sure you want to remove ${ep.participant?.name} from this event?`)}
                               {participantContributions.length > 0 && (
                                 <span className="block mt-2 text-destructive">
-                                  سيتم حذف {participantContributions.length} مستلزم مرتبط به أيضاً.
+                                  {t(`سيتم حذف ${participantContributions.length} مستلزم مرتبط به أيضاً.`, `${participantContributions.length} linked items will also be deleted.`)}
                                 </span>
                               )}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => removeParticipantMutation.mutate(ep.participantId)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
-                              إزالة
+                              {t("إزالة", "Remove")}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -929,14 +932,14 @@ export default function EventDetail() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="font-medium mb-2">لا يوجد مشاركين</h3>
+                <h3 className="font-medium mb-2">{t("لا يوجد مشاركين", "No Participants")}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  أضف المشاركين في هذه الطلعة
+                  {t("أضف المشاركين في هذه الطلعة", "Add participants to this event")}
                 </p>
                 <Link href={`/events/${event.id}/participants`}>
                   <Button size="sm">
-                    <Plus className="h-4 w-4 ml-2" />
-                    إضافة مشاركين
+                    <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                    {t("إضافة مشاركين", "Add Participants")}
                   </Button>
                 </Link>
               </CardContent>
@@ -946,9 +949,9 @@ export default function EventDetail() {
 
         <TabsContent value="budget" className="space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <h3 className="font-semibold">ملخص الميزانية</h3>
+            <h3 className="font-semibold">{t("ملخص الميزانية", "Budget Summary")}</h3>
             <Badge variant="outline" className="text-lg px-4 py-1">
-              {formatCurrency(totalBudget)}
+              {formatCurrency(totalBudget, language)}
             </Badge>
           </div>
 
@@ -966,12 +969,12 @@ export default function EventDetail() {
                           {category && (
                             <CategoryIcon icon={category.icon} color={category.color} className="h-5 w-5" />
                           )}
-                          {category?.nameAr || "أخرى"}
+                          {language === "ar" ? (category?.nameAr || t("أخرى", "Other")) : (category?.name || category?.nameAr || t("أخرى", "Other"))}
                           <Badge variant="secondary">
                             {contributions?.length || 0}
                           </Badge>
                         </div>
-                        <span className="font-bold">{formatCurrency(categoryTotal)}</span>
+                        <span className="font-bold">{formatCurrency(categoryTotal, language)}</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
@@ -989,7 +992,7 @@ export default function EventDetail() {
                             )}
                           </div>
                           <Badge variant="outline">
-                            {formatCurrency(contribution.cost || 0)}
+                            {formatCurrency(contribution.cost || 0, language)}
                           </Badge>
                         </div>
                       ))}
@@ -1002,9 +1005,9 @@ export default function EventDetail() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <DollarSign className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="font-medium mb-2">لا توجد تكاليف</h3>
+                <h3 className="font-medium mb-2">{t("لا توجد تكاليف", "No Costs")}</h3>
                 <p className="text-sm text-muted-foreground">
-                  أضف مستلزمات وحدد تكلفتها لعرض الميزانية
+                  {t("أضف مستلزمات وحدد تكلفتها لعرض الميزانية", "Add items with costs to view the budget")}
                 </p>
               </CardContent>
             </Card>
@@ -1013,17 +1016,17 @@ export default function EventDetail() {
 
         <TabsContent value="settlement" className="space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <h3 className="font-semibold">تسوية المصاريف</h3>
+            <h3 className="font-semibold">{t("تسوية المصاريف", "Expense Settlement")}</h3>
             <div className="flex items-center gap-2 flex-wrap">
               {settlement && (
                 <Badge variant="outline" className="text-lg px-4 py-1">
-                  الحصة: {formatCurrency(settlement.fairShare)}
+                  {t("الحصة", "Share")}: {formatCurrency(settlement.fairShare, language)}
                 </Badge>
               )}
               {settlement && settlement.unassignedCosts > 0 && (
                 <Badge variant="outline" className="text-orange-600 border-orange-300">
-                  <AlertTriangle className="h-3 w-3 ml-1" />
-                  {formatCurrency(settlement.unassignedCosts)} غير معين
+                  <AlertTriangle className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                  {formatCurrency(settlement.unassignedCosts, language)} {t("غير معين", "unassigned")}
                 </Badge>
               )}
             </div>
@@ -1047,7 +1050,7 @@ export default function EventDetail() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{balance.participant.name}</p>
                       <div className="flex items-center gap-2 text-xs">
-                        <span className="text-muted-foreground">دفع: {formatCurrency(balance.totalPaid)}</span>
+                        <span className="text-muted-foreground">{t("دفع", "Paid")}: {formatCurrency(balance.totalPaid, language)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -1055,7 +1058,7 @@ export default function EventDetail() {
                         <>
                           <TrendingUp className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-medium text-green-600">
-                            +{formatCurrency(balance.balance)}
+                            +{formatCurrency(balance.balance, language)}
                           </span>
                         </>
                       )}
@@ -1063,14 +1066,14 @@ export default function EventDetail() {
                         <>
                           <TrendingDown className="h-4 w-4 text-orange-600" />
                           <span className="text-sm font-medium text-orange-600">
-                            {formatCurrency(balance.balance)}
+                            {formatCurrency(balance.balance, language)}
                           </span>
                         </>
                       )}
                       {balance.role === 'settled' && (
                         <>
                           <Equal className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">متوازن</span>
+                          <span className="text-sm text-muted-foreground">{t("متوازن", "Balanced")}</span>
                         </>
                       )}
                     </div>
@@ -1081,7 +1084,7 @@ export default function EventDetail() {
               {settlement.transactions.length > 0 && (
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">التحويلات المطلوبة</CardTitle>
+                    <CardTitle className="text-base">{t("التحويلات المطلوبة", "Required Transfers")}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {settlement.transactions.map((tx) => (
@@ -1105,7 +1108,7 @@ export default function EventDetail() {
                           variant={tx.isSettled ? "default" : "secondary"}
                           className={tx.isSettled ? "bg-green-600" : ""}
                         >
-                          {formatCurrency(tx.amount)}
+                          {formatCurrency(tx.amount, language)}
                         </Badge>
                         <Button
                           size="sm"
@@ -1121,13 +1124,13 @@ export default function EventDetail() {
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : tx.isSettled ? (
                             <>
-                              <X className="h-4 w-4 ml-1" />
-                              إلغاء
+                              <X className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                              {t("إلغاء", "Undo")}
                             </>
                           ) : (
                             <>
-                              <Check className="h-4 w-4 ml-1" />
-                              تم الدفع
+                              <Check className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                              {t("تم الدفع", "Paid")}
                             </>
                           )}
                         </Button>
@@ -1141,9 +1144,9 @@ export default function EventDetail() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="font-medium mb-2">لا توجد تسويات</h3>
+                <h3 className="font-medium mb-2">{t("لا توجد تسويات", "No Settlements")}</h3>
                 <p className="text-sm text-muted-foreground">
-                  أضف مشاركين ومستلزمات بتكاليف لعرض تسوية المصاريف
+                  {t("أضف مشاركين ومستلزمات بتكاليف لعرض تسوية المصاريف", "Add participants and items with costs to view settlements")}
                 </p>
               </CardContent>
             </Card>
