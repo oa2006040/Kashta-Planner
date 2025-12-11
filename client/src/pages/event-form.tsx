@@ -525,11 +525,11 @@ export default function EventForm() {
                   <FormItem>
                     <FormLabel>{t("تاريخ البداية", "Start Date")} *</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Calendar className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground`} />
+                      <div className="relative w-full">
+                        <Calendar className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10`} />
                         <Input 
                           type="date" 
-                          className={language === "ar" ? "pr-9" : "pl-9"}
+                          className={`w-full ${language === "ar" ? "pr-9 text-right" : "pl-9"}`}
                           min={isEditing ? undefined : todayStr}
                           {...field}
                           data-testid="input-event-date"

@@ -286,3 +286,40 @@
     inset: -1px;
   }
 }
+
+/* Date input styling for RTL and consistent appearance */
+input[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: relative;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0;
+  margin: 0;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* RTL date input adjustments */
+[dir="rtl"] input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: 8px;
+  right: auto;
+}
+
+/* Ensure date picker popup doesn't overflow */
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
