@@ -60,6 +60,7 @@ export default function DebtPage() {
 
   const totalOwedAmount = summaries?.reduce((sum, s) => sum + Math.max(0, s.totalOwed), 0) || 0;
   const totalCreditsAmount = summaries?.reduce((sum, s) => sum + Math.max(0, s.totalOwedToYou), 0) || 0;
+  const totalExpenses = summaries?.reduce((sum, s) => sum + s.totalPaid, 0) || 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -77,7 +78,19 @@ export default function DebtPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Wallet className="h-4 w-4" />
+              <span className="text-sm">إجمالي المصروفات</span>
+            </div>
+            <p className="text-2xl font-bold text-primary" data-testid="text-total-expenses">
+              {formatCurrency(totalExpenses)}
+            </p>
+          </CardContent>
+        </Card>
+        
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
