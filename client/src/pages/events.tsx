@@ -75,22 +75,25 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
                 
                 <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                   {event.location && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {event.location}
-                      {event.latitude && event.longitude && (
-                        <a
-                          href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-primary hover:text-primary/80"
-                          data-testid={`link-map-${event.id}`}
-                        >
-                          <Navigation className="h-3.5 w-3.5" />
-                        </a>
-                      )}
-                    </span>
+                    event.latitude && event.longitude ? (
+                      <a
+                        href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 text-primary hover:underline"
+                        data-testid={`link-map-${event.id}`}
+                      >
+                        <MapPin className="h-3.5 w-3.5" />
+                        {event.location}
+                        <Navigation className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {event.location}
+                      </span>
+                    )
                   )}
                   <span className="flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5" />
@@ -130,22 +133,25 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
             </div>
             
             {event.location && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{event.location}</span>
-                {event.latitude && event.longitude && (
-                  <a
-                    href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-primary hover:text-primary/80 shrink-0"
-                    data-testid={`link-map-grid-${event.id}`}
-                  >
-                    <Navigation className="h-3.5 w-3.5" />
-                  </a>
-                )}
-              </div>
+              event.latitude && event.longitude ? (
+                <a
+                  href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  data-testid={`link-map-grid-${event.id}`}
+                >
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{event.location}</span>
+                  <Navigation className="h-3.5 w-3.5 shrink-0" />
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{event.location}</span>
+                </div>
+              )
             )}
             
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

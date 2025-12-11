@@ -659,21 +659,24 @@ export default function EventDetail() {
               <span>{formatDate(eventDate, language)}</span>
             </div>
             {event.location && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>{event.location}</span>
-                {event.latitude && event.longitude && (
-                  <a
-                    href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline flex items-center gap-1"
-                    data-testid="link-open-map"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-              </div>
+              event.latitude && event.longitude ? (
+                <a
+                  href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-primary hover:underline"
+                  data-testid="link-open-map"
+                >
+                  <MapPin className="h-4 w-4" />
+                  <span>{event.location}</span>
+                  <Navigation className="h-4 w-4" />
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  <span>{event.location}</span>
+                </div>
+              )
             )}
             {event.latitude && event.longitude && (
               <div className="flex items-center gap-2 text-muted-foreground">
