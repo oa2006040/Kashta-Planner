@@ -196,11 +196,22 @@ export const WEATHER_ICONS: Record<string, string> = {
 // Format functions
 export function formatArabicDate(date: Date | string): string {
   const d = new Date(date);
-  return new Intl.DateTimeFormat("ar-SA", {
+  // Use Gregorian calendar explicitly for Arabic month names (يناير، فبراير...)
+  return new Intl.DateTimeFormat("ar-u-ca-gregory", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
+  }).format(d);
+}
+
+// Short format without weekday for compact display
+export function formatArabicDateShort(date: Date | string): string {
+  const d = new Date(date);
+  return new Intl.DateTimeFormat("ar-u-ca-gregory", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   }).format(d);
 }
 
