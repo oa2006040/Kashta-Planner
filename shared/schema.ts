@@ -85,7 +85,10 @@ export const eventsRelations = relations(events, ({ many }) => ({
   activityLogs: many(activityLogs),
 }));
 
-export const insertEventSchema = createInsertSchema(events).omit({ id: true, createdAt: true });
+export const insertEventSchema = createInsertSchema(events).omit({ id: true, createdAt: true }).extend({
+  latitude: z.union([z.string(), z.number()]).transform(val => val?.toString()).nullable().optional(),
+  longitude: z.union([z.string(), z.number()]).transform(val => val?.toString()).nullable().optional(),
+});
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type Event = typeof events.$inferSelect;
 
