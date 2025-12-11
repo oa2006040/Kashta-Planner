@@ -1111,11 +1111,7 @@ export default function EventDetail() {
                           </div>
                           <div className="flex items-center gap-1 text-primary">
                             <span className="text-xs text-muted-foreground">{t("يدفع", "pays")}</span>
-                            {language === "ar" ? (
-                              <ArrowLeft className="h-5 w-5" />
-                            ) : (
-                              <ArrowRight className="h-5 w-5" />
-                            )}
+                            <ArrowRight className="h-5 w-5 rtl:rotate-180" />
                           </div>
                           <div className="flex items-center gap-2">
                             <AvatarIcon icon={tx.creditor?.avatar} className="h-8 w-8 shrink-0" />
