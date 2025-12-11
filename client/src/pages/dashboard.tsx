@@ -274,6 +274,7 @@ export default function Dashboard() {
   };
 
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const [showAllCancelled, setShowAllCancelled] = useState(false);
   
   // Filter events by status
   const ongoingEvents = events?.filter((e) => e.status === "ongoing") || [];
@@ -281,9 +282,9 @@ export default function Dashboard() {
   const completedEvents = events?.filter((e) => e.status === "completed") || [];
   const cancelledEvents = events?.filter((e) => e.status === "cancelled") || [];
   
-  // Display logic - include cancelled in upcoming section for toggle
-  const allUpcomingAndCancelled = [...upcomingEvents, ...cancelledEvents];
-  const displayedUpcoming = showAllUpcoming ? allUpcomingAndCancelled : allUpcomingAndCancelled.slice(0, 2);
+  // Display logic - separate sections
+  const displayedUpcoming = showAllUpcoming ? upcomingEvents : upcomingEvents.slice(0, 2);
+  const displayedCancelled = showAllCancelled ? cancelledEvents : cancelledEvents.slice(0, 2);
   const displayedCompleted = completedEvents.slice(0, 1);
   
   const recentParticipants = participants?.slice(0, 5);
@@ -445,14 +446,9 @@ export default function Dashboard() {
               <div className="flex items-center gap-2">
                 <Star className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold">الطلعات القادمة</h2>
-                {allUpcomingAndCancelled.length > 0 && (
+                {upcomingEvents.length > 0 && (
                   <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                     {upcomingEvents.length}
-                  </Badge>
-                )}
-                {cancelledEvents.length > 0 && (
-                  <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
-                    {cancelledEvents.length} ملغاة
                   </Badge>
                 )}
               </div>
@@ -469,7 +465,7 @@ export default function Dashboard() {
                   {displayedUpcoming.map((event) => (
                     <EventCard key={event.id} event={event} onStatusChange={handleStatusChange} />
                   ))}
-                  {allUpcomingAndCancelled.length > 2 && (
+                  {upcomingEvents.length > 2 && (
                     <Button
                       variant="outline"
                       className="w-full"
@@ -484,7 +480,7 @@ export default function Dashboard() {
                       ) : (
                         <>
                           <ChevronDown className="h-4 w-4 ml-2" />
-                          عرض الكل ({allUpcomingAndCancelled.length})
+                          عرض الكل ({upcomingEvents.length})
                         </>
                       )}
                     </Button>
@@ -511,6 +507,47 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+          {/* Cancelled Events - Separate Section */}
+          {!eventsLoading && cancelledEvents.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  <h2 className="text-xl font-semibold">الطلعات الملغاة</h2>
+                  <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    {cancelledEvents.length}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {displayedCancelled.map((event) => (
+                  <EventCard key={event.id} event={event} onStatusChange={handleStatusChange} />
+                ))}
+                {cancelledEvents.length > 2 && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowAllCancelled(!showAllCancelled)}
+                    data-testid="button-toggle-cancelled"
+                  >
+                    {showAllCancelled ? (
+                      <>
+                        <ChevronUp className="h-4 w-4 ml-2" />
+                        عرض أقل
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 ml-2" />
+                        عرض الكل ({cancelledEvents.length})
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Completed Events - Show 1 with link to events page */}
           {!eventsLoading && (
