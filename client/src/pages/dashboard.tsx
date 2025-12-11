@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Calendar,
   Users,
@@ -17,6 +19,8 @@ import {
   Sparkles,
   CheckCircle2,
   PlayCircle,
+  XCircle,
+  Undo2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -129,9 +133,19 @@ function getStatusBadge(status: string) {
   }
 }
 
-function EventCard({ event }: { event: Event }) {
+function EventCard({ event, onStatusChange }: { event: Event; onStatusChange?: (id: number, status: string) => void }) {
   const statusBadge = getStatusBadge(event.status || "upcoming");
   const eventDate = new Date(event.date);
+  const isUpcoming = event.status === "upcoming";
+  const isCancelled = event.status === "cancelled";
+
+  const handleCancelToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onStatusChange) {
+      onStatusChange(event.id, isCancelled ? "upcoming" : "cancelled");
+    }
+  };
 
   return (
     <Link href={`/events/${event.id}`}>
@@ -165,7 +179,7 @@ function EventCard({ event }: { event: Event }) {
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-1 text-center shrink-0">
+            <div className="flex flex-col items-center gap-2 shrink-0">
               <div className="flex h-14 w-14 flex-col items-center justify-center rounded-xl bg-primary/10">
                 <span className="text-xs text-muted-foreground">
                   {eventDate.toLocaleDateString("ar-SA", { weekday: "short" })}
@@ -174,6 +188,21 @@ function EventCard({ event }: { event: Event }) {
                   {eventDate.getDate()}
                 </span>
               </div>
+              {(isUpcoming || isCancelled) && onStatusChange && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-8 w-8 ${isCancelled ? "text-green-600 hover:text-green-700" : "text-red-500 hover:text-red-600"}`}
+                  onClick={handleCancelToggle}
+                  data-testid={`button-toggle-cancel-${event.id}`}
+                >
+                  {isCancelled ? (
+                    <Undo2 className="h-4 w-4" />
+                  ) : (
+                    <XCircle className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -200,6 +229,8 @@ function EventCardSkeleton() {
 }
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/stats"],
     refetchInterval: 5000,
@@ -217,15 +248,42 @@ export default function Dashboard() {
     refetchInterval: 5000,
   });
 
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      return apiRequest("PATCH", `/api/events/${id}`, { status });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: variables.status === "cancelled" ? "تم إلغاء الطلعة" : "تم استعادة الطلعة",
+        description: variables.status === "cancelled" ? "تم تغيير حالة الطلعة إلى ملغاة" : "تم استعادة الطلعة إلى قادمة",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء تحديث حالة الطلعة",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStatusChange = (id: number, status: string) => {
+    toggleStatusMutation.mutate({ id, status });
+  };
+
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   
   // Filter events by status
   const ongoingEvents = events?.filter((e) => e.status === "ongoing") || [];
   const upcomingEvents = events?.filter((e) => e.status === "upcoming") || [];
   const completedEvents = events?.filter((e) => e.status === "completed") || [];
+  const cancelledEvents = events?.filter((e) => e.status === "cancelled") || [];
   
-  // Display logic
-  const displayedUpcoming = showAllUpcoming ? upcomingEvents : upcomingEvents.slice(0, 2);
+  // Display logic - include cancelled in upcoming section for toggle
+  const allUpcomingAndCancelled = [...upcomingEvents, ...cancelledEvents];
+  const displayedUpcoming = showAllUpcoming ? allUpcomingAndCancelled : allUpcomingAndCancelled.slice(0, 2);
   const displayedCompleted = completedEvents.slice(0, 1);
   
   const recentParticipants = participants?.slice(0, 5);
@@ -301,33 +359,42 @@ export default function Dashboard() {
               </CardContent>
             </Card>
             
-            <StatCard
-              title="المشاركين"
-              value={formatNumber(stats?.totalParticipants || 0)}
-              icon={Users}
-            />
-            
-            {/* Paid Amount */}
+            {/* Total Budget */}
             <Card className="relative overflow-visible">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">المدفوع</p>
-                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(stats?.paidAmount || 0)}</p>
+                    <p className="text-sm text-muted-foreground">إجمالي المدفوعات</p>
+                    <p className="text-3xl font-bold">{formatCurrency(stats?.totalBudget || 0)}</p>
                   </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30">
-                    <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                    <TrendingUp className="h-6 w-6 text-primary" />
                   </div>
                 </div>
               </CardContent>
             </Card>
             
-            {/* Unpaid Amount */}
+            {/* Paid Debts */}
             <Card className="relative overflow-visible">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">غير المدفوع</p>
+                    <p className="text-sm text-muted-foreground">الديون المدفوعة</p>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(stats?.paidAmount || 0)}</p>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30">
+                    <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Unpaid Debts */}
+            <Card className="relative overflow-visible">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">الديون غير المدفوعة</p>
                     <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(stats?.unpaidAmount || 0)}</p>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30">
@@ -378,9 +445,14 @@ export default function Dashboard() {
               <div className="flex items-center gap-2">
                 <Star className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold">الطلعات القادمة</h2>
-                {upcomingEvents.length > 0 && (
+                {allUpcomingAndCancelled.length > 0 && (
                   <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                     {upcomingEvents.length}
+                  </Badge>
+                )}
+                {cancelledEvents.length > 0 && (
+                  <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    {cancelledEvents.length} ملغاة
                   </Badge>
                 )}
               </div>
@@ -395,9 +467,9 @@ export default function Dashboard() {
               ) : displayedUpcoming.length > 0 ? (
                 <>
                   {displayedUpcoming.map((event) => (
-                    <EventCard key={event.id} event={event} />
+                    <EventCard key={event.id} event={event} onStatusChange={handleStatusChange} />
                   ))}
-                  {upcomingEvents.length > 2 && (
+                  {allUpcomingAndCancelled.length > 2 && (
                     <Button
                       variant="outline"
                       className="w-full"
@@ -412,7 +484,7 @@ export default function Dashboard() {
                       ) : (
                         <>
                           <ChevronDown className="h-4 w-4 ml-2" />
-                          عرض الكل ({upcomingEvents.length})
+                          عرض الكل ({allUpcomingAndCancelled.length})
                         </>
                       )}
                     </Button>
