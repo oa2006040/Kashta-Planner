@@ -582,9 +582,23 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Shared event not found or sharing disabled" });
       }
       
+      // Validate participantId if provided and not null - must be part of this event
+      const participantId = req.body.participantId;
+      if (participantId !== undefined && participantId !== null && participantId !== "") {
+        const eventParticipants = await storage.getEventParticipants(event.id);
+        const isValidParticipant = eventParticipants.some(
+          ep => ep.participantId === participantId
+        );
+        if (!isValidParticipant) {
+          return res.status(403).json({ error: "Participant is not part of this event" });
+        }
+      }
+      
       const data = insertContributionSchema.parse({
         ...req.body,
         eventId: event.id,
+        // Normalize empty string to null
+        participantId: participantId === "" ? null : participantId,
       });
       const contribution = await storage.createContribution(data);
       res.status(201).json(contribution);
@@ -605,7 +619,36 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Shared event not found or sharing disabled" });
       }
       
+      // Verify contribution belongs to this event
+      const contribution = await storage.getContribution(req.params.id);
+      if (!contribution || contribution.eventId !== event.id) {
+        return res.status(403).json({ error: "Contribution does not belong to this event" });
+      }
+      
+      // Validate participantId if being changed - must be part of this event or null/empty
+      const participantId = req.body.participantId;
+      if ("participantId" in req.body) {
+        // Allow null or empty string (unassign) but validate non-empty values
+        if (participantId !== undefined && participantId !== null && participantId !== "") {
+          const eventParticipants = await storage.getEventParticipants(event.id);
+          const isValidParticipant = eventParticipants.some(
+            ep => ep.participantId === participantId
+          );
+          if (!isValidParticipant) {
+            return res.status(403).json({ error: "Participant is not part of this event" });
+          }
+        }
+      }
+      
       const data = insertContributionSchema.partial().parse(req.body);
+      // Ensure eventId and itemId cannot be changed
+      delete (data as any).eventId;
+      delete (data as any).itemId;
+      // Normalize empty string to null for participantId
+      if ((data as any).participantId === "") {
+        (data as any).participantId = null;
+      }
+      
       const updated = await storage.updateContribution(req.params.id, data);
       if (!updated) {
         return res.status(404).json({ error: "Contribution not found" });
@@ -626,6 +669,12 @@ export async function registerRoutes(
       const event = await storage.getEventByShareToken(req.params.token);
       if (!event || !event.isShareEnabled) {
         return res.status(404).json({ error: "Shared event not found or sharing disabled" });
+      }
+      
+      // Verify contribution belongs to this event
+      const contribution = await storage.getContribution(req.params.id);
+      if (!contribution || contribution.eventId !== event.id) {
+        return res.status(403).json({ error: "Contribution does not belong to this event" });
       }
       
       await storage.deleteContribution(req.params.id);

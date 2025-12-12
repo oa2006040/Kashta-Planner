@@ -83,6 +83,7 @@ export interface IStorage {
   
   // Contributions
   getContributions(eventId: number): Promise<Contribution[]>;
+  getContribution(id: string): Promise<Contribution | undefined>;
   createContribution(contribution: InsertContribution): Promise<Contribution>;
   updateContribution(id: string, contribution: Partial<InsertContribution>): Promise<Contribution | undefined>;
   deleteContribution(id: string): Promise<boolean>;
@@ -425,6 +426,11 @@ export class DatabaseStorage implements IStorage {
   // Contributions
   async getContributions(eventId: number): Promise<Contribution[]> {
     return db.select().from(contributions).where(eq(contributions.eventId, eventId));
+  }
+  
+  async getContribution(id: string): Promise<Contribution | undefined> {
+    const [contribution] = await db.select().from(contributions).where(eq(contributions.id, id));
+    return contribution;
   }
 
   async createContribution(contribution: InsertContribution): Promise<Contribution> {

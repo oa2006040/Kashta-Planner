@@ -30,7 +30,10 @@ import {
   AlertTriangle,
   ExternalLink,
   Navigation,
-  Download
+  Download,
+  Share2,
+  Copy,
+  Link as LinkIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -338,6 +341,7 @@ export default function EventDetail() {
 
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [selectedParticipantForCalendar, setSelectedParticipantForCalendar] = useState<string>("");
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const generateICSFile = () => {
     if (!event || !selectedParticipantForCalendar) return;
@@ -608,6 +612,58 @@ export default function EventDetail() {
     assignParticipantMutation.mutate({ contributionId, participantId, cost });
   };
 
+  const enableShareMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/events/${params?.id}/share`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+      toast({
+        title: t("تم تفعيل المشاركة", "Sharing Enabled"),
+        description: t("يمكنك الآن مشاركة الرابط مع الآخرين", "You can now share the link with others"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تفعيل المشاركة", "Error enabling sharing"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disableShareMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", `/api/events/${params?.id}/share`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+      toast({
+        title: t("تم إيقاف المشاركة", "Sharing Disabled"),
+        description: t("لم يعد بإمكان الآخرين الوصول للطلعة عبر الرابط", "Others can no longer access the event via link"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء إيقاف المشاركة", "Error disabling sharing"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const shareUrl = event?.shareToken ? `${window.location.origin}/share/${event.shareToken}` : "";
+
+  const copyShareLink = () => {
+    if (shareUrl) {
+      navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: t("تم النسخ", "Copied"),
+        description: t("تم نسخ الرابط للحافظة", "Link copied to clipboard"),
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -806,6 +862,93 @@ export default function EventDetail() {
                   <Download className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
                   {t("تحميل", "Download")}
                 </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant={event.isShareEnabled ? "default" : "outline"} 
+                size="icon" 
+                data-testid="button-share-event"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("مشاركة الطلعة", "Share Event")}</DialogTitle>
+                <DialogDescription>
+                  {t("شارك الرابط مع الآخرين لتمكينهم من عرض وتعديل الطلعة", "Share the link with others to allow them to view and edit the event")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {event.isShareEnabled && event.shareToken ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label>{t("رابط المشاركة", "Share Link")}</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          value={shareUrl} 
+                          readOnly 
+                          className="flex-1 font-mono text-sm"
+                          dir="ltr"
+                          data-testid="input-share-link"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={copyShareLink}
+                          data-testid="button-copy-share-link"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-3 text-sm">
+                      <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                        <LinkIcon className="h-4 w-4" />
+                        <span className="font-medium">{t("المشاركة مفعلة", "Sharing is enabled")}</span>
+                      </div>
+                      <p className="mt-1 text-green-600 dark:text-green-400 text-xs">
+                        {t("يمكن لأي شخص لديه الرابط عرض وتعديل الطلعة", "Anyone with the link can view and edit this event")}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-lg bg-muted/50 p-4 text-center">
+                    <Share2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="font-medium">{t("المشاركة غير مفعلة", "Sharing is disabled")}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t("فعّل المشاركة لإنشاء رابط يمكن مشاركته", "Enable sharing to create a shareable link")}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setShareDialogOpen(false)}>
+                  {t("إغلاق", "Close")}
+                </Button>
+                {event.isShareEnabled ? (
+                  <Button 
+                    variant="destructive"
+                    onClick={() => disableShareMutation.mutate()}
+                    disabled={disableShareMutation.isPending}
+                    data-testid="button-disable-sharing"
+                  >
+                    {disableShareMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {t("إيقاف المشاركة", "Disable Sharing")}
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => enableShareMutation.mutate()}
+                    disabled={enableShareMutation.isPending}
+                    data-testid="button-enable-sharing"
+                  >
+                    {enableShareMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {t("تفعيل المشاركة", "Enable Sharing")}
+                  </Button>
+                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>
