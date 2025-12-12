@@ -69,6 +69,10 @@ export interface IStorage {
   createEvent(event: InsertEvent): Promise<Event>;
   updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event | undefined>;
   deleteEvent(id: number): Promise<boolean>;
+  getEventByShareToken(token: string): Promise<Event | undefined>;
+  getEventWithDetailsByShareToken(token: string): Promise<EventWithDetails | undefined>;
+  enableEventSharing(id: number): Promise<{ token: string } | undefined>;
+  disableEventSharing(id: number): Promise<boolean>;
   
   // Event Participants
   getEventParticipants(eventId: number): Promise<EventParticipant[]>;
@@ -291,6 +295,37 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEvent(id: number): Promise<boolean> {
     await db.delete(events).where(eq(events.id, id));
+    return true;
+  }
+
+  async getEventByShareToken(token: string): Promise<Event | undefined> {
+    const [event] = await db.select().from(events)
+      .where(eq(events.shareToken, token));
+    return event;
+  }
+
+  async getEventWithDetailsByShareToken(token: string): Promise<EventWithDetails | undefined> {
+    const event = await this.getEventByShareToken(token);
+    if (!event || !event.isShareEnabled) return undefined;
+    return this.getEventWithDetails(event.id);
+  }
+
+  async enableEventSharing(id: number): Promise<{ token: string } | undefined> {
+    const event = await this.getEvent(id);
+    if (!event) return undefined;
+    
+    const token = crypto.randomUUID();
+    await db.update(events)
+      .set({ shareToken: token, isShareEnabled: true })
+      .where(eq(events.id, id));
+    
+    return { token };
+  }
+
+  async disableEventSharing(id: number): Promise<boolean> {
+    await db.update(events)
+      .set({ shareToken: null, isShareEnabled: false })
+      .where(eq(events.id, id));
     return true;
   }
 
