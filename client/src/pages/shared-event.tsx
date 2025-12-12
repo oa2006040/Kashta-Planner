@@ -105,7 +105,8 @@ export default function SharedEvent() {
   const [addParticipantOpen, setAddParticipantOpen] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string>("");
   const [addItemOpen, setAddItemOpen] = useState(false);
-  const [selectedItemId, setSelectedItemId] = useState<string>("");
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   const { data: event, isLoading, error, refetch } = useQuery<EventWithDetails>({
     queryKey: ["/api/shared", token],
@@ -173,22 +174,26 @@ export default function SharedEvent() {
   });
 
   const addContributionMutation = useMutation({
-    mutationFn: async (itemId: string) => {
-      return apiRequest("POST", `/api/shared/${token}/contributions`, { itemId });
+    mutationFn: async (itemIds: string[]) => {
+      const promises = itemIds.map(itemId => 
+        apiRequest("POST", `/api/shared/${token}/contributions`, { itemId })
+      );
+      return Promise.all(promises);
     },
-    onSuccess: () => {
+    onSuccess: (_, itemIds) => {
       queryClient.invalidateQueries({ queryKey: ["/api/shared", token] });
       setAddItemOpen(false);
-      setSelectedItemId("");
+      setSelectedItems(new Set());
+      setCategoryFilter("all");
       toast({
         title: t("تمت الإضافة", "Added"),
-        description: t("تم إضافة المستلزم للطلعة", "Item added to event"),
+        description: t(`تم إضافة ${itemIds.length} مستلزم للطلعة`, `Added ${itemIds.length} item(s) to event`),
       });
     },
     onError: () => {
       toast({
         title: t("خطأ", "Error"),
-        description: t("حدث خطأ أثناء إضافة المستلزم", "An error occurred while adding item"),
+        description: t("حدث خطأ أثناء إضافة المستلزمات", "An error occurred while adding items"),
         variant: "destructive",
       });
     },
@@ -471,58 +476,112 @@ export default function SharedEvent() {
           <TabsContent value="items" className="mt-4 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h3 className="font-medium">{t("المستلزمات والمساهمات", "Items & Contributions")}</h3>
-              <Dialog open={addItemOpen} onOpenChange={setAddItemOpen}>
+              <Dialog open={addItemOpen} onOpenChange={(open) => {
+                setAddItemOpen(open);
+                if (!open) {
+                  setSelectedItems(new Set());
+                  setCategoryFilter("all");
+                }
+              }}>
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-add-item-shared">
                     <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">{t("إضافة مستلزم", "Add Item")}</span>
+                    <span className="hidden sm:inline">{t("إضافة مستلزمات", "Add Items")}</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>{t("إضافة مستلزم", "Add Item")}</DialogTitle>
+                    <DialogTitle>{t("إضافة مستلزمات", "Add Items")}</DialogTitle>
                     <DialogDescription>
-                      {t("اختر مستلزماً لإضافته للطلعة", "Select an item to add to the event")}
+                      {t("اختر المستلزمات التي تريد إضافتها للطلعة", "Select items to add to the event")}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                    {availableItems.length > 0 ? (
-                      <div className="grid gap-2">
-                        {availableItems.map((item) => {
+                  <div className="space-y-4">
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <SelectTrigger data-testid="select-category-filter">
+                        <SelectValue placeholder={t("جميع الفئات", "All Categories")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("جميع الفئات", "All Categories")}</SelectItem>
+                        {categories?.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon icon={cat.icon} color={cat.color} className="h-4 w-4" />
+                              {language === "ar" ? cat.nameAr : (cat.name || cat.nameAr)}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="max-h-[50vh] overflow-y-auto space-y-2">
+                      {(() => {
+                        const filteredItems = availableItems.filter(item => 
+                          categoryFilter === "all" || item.categoryId === categoryFilter
+                        );
+                        
+                        if (filteredItems.length === 0) {
+                          return (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              {categoryFilter === "all" 
+                                ? t("جميع المستلزمات مضافة للطلعة", "All items are already added")
+                                : t("لا توجد مستلزمات في هذه الفئة", "No items in this category")}
+                            </p>
+                          );
+                        }
+                        
+                        return filteredItems.map((item) => {
                           const category = categories?.find(c => c.id === item.categoryId);
+                          const isSelected = selectedItems.has(item.id);
+                          
                           return (
                             <button
                               key={item.id}
-                              onClick={() => setSelectedItemId(item.id)}
-                              className={`flex items-center gap-3 p-3 rounded-lg border text-start transition-colors ${
-                                selectedItemId === item.id 
+                              onClick={() => {
+                                const newSelected = new Set(selectedItems);
+                                if (isSelected) {
+                                  newSelected.delete(item.id);
+                                } else {
+                                  newSelected.add(item.id);
+                                }
+                                setSelectedItems(newSelected);
+                              }}
+                              className={`flex items-center gap-3 p-3 rounded-lg border text-start transition-colors w-full ${
+                                isSelected 
                                   ? "border-primary bg-primary/5" 
                                   : "hover:bg-muted"
                               }`}
                               data-testid={`item-option-${item.id}`}
                             >
+                              <Checkbox 
+                                checked={isSelected} 
+                                onCheckedChange={() => {}}
+                                className="pointer-events-none"
+                              />
                               {category && (
                                 <CategoryIcon icon={category.icon} color={category.color} className="h-5 w-5" />
                               )}
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium truncate">{item.name}</p>
-                                {category && (
+                                {category && categoryFilter === "all" && (
                                   <p className="text-xs text-muted-foreground">
                                     {language === "ar" ? category.nameAr : (category.name || category.nameAr)}
                                   </p>
                                 )}
                               </div>
-                              {selectedItemId === item.id && (
-                                <Check className="h-4 w-4 text-primary" />
-                              )}
                             </button>
                           );
-                        })}
+                        });
+                      })()}
+                    </div>
+                    
+                    {selectedItems.size > 0 && (
+                      <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10">
+                        <Check className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {selectedItems.size} {t("مستلزم محدد", "item(s) selected")}
+                        </span>
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        {t("جميع المستلزمات مضافة للطلعة", "All items are already added to the event")}
-                      </p>
                     )}
                   </div>
                   <DialogFooter className="gap-2">
@@ -530,12 +589,12 @@ export default function SharedEvent() {
                       <Button variant="outline">{t("إلغاء", "Cancel")}</Button>
                     </DialogClose>
                     <Button
-                      onClick={() => selectedItemId && addContributionMutation.mutate(selectedItemId)}
-                      disabled={!selectedItemId || addContributionMutation.isPending}
+                      onClick={() => selectedItems.size > 0 && addContributionMutation.mutate(Array.from(selectedItems))}
+                      disabled={selectedItems.size === 0 || addContributionMutation.isPending}
                       data-testid="button-confirm-add-item-shared"
                     >
                       {addContributionMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {t("إضافة", "Add")}
+                      {t("إضافة", "Add")} {selectedItems.size > 0 && `(${selectedItems.size})`}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
