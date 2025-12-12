@@ -121,6 +121,7 @@ function ContributionItem({
 }: ContributionItemProps) {
   const { t, language } = useLanguage();
   const [showAssign, setShowAssign] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<string>("");
   const [includeCost, setIncludeCost] = useState(parseFloat(contribution.cost || "0") > 0);
   const [cost, setCost] = useState(contribution.cost || "0");
@@ -138,6 +139,30 @@ function ContributionItem({
       setCost("0");
       setQuantity("1");
     }
+  };
+
+  const handleStartEdit = () => {
+    setSelectedParticipant(contribution.participantId || "");
+    setCost(contribution.cost || "0");
+    setQuantity(String(contribution.quantity || 1));
+    setIncludeCost(parseFloat(contribution.cost || "0") > 0);
+    setShowEdit(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (selectedParticipant) {
+      const qty = parseInt(quantity) || 1;
+      onAssign(contribution.id, selectedParticipant, includeCost ? cost : "0", qty);
+      setShowEdit(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEdit(false);
+    setSelectedParticipant("");
+    setCost("0");
+    setQuantity("1");
+    setIncludeCost(false);
   };
 
   return (
@@ -201,6 +226,17 @@ function ContributionItem({
             >
               <UserPlus className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
               {t("تعيين", "Assign")}
+            </Button>
+          )}
+          {hasParticipant && !showEdit && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleStartEdit}
+              className="h-8 w-8 text-muted-foreground"
+              data-testid={`button-edit-${contribution.id}`}
+            >
+              <Edit2 className="h-4 w-4" />
             </Button>
           )}
           <AlertDialog>
@@ -329,6 +365,101 @@ function ContributionItem({
                     onChange={(e) => setCost(e.target.value)}
                     className="w-24"
                     data-testid={`input-cost-${contribution.id}`}
+                  />
+                  <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
+                </div>
+                {(parseInt(quantity) || 1) > 1 && parseFloat(cost) > 0 && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <span>=</span>
+                    <span className="font-medium">{((parseInt(quantity) || 1) * parseFloat(cost || "0")).toFixed(2)}</span>
+                    <span>{t("ر.ق", "QAR")}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showEdit && hasParticipant && (
+        <div className="flex flex-col gap-3 pt-3 border-t border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 mb-1">
+            <Edit2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{t("تعديل المستلزم", "Edit Item")}</span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
+              <SelectTrigger className="flex-1" data-testid={`select-edit-participant-${contribution.id}`}>
+                <SelectValue placeholder={t("اختر المشارك", "Select participant")} />
+              </SelectTrigger>
+              <SelectContent>
+                {participants.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    <div className="flex items-center gap-2">
+                      <AvatarIcon icon={p.avatar} className="h-4 w-4" />
+                      {p.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                onClick={handleSaveEdit} 
+                disabled={!selectedParticipant || isAssigning}
+                data-testid={`button-save-edit-${contribution.id}`}
+              >
+                {isAssigning ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={handleCancelEdit}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 p-2 rounded-md bg-green-50/50 dark:bg-green-900/5">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">{t("الكمية", "Qty")}</Label>
+              <Input
+                type="number"
+                placeholder="1"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="w-16"
+                data-testid={`input-edit-quantity-${contribution.id}`}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id={`edit-cost-toggle-${contribution.id}`}
+                checked={includeCost}
+                onCheckedChange={(checked) => setIncludeCost(!!checked)}
+                data-testid={`checkbox-edit-include-cost-${contribution.id}`}
+              />
+              <Label htmlFor={`edit-cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
+                {t("إضافة تكلفة", "Add cost")}
+              </Label>
+            </div>
+            {includeCost && (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">{t("سعر الوحدة", "Unit price")}</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={cost}
+                    onChange={(e) => setCost(e.target.value)}
+                    className="w-24"
+                    data-testid={`input-edit-cost-${contribution.id}`}
                   />
                   <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
                 </div>
