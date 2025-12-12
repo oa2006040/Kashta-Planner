@@ -1,0 +1,100 @@
+Error fetching events: error: column "share_token" does not exist
+    at /app/dist/index.cjs:64:13326
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:70:101260
+    at async pf.syncEventStatuses (/app/dist/index.cjs:70:120834)
+    at async /app/dist/index.cjs:70:127305 {
+  length: 112,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '160',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  length: 112,
+  where: undefined,
+  schema: undefined,
+  severity: 'ERROR',
+  table: undefined,
+  column: undefined,
+  code: '42703',
+  dataType: undefined,
+  detail: undefined,
+  constraint: undefined,
+  hint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  position: '160',
+  routine: 'errorMissingColumn'
+  internalPosition: undefined,
+}
+1:42:23 PM [express] GET /api/events 500 in 2ms :: {"error":"Failed to fetch events"}
+  internalQuery: undefined,
+Error fetching events: error: column "share_token" does not exist
+    at /app/dist/index.cjs:64:13326
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:70:101260
+    at async pf.syncEventStatuses (/app/dist/index.cjs:70:120834)
+    at async /app/dist/index.cjs:70:127305 {
+  where: undefined,
+  internalQuery: undefined,
+  schema: undefined,
+  where: undefined,
+  table: undefined,
+    at /app/dist/index.cjs:64:13326
+  schema: undefined,
+  column: undefined,
+  table: undefined,
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  dataType: undefined,
+  constraint: undefined,
+    at async /app/dist/index.cjs:70:101260
+  file: 'parse_relation.c',
+    at async pf.syncEventStatuses (/app/dist/index.cjs:70:120834)
+  line: '3716',
+    at async /app/dist/index.cjs:70:127305 {
+  routine: 'errorMissingColumn'
+}
+  length: 112,
+1:42:25 PM [express] GET /api/events 500 in 32ms :: {"error":"Failed to fetch events"}
+  severity: 'ERROR',
+Error fetching events: error: column "share_token" does not exist
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '160',
+  internalPosition: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+1:42:27 PM [express] GET /api/events 500 in 29ms :: {"error":"Failed to fetch events"}
+Error fetching events: error: column "share_token" does not exist
+    at /app/dist/index.cjs:64:13326
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:70:101260
+    at async pf.syncEventStatuses (/app/dist/index.cjs:70:120834)
+    at async /app/dist/index.cjs:70:127305 {
+  length: 112,
+  severity: 'ERROR',
+  hint: undefined,
+  code: '42703',
+  detail: undefined,
+1:42:35 PM [express] GET /api/participants 304 in 21ms :: [{"id":"9d2c8254-f42d-4fa8-9535-30763e1f358d","name":"احمد مسعد","phone":"66725946","avatar":"user","tripCount":1},{"id":"2f3b9e83-2b5d-4d57-b154-e567dfd87a79","name":"عمر عبدالعظيم","phone":"50323611","avatar":"user","tripCount":1},{"id":"aa52b887-d8a0-4a76-9397-1fd1d9d4c4e7","name":"ايمن الحمودي","phone":"66280086","avatar":"user","tripCount":1},{"id":"d1507dc5-3d57-4ccc-b6bf-9f90ddd6861a","name":"المهندس حمزة","phone":"66131992","avatar":"user","tripCount":1},{"id":"2aef19d8-adbc-486b-b033-4136011c54cb","name":"اسامه السميطي","phone":"70005974","avatar":"user","tripCount":0},{"id":"f2b4242d-c8fe-44bf-996d-539d0dac1422","name":"محمد عبدالجبار","phone":"33327976","avatar":"user","tripCount":0},{"id":"c6ecc9cc-8166-4515-9f62-b425b0d577f5","name":"يوسف عبدالعظيم","phone":"50958726","avatar":"user","tripCount":0},{"id":"88c5957d-3be9-4a4b-9b63-3f4eb7c2a368","name":"حسن ضيف الله","phone":"66444312","avatar":"user","tripCount":0}]
+  position: '160',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
