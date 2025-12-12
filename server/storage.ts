@@ -51,6 +51,8 @@ export interface IStorage {
   getItemsByCategory(categoryId: string): Promise<Item[]>;
   getItem(id: string): Promise<Item | undefined>;
   createItem(item: InsertItem): Promise<Item>;
+  updateItem(id: string, item: Partial<InsertItem>): Promise<Item | undefined>;
+  deleteItem(id: string): Promise<boolean>;
   
   // Participants
   getParticipants(): Promise<Participant[]>;
@@ -169,6 +171,16 @@ export class DatabaseStorage implements IStorage {
   async createItem(item: InsertItem): Promise<Item> {
     const [created] = await db.insert(items).values(item).returning();
     return created;
+  }
+
+  async updateItem(id: string, item: Partial<InsertItem>): Promise<Item | undefined> {
+    const [updated] = await db.update(items).set(item).where(eq(items.id, id)).returning();
+    return updated;
+  }
+
+  async deleteItem(id: string): Promise<boolean> {
+    const result = await db.delete(items).where(eq(items.id, id)).returning();
+    return result.length > 0;
   }
 
   // Participants

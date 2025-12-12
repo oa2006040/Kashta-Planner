@@ -315,14 +315,31 @@ const AVAILABLE_COLORS = [
   "#708090", "#778899", "#696969", "#808080", "#A9A9A9"
 ];
 
-function ItemCard({ item, category }: { item: Item; category?: Category }) {
-  const { t } = useLanguage();
+function ItemCard({ 
+  item, 
+  category, 
+  categories,
+  onDelete,
+  onMove
+}: { 
+  item: Item; 
+  category?: Category;
+  categories: Category[];
+  onDelete: (id: string) => void;
+  onMove: (itemId: string, newCategoryId: string) => void;
+}) {
+  const { t, language } = useLanguage();
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  
+  const otherCategories = categories.filter(c => c.id !== category?.id);
+  
   return (
     <div 
-      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover-elevate"
+      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover-elevate group"
       data-testid={`item-${item.id}`}
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background shrink-0">
         {category && <CategoryIcon icon={category.icon} color={category.color} className="h-5 w-5" />}
       </div>
       <div className="flex-1 min-w-0">
@@ -336,11 +353,118 @@ function ItemCard({ item, category }: { item: Item; category?: Category }) {
           {t("شائع", "Common")}
         </Badge>
       )}
+      <div className="flex items-center gap-1 shrink-0">
+        <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
+              data-testid={`button-move-item-${item.id}`}
+            >
+              <FolderPlus className="h-4 w-4" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("نقل المستلزم", "Move Item")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  `نقل "${item.name}" إلى فئة أخرى`,
+                  `Move "${item.name}" to another category`
+                )}
+              </p>
+              <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+                <SelectTrigger data-testid="select-move-category">
+                  <SelectValue placeholder={t("اختر الفئة الجديدة", "Select new category")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {otherCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <span className="flex items-center gap-2">
+                        <CategoryIcon icon={cat.icon} color={cat.color} className="h-4 w-4" />
+                        {language === "ar" ? cat.nameAr : cat.name || cat.nameAr}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="gap-2">
+              <DialogClose asChild>
+                <Button variant="outline">{t("إلغاء", "Cancel")}</Button>
+              </DialogClose>
+              <Button
+                onClick={() => {
+                  if (selectedCategoryId) {
+                    onMove(item.id, selectedCategoryId);
+                    setMoveDialogOpen(false);
+                    setSelectedCategoryId("");
+                  }
+                }}
+                disabled={!selectedCategoryId}
+                data-testid="button-confirm-move"
+              >
+                {t("نقل", "Move")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+              data-testid={`button-delete-item-${item.id}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("حذف المستلزم", "Delete Item")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t(
+                  `هل أنت متأكد من حذف "${item.name}"؟`,
+                  `Are you sure you want to delete "${item.name}"?`
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2">
+              <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => onDelete(item.id)}
+                className="bg-destructive text-destructive-foreground"
+              >
+                {t("حذف", "Delete")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }
 
-function CategorySection({ category, items, onDelete }: { category: Category; items: Item[]; onDelete: (id: string) => void }) {
+function CategorySection({ 
+  category, 
+  items, 
+  categories,
+  onDeleteCategory,
+  onDeleteItem,
+  onMoveItem
+}: { 
+  category: Category; 
+  items: Item[]; 
+  categories: Category[];
+  onDeleteCategory: (id: string) => void;
+  onDeleteItem: (id: string) => void;
+  onMoveItem: (itemId: string, newCategoryId: string) => void;
+}) {
   const [isExpanded, setIsExpanded] = useState(true);
   const { t, language } = useLanguage();
 
@@ -387,7 +511,7 @@ function CategorySection({ category, items, onDelete }: { category: Category; it
                 <AlertDialogFooter className="gap-2">
                   <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => onDelete(category.id)}
+                    onClick={() => onDeleteCategory(category.id)}
                     className="bg-destructive text-destructive-foreground"
                   >
                     {t("حذف", "Delete")}
@@ -408,7 +532,14 @@ function CategorySection({ category, items, onDelete }: { category: Category; it
       {isExpanded && (
         <CardContent className="pt-0 space-y-2">
           {items.map((item) => (
-            <ItemCard key={item.id} item={item} category={category} />
+            <ItemCard 
+              key={item.id} 
+              item={item} 
+              category={category} 
+              categories={categories}
+              onDelete={onDeleteItem}
+              onMove={onMoveItem}
+            />
           ))}
         </CardContent>
       )}
@@ -780,6 +911,49 @@ export default function Items() {
     },
   });
 
+  const deleteItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/items/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({
+        title: t("تم الحذف", "Deleted"),
+        description: t("تم حذف المستلزم بنجاح", "Item deleted successfully"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء حذف المستلزم", "An error occurred while deleting the item"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const moveItemMutation = useMutation({
+    mutationFn: async ({ itemId, newCategoryId }: { itemId: string; newCategoryId: string }) => {
+      return apiRequest("PATCH", `/api/items/${itemId}`, { categoryId: newCategoryId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      toast({
+        title: t("تم النقل", "Moved"),
+        description: t("تم نقل المستلزم بنجاح", "Item moved successfully"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء نقل المستلزم", "An error occurred while moving the item"),
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredCategories = categoriesWithItems?.map((cat) => ({
     ...cat,
     items: cat.items.filter((item) =>
@@ -890,7 +1064,10 @@ export default function Items() {
               key={category.id} 
               category={category} 
               items={category.items}
-              onDelete={(id) => deleteCategoryMutation.mutate(id)}
+              categories={categoriesWithItems || []}
+              onDeleteCategory={(id) => deleteCategoryMutation.mutate(id)}
+              onDeleteItem={(id) => deleteItemMutation.mutate(id)}
+              onMoveItem={(itemId, newCategoryId) => moveItemMutation.mutate({ itemId, newCategoryId })}
             />
           ))}
         </div>

@@ -154,6 +154,55 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/items/:id", async (req, res) => {
+    try {
+      const data = insertItemSchema.partial().parse(req.body);
+      const item = await storage.updateItem(req.params.id, data);
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      // Log activity
+      await storage.createActivityLog({
+        action: "تعديل مستلزم",
+        details: `تم تعديل "${item.name}"`,
+      });
+      
+      res.json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error updating item:", error);
+      res.status(500).json({ error: "Failed to update item" });
+    }
+  });
+
+  app.delete("/api/items/:id", async (req, res) => {
+    try {
+      const item = await storage.getItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      const deleted = await storage.deleteItem(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      // Log activity
+      await storage.createActivityLog({
+        action: "حذف مستلزم",
+        details: `تم حذف "${item.name}"`,
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      res.status(500).json({ error: "Failed to delete item" });
+    }
+  });
+
   // Participants
   app.get("/api/participants", async (req, res) => {
     try {
