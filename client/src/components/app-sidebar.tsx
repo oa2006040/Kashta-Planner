@@ -9,9 +9,9 @@ import {
   Wallet,
   FileText,
   Settings,
+  Flame,
   Star,
 } from "lucide-react";
-import logoPath from "@assets/Gemini_Generated_Image_atyax8atyax8atya_1765554412102.png";
 import {
   Sidebar,
   SidebarContent,
@@ -81,11 +81,9 @@ export function AppSidebar() {
           className="flex items-center gap-3"
           data-testid="link-home-logo"
         >
-          <img 
-            src={logoPath} 
-            alt="Kashta Logo" 
-            className="h-10 w-10 rounded-xl object-cover"
-          />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Flame className="h-5 w-5" />
+          </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
             <span className="text-lg font-bold">{t("كشتة", "Kashta")}</span>
             <span className="text-xs text-muted-foreground">{t("منظم الطلعات", "Trip Planner")}</span>

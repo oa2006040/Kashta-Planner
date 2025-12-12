@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import logoPath from "@assets/Gemini_Generated_Image_atyax8atyax8atya_1765554412102.png";
 import { 
   Calendar, 
   MapPin, 
@@ -309,21 +308,9 @@ export default function SharedEvent() {
   return (
     <div className="min-h-screen bg-background" dir={language === "ar" ? "rtl" : "ltr"}>
       <div className="max-w-4xl mx-auto p-4 space-y-6">
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <img 
-              src={logoPath} 
-              alt="Kashta Logo" 
-              className="h-10 w-10 rounded-xl object-cover"
-            />
-            <div>
-              <span className="text-lg font-bold">{t("كشتة", "Kashta")}</span>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Share2 className="h-3 w-3" />
-                <span>{t("طلعة مشتركة", "Shared Event")}</span>
-              </div>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <Share2 className="h-4 w-4" />
+          <span>{t("طلعة مشتركة", "Shared Event")}</span>
         </div>
 
         <Card>
