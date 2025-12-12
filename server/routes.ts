@@ -453,6 +453,188 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to delete event" });
     }
   });
+
+  // Enable sharing for an event
+  app.post("/api/events/:id/share", async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const result = await storage.enableEventSharing(eventId);
+      if (!result) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      
+      await storage.createActivityLog({
+        action: "تفعيل المشاركة",
+        details: `تم تفعيل مشاركة الطلعة`,
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error enabling share:", error);
+      res.status(500).json({ error: "Failed to enable sharing" });
+    }
+  });
+
+  // Disable sharing for an event
+  app.delete("/api/events/:id/share", async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      await storage.disableEventSharing(eventId);
+      
+      await storage.createActivityLog({
+        action: "إيقاف المشاركة",
+        details: `تم إيقاف مشاركة الطلعة`,
+      });
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error disabling share:", error);
+      res.status(500).json({ error: "Failed to disable sharing" });
+    }
+  });
+
+  // Get shared event by token
+  app.get("/api/shared/:token", async (req, res) => {
+    try {
+      const event = await storage.getEventWithDetailsByShareToken(req.params.token);
+      if (!event) {
+        return res.status(404).json({ error: "Shared event not found or sharing disabled" });
+      }
+      res.json(event);
+    } catch (error) {
+      console.error("Error getting shared event:", error);
+      res.status(500).json({ error: "Failed to get shared event" });
+    }
+  });
+
+  // Update shared event by token
+  app.patch("/api/shared/:token", async (req, res) => {
+    try {
+      const event = await storage.getEventByShareToken(req.params.token);
+      if (!event || !event.isShareEnabled) {
+        return res.status(404).json({ error: "Shared event not found or sharing disabled" });
+      }
+      
+      const data = insertEventSchema.partial().parse(req.body);
+      const updated = await storage.updateEvent(event.id, data);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error updating shared event:", error);
+      res.status(500).json({ error: "Failed to update shared event" });
+    }
+  });
+
+  // Add participant to shared event
+  app.post("/api/shared/:token/participants", async (req, res) => {
+    try {
+      const event = await storage.getEventByShareToken(req.params.token);
+      if (!event || !event.isShareEnabled) {
+        return res.status(404).json({ error: "Shared event not found or sharing disabled" });
+      }
+      
+      const data = insertEventParticipantSchema.parse({
+        ...req.body,
+        eventId: event.id,
+      });
+      const ep = await storage.addParticipantToEvent(data);
+      res.status(201).json(ep);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error adding participant to shared event:", error);
+      res.status(500).json({ error: "Failed to add participant" });
+    }
+  });
+
+  // Remove participant from shared event
+  app.delete("/api/shared/:token/participants/:participantId", async (req, res) => {
+    try {
+      const event = await storage.getEventByShareToken(req.params.token);
+      if (!event || !event.isShareEnabled) {
+        return res.status(404).json({ error: "Shared event not found or sharing disabled" });
+      }
+      
+      await storage.removeParticipantFromEventWithCascade(event.id, req.params.participantId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing participant from shared event:", error);
+      res.status(500).json({ error: "Failed to remove participant" });
+    }
+  });
+
+  // Add contribution to shared event
+  app.post("/api/shared/:token/contributions", async (req, res) => {
+    try {
+      const event = await storage.getEventByShareToken(req.params.token);
+      if (!event || !event.isShareEnabled) {
+        return res.status(404).json({ error: "Shared event not found or sharing disabled" });
+      }
+      
+      const data = insertContributionSchema.parse({
+        ...req.body,
+        eventId: event.id,
+      });
+      const contribution = await storage.createContribution(data);
+      res.status(201).json(contribution);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error adding contribution to shared event:", error);
+      res.status(500).json({ error: "Failed to add contribution" });
+    }
+  });
+
+  // Update contribution in shared event
+  app.patch("/api/shared/:token/contributions/:id", async (req, res) => {
+    try {
+      const event = await storage.getEventByShareToken(req.params.token);
+      if (!event || !event.isShareEnabled) {
+        return res.status(404).json({ error: "Shared event not found or sharing disabled" });
+      }
+      
+      const data = insertContributionSchema.partial().parse(req.body);
+      const updated = await storage.updateContribution(req.params.id, data);
+      if (!updated) {
+        return res.status(404).json({ error: "Contribution not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error updating contribution:", error);
+      res.status(500).json({ error: "Failed to update contribution" });
+    }
+  });
+
+  // Delete contribution from shared event
+  app.delete("/api/shared/:token/contributions/:id", async (req, res) => {
+    try {
+      const event = await storage.getEventByShareToken(req.params.token);
+      if (!event || !event.isShareEnabled) {
+        return res.status(404).json({ error: "Shared event not found or sharing disabled" });
+      }
+      
+      await storage.deleteContribution(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting contribution:", error);
+      res.status(500).json({ error: "Failed to delete contribution" });
+    }
+  });
   
   // Check if event can be deleted
   app.get("/api/events/:id/can-delete", async (req, res) => {
