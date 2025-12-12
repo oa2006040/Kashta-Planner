@@ -35,8 +35,7 @@ import {
   Share2,
   Copy,
   Link as LinkIcon,
-  Image as ImageIcon,
-  X
+  Image as ImageIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -239,13 +238,13 @@ function ContributionItem({
       <div className="flex items-center gap-2 flex-wrap justify-end">
           {(contribution.quantity && contribution.quantity > 1) && parseFloat(contribution.cost || "0") === 0 && (
             <Badge variant="outline" className="text-xs">
-              {contribution.quantity}×
+              {formatNumber(contribution.quantity, language)}×
             </Badge>
           )}
           {parseFloat(contribution.cost || "0") > 0 && (
             <Badge variant="secondary" className="text-xs">
               {(contribution.quantity && contribution.quantity > 1) ? (
-                <span>{contribution.quantity} × {formatCurrency(contribution.cost || 0, language)} = {formatCurrency((contribution.quantity * parseFloat(contribution.cost || "0")), language)}</span>
+                <span>{formatNumber(contribution.quantity, language)} × {formatCurrency(contribution.cost || 0, language)} = {formatCurrency((contribution.quantity * parseFloat(contribution.cost || "0")), language)}</span>
               ) : (
                 formatCurrency(contribution.cost || 0, language)
               )}
@@ -665,7 +664,10 @@ export default function EventDetail() {
       const qty = c.quantity || 1;
       const unitCost = parseFloat(c.cost || "0");
       const totalCost = unitCost * qty;
-      const costStr = totalCost > 0 ? ` (${qty > 1 ? `${qty} × ${unitCost} = ` : ""}${totalCost.toFixed(2)} ${t("ر.ق", "QAR")})` : "";
+      const qtyStr = formatNumber(qty, language);
+      const unitCostStr = formatCurrency(unitCost, language);
+      const totalCostStr = formatCurrency(totalCost, language);
+      const costStr = totalCost > 0 ? ` (${qty > 1 ? `${qtyStr} × ${unitCostStr} = ` : ""}${totalCostStr})` : "";
       return `- ${c.item?.name || t("غرض", "Item")}${costStr}`;
     }).join("\\n");
 

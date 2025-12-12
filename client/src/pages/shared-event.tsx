@@ -847,13 +847,13 @@ function ContributionCard({
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {(contribution.quantity && contribution.quantity > 1) && parseFloat(contribution.cost || "0") === 0 && (
               <Badge variant="secondary">
-                {contribution.quantity}×
+                {formatNumber(contribution.quantity, language)}×
               </Badge>
             )}
             {parseFloat(contribution.cost || "0") > 0 && (
               <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                 {(contribution.quantity && contribution.quantity > 1) ? (
-                  <span>{contribution.quantity} × {formatCurrency(parseFloat(contribution.cost || "0"), language)} = {formatCurrency((contribution.quantity * parseFloat(contribution.cost || "0")), language)}</span>
+                  <span>{formatNumber(contribution.quantity, language)} × {formatCurrency(parseFloat(contribution.cost || "0"), language)} = {formatCurrency((contribution.quantity * parseFloat(contribution.cost || "0")), language)}</span>
                 ) : (
                   formatCurrency(parseFloat(contribution.cost || "0"), language)
                 )}
@@ -969,10 +969,10 @@ function ContributionCard({
                           {(parseFloat(cost) > 0 && parseInt(quantity) > 1) && (
                             <div className="flex items-center justify-between p-2 rounded-md bg-primary/10 text-sm">
                               <span className="text-muted-foreground">
-                                {quantity} × {parseFloat(cost).toFixed(2)} {t("ر.ق", "QAR")}
+                                {formatNumber(parseInt(quantity), language)} × {formatCurrency(parseFloat(cost), language)}
                               </span>
                               <span className="font-semibold">
-                                = {((parseInt(quantity) || 1) * (parseFloat(cost) || 0)).toFixed(2)} {t("ر.ق", "QAR")}
+                                = {formatCurrency((parseInt(quantity) || 1) * (parseFloat(cost) || 0), language)}
                               </span>
                             </div>
                           )}
@@ -1063,10 +1063,10 @@ function ContributionCard({
                             {(parseFloat(cost) > 0 && parseInt(quantity) > 1) && (
                               <div className="flex items-center justify-between p-2 rounded-md bg-primary/10 text-sm">
                                 <span className="text-muted-foreground">
-                                  {quantity} × {parseFloat(cost).toFixed(2)} {t("ر.ق", "QAR")}
+                                  {formatNumber(parseInt(quantity), language)} × {formatCurrency(parseFloat(cost), language)}
                                 </span>
                                 <span className="font-semibold">
-                                  = {((parseInt(quantity) || 1) * (parseFloat(cost) || 0)).toFixed(2)} {t("ر.ق", "QAR")}
+                                  = {formatCurrency((parseInt(quantity) || 1) * (parseFloat(cost) || 0), language)}
                                 </span>
                               </div>
                             )}
