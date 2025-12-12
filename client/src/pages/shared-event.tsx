@@ -22,7 +22,9 @@ import {
   Navigation,
   Share2,
   Copy,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Edit2,
+  Trash2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -714,6 +716,7 @@ function ContributionCard({
   t,
 }: ContributionCardProps) {
   const [showAssign, setShowAssign] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState("");
   const [cost, setCost] = useState(contribution.cost || "0");
   const [quantity, setQuantity] = useState(String(contribution.quantity || 1));
@@ -731,6 +734,23 @@ function ContributionCard({
       setCost("0");
       setQuantity("1");
       setIncludeCost(false);
+    }
+  };
+
+  const handleStartEdit = () => {
+    setSelectedParticipant(contribution.participantId || "");
+    setCost(contribution.cost || "0");
+    setQuantity(String(contribution.quantity || 1));
+    setIncludeCost(parseFloat(contribution.cost || "0") > 0);
+    setShowEdit(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (selectedParticipant) {
+      const qty = parseInt(quantity) || 1;
+      const unitCost = parseFloat(cost) || 0;
+      onAssign(selectedParticipant, includeCost ? unitCost.toFixed(2) : "0", qty);
+      setShowEdit(false);
     }
   };
 
@@ -868,15 +888,117 @@ function ContributionCard({
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            ) : onUnassign ? (
-              <Button variant="ghost" size="sm" onClick={onUnassign} data-testid={`button-unassign-${contribution.id}`}>
-                <X className="h-4 w-4" />
-              </Button>
-            ) : null}
+            ) : (
+              <>
+                <Dialog open={showEdit} onOpenChange={setShowEdit}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={handleStartEdit}
+                      className="h-8 w-8 text-muted-foreground"
+                      data-testid={`button-edit-${contribution.id}`}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{t("تعديل المساهمة", "Edit Contribution")}</DialogTitle>
+                      <DialogDescription>
+                        {t("تعديل المشارك والتكلفة والكمية", "Edit participant, cost and quantity")}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("اختر مشاركاً", "Select participant")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {participants.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              <div className="flex items-center gap-2">
+                                <AvatarIcon icon={p.avatar} className="h-4 w-4" />
+                                {p.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">{t("الكمية", "Quantity")}</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            placeholder="1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox 
+                            id="edit-include-cost" 
+                            checked={includeCost} 
+                            onCheckedChange={(checked) => setIncludeCost(checked === true)}
+                          />
+                          <Label htmlFor="edit-include-cost">{t("إضافة تكلفة", "Add cost")}</Label>
+                        </div>
+                        {includeCost && (
+                          <div className="space-y-2">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">{t("سعر الوحدة (ر.ق)", "Unit Price (QAR)")}</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={cost}
+                                onChange={(e) => setCost(e.target.value)}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            {(parseFloat(cost) > 0 && parseInt(quantity) > 1) && (
+                              <div className="flex items-center justify-between p-2 rounded-md bg-primary/10 text-sm">
+                                <span className="text-muted-foreground">
+                                  {quantity} × {parseFloat(cost).toFixed(2)} {t("ر.ق", "QAR")}
+                                </span>
+                                <span className="font-semibold">
+                                  = {((parseInt(quantity) || 1) * (parseFloat(cost) || 0)).toFixed(2)} {t("ر.ق", "QAR")}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                      <DialogClose asChild>
+                        <Button variant="outline">{t("إلغاء", "Cancel")}</Button>
+                      </DialogClose>
+                      <Button onClick={handleSaveEdit} disabled={!selectedParticipant || isLoading}>
+                        {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {t("حفظ", "Save")}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                {onUnassign && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={onUnassign} 
+                    className="h-8 w-8 text-muted-foreground"
+                    data-testid={`button-unassign-${contribution.id}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </>
+            )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                  <X className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
