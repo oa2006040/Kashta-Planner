@@ -661,8 +661,11 @@ export default function EventDetail() {
 
     const participantContributions = event.contributions?.filter(c => c.participantId === selectedParticipantForCalendar) || [];
     const participantItems = participantContributions.map(c => {
-      const cost = c.cost ? ` (${c.cost} ${t("ر.ق", "QAR")})` : "";
-      return `- ${c.item?.name || t("غرض", "Item")}${cost}`;
+      const qty = c.quantity || 1;
+      const unitCost = parseFloat(c.cost || "0");
+      const totalCost = unitCost * qty;
+      const costStr = totalCost > 0 ? ` (${qty > 1 ? `${qty} × ${unitCost} = ` : ""}${totalCost.toFixed(2)} ${t("ر.ق", "QAR")})` : "";
+      return `- ${c.item?.name || t("غرض", "Item")}${costStr}`;
     }).join("\\n");
 
     const participantDebts: string[] = [];
@@ -1537,7 +1540,7 @@ export default function EventDetail() {
                   (c) => c.participantId === ep.participantId
                 ) || [];
                 const participantTotal = participantContributions.reduce(
-                  (sum, c) => sum + parseFloat(c.cost || "0"), 0
+                  (sum, c) => sum + (parseFloat(c.cost || "0") * (c.quantity || 1)), 0
                 );
                 
                 return (
