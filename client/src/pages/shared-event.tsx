@@ -817,9 +817,9 @@ function ContributionCard({
   return (
     <Card className={hasParticipant ? "border-green-200 dark:border-green-800" : ""}>
       <CardContent className="p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start gap-3">
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
               hasParticipant ? "bg-green-100 dark:bg-green-900/30" : "bg-muted"
             }`}>
               {hasParticipant ? (
@@ -828,25 +828,23 @@ function ContributionCard({
                 <Circle className="h-4 w-4 text-muted-foreground" />
               )}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-medium truncate">{contribution.item?.name}</p>
-                {category && (
-                  <Badge variant="outline" className="text-xs">
-                    <CategoryIcon icon={category.icon} color={category.color} className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
-                    {language === "ar" ? category.nameAr : (category.name || category.nameAr)}
-                  </Badge>
-                )}
-              </div>
+            <div className="flex-1">
+              <p className="font-medium break-words">{contribution.item?.name}</p>
+              {category && (
+                <Badge variant="outline" className="text-xs mt-1">
+                  <CategoryIcon icon={category.icon} color={category.color} className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                  {language === "ar" ? category.nameAr : (category.name || category.nameAr)}
+                </Badge>
+              )}
               {contribution.participant && (
                 <div className="flex items-center gap-2 mt-1">
                   <AvatarIcon icon={contribution.participant.avatar} className="h-4 w-4" />
-                  <span className="text-sm text-muted-foreground">{contribution.participant.name}</span>
+                  <span className="text-sm text-muted-foreground break-words">{contribution.participant.name}</span>
                 </div>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {(contribution.quantity && contribution.quantity > 1) && parseFloat(contribution.cost || "0") === 0 && (
               <Badge variant="secondary">
                 {contribution.quantity}×

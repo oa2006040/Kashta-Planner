@@ -207,38 +207,35 @@ function ContributionItem({
         ? "bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800" 
         : "bg-muted/50"
     }`}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-            hasParticipant 
-              ? "bg-green-100 dark:bg-green-900/30" 
-              : "bg-muted"
-          }`}>
-            {hasParticipant ? (
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            ) : (
-              <Circle className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-medium truncate">{contribution.item?.name}</p>
-              {category && (
-                <Badge variant="outline" className="text-xs">
-                  <CategoryIcon icon={category.icon} color={category.color} className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
-                  {language === "ar" ? category.nameAr : (category.name || category.nameAr)}
-                </Badge>
-              )}
-            </div>
-            {contribution.participant && (
-              <div className="flex items-center gap-2 mt-1">
-                <AvatarIcon icon={contribution.participant.avatar} className="h-4 w-4" />
-                <span className="text-sm text-muted-foreground">{contribution.participant.name}</span>
-              </div>
-            )}
-          </div>
+      <div className="flex items-start gap-3">
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+          hasParticipant 
+            ? "bg-green-100 dark:bg-green-900/30" 
+            : "bg-muted"
+        }`}>
+          {hasParticipant ? (
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+          ) : (
+            <Circle className="h-4 w-4 text-muted-foreground" />
+          )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex-1">
+          <p className="font-medium break-words">{contribution.item?.name}</p>
+          {category && (
+            <Badge variant="outline" className="text-xs mt-1">
+              <CategoryIcon icon={category.icon} color={category.color} className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+              {language === "ar" ? category.nameAr : (category.name || category.nameAr)}
+            </Badge>
+          )}
+          {contribution.participant && (
+            <div className="flex items-center gap-2 mt-1">
+              <AvatarIcon icon={contribution.participant.avatar} className="h-4 w-4" />
+              <span className="text-sm text-muted-foreground break-words">{contribution.participant.name}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap justify-end">
           {(contribution.quantity && contribution.quantity > 1) && parseFloat(contribution.cost || "0") === 0 && (
             <Badge variant="outline" className="text-xs">
               {contribution.quantity}×
@@ -363,7 +360,6 @@ function ContributionItem({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </div>
       </div>
       
       {showAssign && !hasParticipant && (
@@ -1550,9 +1546,9 @@ export default function EventDetail() {
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                         <AvatarIcon icon={ep.participant?.avatar} className="h-6 w-6" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{ep.participant?.name}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex-1">
+                        <p className="font-medium break-words">{ep.participant?.name}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                           <span>{formatNumber(participantContributions.length, language)} {t("مستلزم", "items")}</span>
                           {participantTotal > 0 && (
                             <>
@@ -1656,10 +1652,10 @@ export default function EventDetail() {
                           key={contribution.id}
                           className="flex items-center justify-between gap-3 p-2 rounded-lg bg-muted/30"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="font-medium truncate">{contribution.item?.name}</span>
+                          <div className="flex items-center gap-3 flex-1 flex-wrap">
+                            <span className="font-medium break-words">{contribution.item?.name}</span>
                             {contribution.participant && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-muted-foreground break-words">
                                 - {contribution.participant.name}
                               </span>
                             )}
@@ -1720,9 +1716,9 @@ export default function EventDetail() {
                     }`}
                   >
                     <AvatarIcon icon={balance.participant.avatar} className="h-8 w-8" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{balance.participant.name}</p>
-                      <div className="flex items-center gap-2 text-xs">
+                    <div className="flex-1">
+                      <p className="font-medium break-words">{balance.participant.name}</p>
+                      <div className="flex items-center gap-2 text-xs flex-wrap">
                         <span className="text-muted-foreground">{t("دفع", "Paid")}: {formatCurrency(balance.totalPaid, language)}</span>
                       </div>
                     </div>
