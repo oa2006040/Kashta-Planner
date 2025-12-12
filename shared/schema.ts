@@ -76,6 +76,8 @@ export const events = pgTable("events", {
   weather: text("weather"),
   temperature: integer("temperature"),
   totalBudget: decimal("total_budget", { precision: 10, scale: 2 }).default("0"),
+  shareToken: text("share_token").unique(),
+  isShareEnabled: boolean("is_share_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
