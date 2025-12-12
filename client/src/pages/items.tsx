@@ -541,7 +541,8 @@ function CategorySection({
   onDeleteCategory,
   onDeleteItem,
   onMoveItem,
-  onEditItem
+  onEditItem,
+  onEditCategory
 }: { 
   category: Category; 
   items: Item[]; 
@@ -550,9 +551,35 @@ function CategorySection({
   onDeleteItem: (id: string) => void;
   onMoveItem: (itemId: string, newCategoryId: string) => void;
   onEditItem: (itemId: string, data: { name?: string; description?: string | null; isCommon?: boolean | null }) => void;
+  onEditCategory: (id: string, data: { name?: string; nameAr?: string; icon?: string; color?: string }) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editNameAr, setEditNameAr] = useState(category.nameAr);
+  const [editName, setEditName] = useState(category.name || "");
+  const [editIcon, setEditIcon] = useState(category.icon);
+  const [editColor, setEditColor] = useState(category.color);
+  const [iconSearch, setIconSearch] = useState("");
   const { t, language } = useLanguage();
+
+  const filteredIcons = AVAILABLE_ICON_NAMES.filter(icon => {
+    const searchLower = iconSearch.toLowerCase();
+    const englishMatch = icon.toLowerCase().includes(searchLower);
+    const arabicName = ICON_ARABIC_NAMES[icon] || "";
+    const arabicMatch = arabicName.includes(iconSearch);
+    return englishMatch || arabicMatch;
+  });
+
+  const handleEditSubmit = () => {
+    if (!editNameAr.trim()) return;
+    onEditCategory(category.id, {
+      nameAr: editNameAr.trim(),
+      name: editName.trim() || editNameAr.trim(),
+      icon: editIcon,
+      color: editColor,
+    });
+    setEditDialogOpen(false);
+  };
 
   return (
     <Card>
@@ -573,6 +600,126 @@ function CategorySection({
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline">{items.length}</Badge>
+            
+            <Dialog open={editDialogOpen} onOpenChange={(open) => {
+              setEditDialogOpen(open);
+              if (open) {
+                setEditNameAr(category.nameAr);
+                setEditName(category.name || "");
+                setEditIcon(category.icon);
+                setEditColor(category.color);
+                setIconSearch("");
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground"
+                  data-testid={`button-edit-category-${category.id}`}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{t("تعديل الفئة", "Edit Category")}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>{t("الاسم بالعربية *", "Arabic Name *")}</Label>
+                      <Input
+                        value={editNameAr}
+                        onChange={(e) => setEditNameAr(e.target.value)}
+                        data-testid="input-edit-category-name-ar"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t("الاسم بالإنجليزية", "English Name")}</Label>
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        data-testid="input-edit-category-name-en"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("معاينة", "Preview")}</Label>
+                    <div className="flex items-center gap-3 p-4 rounded-lg border">
+                      <div 
+                        className="flex h-12 w-12 items-center justify-center rounded-xl"
+                        style={{ backgroundColor: `${editColor}20` }}
+                      >
+                        <CategoryIcon icon={editIcon} color={editColor} className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{editNameAr || t("اسم الفئة", "Category name")}</p>
+                        {editName && <p className="text-sm text-muted-foreground">{editName}</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("اللون", "Color")}</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {AVAILABLE_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`h-8 w-8 rounded-md border-2 transition-all ${
+                            editColor === color ? "border-primary scale-110" : "border-transparent"
+                          }`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => setEditColor(color)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("الأيقونة", "Icon")}</Label>
+                    <Input
+                      placeholder={t("بحث عن أيقونة...", "Search for icon...")}
+                      value={iconSearch}
+                      onChange={(e) => setIconSearch(e.target.value)}
+                    />
+                    <ScrollArea className="h-48 rounded-md border p-2">
+                      <div className="grid grid-cols-8 gap-2">
+                        {filteredIcons.map((icon) => (
+                          <button
+                            key={icon}
+                            type="button"
+                            className={`flex h-10 w-10 items-center justify-center rounded-md border transition-all ${
+                              editIcon === icon 
+                                ? "border-primary bg-primary/10" 
+                                : "border-transparent hover:bg-muted"
+                            }`}
+                            onClick={() => setEditIcon(icon)}
+                          >
+                            <CategoryIcon icon={icon} color={editColor} className="h-5 w-5" />
+                          </button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </div>
+                <DialogFooter className="gap-2">
+                  <DialogClose asChild>
+                    <Button variant="outline">{t("إلغاء", "Cancel")}</Button>
+                  </DialogClose>
+                  <Button
+                    onClick={handleEditSubmit}
+                    disabled={!editNameAr.trim()}
+                    data-testid="button-confirm-edit-category"
+                  >
+                    {t("حفظ", "Save")}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button 
@@ -1062,6 +1209,26 @@ export default function Items() {
     },
   });
 
+  const editCategoryMutation = useMutation({
+    mutationFn: async ({ categoryId, data }: { categoryId: string; data: { name?: string; nameAr?: string; icon?: string; color?: string } }) => {
+      return apiRequest("PATCH", `/api/categories/${categoryId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      toast({
+        title: t("تم التعديل", "Updated"),
+        description: t("تم تعديل الفئة بنجاح", "Category updated successfully"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تعديل الفئة", "An error occurred while updating the category"),
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredCategories = categoriesWithItems?.map((cat) => ({
     ...cat,
     items: cat.items.filter((item) =>
@@ -1177,6 +1344,7 @@ export default function Items() {
               onDeleteItem={(id) => deleteItemMutation.mutate(id)}
               onMoveItem={(itemId, newCategoryId) => moveItemMutation.mutate({ itemId, newCategoryId })}
               onEditItem={(itemId, data) => editItemMutation.mutate({ itemId, data })}
+              onEditCategory={(categoryId, data) => editCategoryMutation.mutate({ categoryId, data })}
             />
           ))}
         </div>

@@ -78,6 +78,30 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/categories/:id", async (req, res) => {
+    try {
+      const data = insertCategorySchema.partial().parse(req.body);
+      const category = await storage.updateCategory(req.params.id, data);
+      if (!category) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+      
+      // Log activity
+      await storage.createActivityLog({
+        action: "تعديل فئة",
+        details: `تم تعديل فئة "${category.nameAr}"`,
+      });
+      
+      res.json(category);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error updating category:", error);
+      res.status(500).json({ error: "Failed to update category" });
+    }
+  });
+
   app.delete("/api/categories/:id", async (req, res) => {
     try {
       const category = await storage.getCategory(req.params.id);
