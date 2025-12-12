@@ -58,6 +58,17 @@ Cross-event debt aggregation:
   - Counterparty breakdown (aggregated debts with each person)
   - Per-event contribution history
 
+### Receipt Upload System
+Object storage integration for receipt verification:
+- **ObjectStorageService**: Server-side service (`server/objectStorage.ts`) using Google Cloud Storage
+- **Presigned URLs**: Client uploads directly to storage via presigned PUT URLs
+- **ObjectUploader Component**: Simple file picker with preview before upload
+- **Receipt Display**: Dialog-based image viewer for attached receipts
+- **Integration Points**:
+  - `contributions.receiptUrl` field stores object path
+  - Receipt icon shows on contributions with costs (green if receipt attached, grey if not)
+  - Upload available for any contribution with cost > 0
+
 ### Key Design Patterns
 - Shared schema between client and server via `@shared/*` path alias
 - Type-safe API with Zod schemas derived from Drizzle table definitions

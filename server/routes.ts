@@ -10,6 +10,7 @@ import {
   insertContributionSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -1115,6 +1116,54 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error exporting data:", error);
       res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
+  // Object Storage - Receipt uploads
+  app.post("/api/objects/upload", async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Serve uploaded objects (public)
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        req.path
+      );
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error serving object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  // Normalize upload path for receipt storage
+  app.post("/api/receipts", async (req, res) => {
+    try {
+      if (!req.body.uploadURL) {
+        return res.status(400).json({ error: "uploadURL is required" });
+      }
+      
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(
+        req.body.uploadURL
+      );
+      
+      res.status(200).json({ objectPath });
+    } catch (error) {
+      console.error("Error normalizing receipt path:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

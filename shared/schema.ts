@@ -128,6 +128,7 @@ export const contributions = pgTable("contributions", {
   cost: decimal("cost", { precision: 10, scale: 2 }).default("0"),
   status: text("status").default("pending"), // pending, confirmed, delivered
   notes: text("notes"),
+  receiptUrl: text("receipt_url"), // URL to receipt/invoice image
   createdAt: timestamp("created_at").defaultNow(),
 });
 
