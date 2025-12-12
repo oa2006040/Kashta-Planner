@@ -690,9 +690,17 @@ export class DatabaseStorage implements IStorage {
     const assignedContributions = eventContributions.filter(c => c.participantId);
     const unassignedContributions = eventContributions.filter(c => !c.participantId);
     
-    // Calculate costs for each group
-    const assignedCosts = assignedContributions.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
-    const unassignedCosts = unassignedContributions.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+    // Calculate costs for each group (quantity × unit price)
+    const assignedCosts = assignedContributions.reduce((sum, c) => {
+      const unitCost = parseFloat(c.cost || "0");
+      const quantity = c.quantity || 1;
+      return sum + (unitCost * quantity);
+    }, 0);
+    const unassignedCosts = unassignedContributions.reduce((sum, c) => {
+      const unitCost = parseFloat(c.cost || "0");
+      const quantity = c.quantity || 1;
+      return sum + (unitCost * quantity);
+    }, 0);
     
     // Sum up what each participant paid (only assigned contributions count)
     const paidByParticipant = new Map<string, number>();
@@ -700,7 +708,9 @@ export class DatabaseStorage implements IStorage {
     for (const contribution of assignedContributions) {
       if (contribution.participantId) {
         const current = paidByParticipant.get(contribution.participantId) || 0;
-        paidByParticipant.set(contribution.participantId, current + parseFloat(contribution.cost || "0"));
+        const unitCost = parseFloat(contribution.cost || "0");
+        const quantity = contribution.quantity || 1;
+        paidByParticipant.set(contribution.participantId, current + (unitCost * quantity));
       }
     }
     
@@ -1069,10 +1079,14 @@ export class DatabaseStorage implements IStorage {
     const summaries: ParticipantDebtSummary[] = [];
     
     for (const participant of allParticipants) {
-      // Total paid across all events (from assigned contributions)
+      // Total paid across all events (from assigned contributions) - quantity × unit price
       const totalPaid = allContributions
         .filter(c => c.participantId === participant.id)
-        .reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+        .reduce((sum, c) => {
+          const unitCost = parseFloat(c.cost || "0");
+          const quantity = c.quantity || 1;
+          return sum + (unitCost * quantity);
+        }, 0);
       
       // Total owed TO others (this participant is debtor)
       const totalOwed = allRecords
@@ -1142,8 +1156,12 @@ export class DatabaseStorage implements IStorage {
       .from(contributions)
       .where(eq(contributions.participantId, participantId));
     
-    // Calculate totals
-    const totalPaid = participantContributions.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+    // Calculate totals (quantity × unit price)
+    const totalPaid = participantContributions.reduce((sum, c) => {
+      const unitCost = parseFloat(c.cost || "0");
+      const quantity = c.quantity || 1;
+      return sum + (unitCost * quantity);
+    }, 0);
     const totalOwed = debtorRecords.reduce((sum, r) => sum + parseFloat(r.settlement_records.amount), 0);
     const totalOwedToYou = creditorRecords.reduce((sum, r) => sum + parseFloat(r.settlement_records.amount), 0);
     const netPosition = totalOwedToYou - totalOwed;
@@ -1224,9 +1242,13 @@ export class DatabaseStorage implements IStorage {
     for (const ep of participantEvents) {
       const eventId = ep.events.id;
       
-      // Get all contributions for this event by this participant
+      // Get all contributions for this event by this participant (quantity × unit price)
       const eventContributions = participantContributions.filter(c => c.eventId === eventId);
-      const paid = eventContributions.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+      const paid = eventContributions.reduce((sum, c) => {
+        const unitCost = parseFloat(c.cost || "0");
+        const quantity = c.quantity || 1;
+        return sum + (unitCost * quantity);
+      }, 0);
       
       // Get settlement info for this event
       const settlement = await this.getEventSettlement(eventId);
