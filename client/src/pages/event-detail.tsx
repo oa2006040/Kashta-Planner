@@ -35,7 +35,8 @@ import {
   Share2,
   Copy,
   Link as LinkIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1870,7 +1871,7 @@ export default function EventDetail() {
 
       {/* Debt Share Dialog */}
       <Dialog open={debtShareDialogOpen} onOpenChange={setDebtShareDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("مشاركة تذكير الديون", "Share Debt Reminder")}</DialogTitle>
             <DialogDescription>
@@ -1947,35 +1948,46 @@ export default function EventDetail() {
                 </div>
               </div>
 
-              <DialogFooter className="flex gap-2 sm:gap-2">
+              <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex gap-2 flex-1">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleShareDebtCard('download')}
+                    disabled={isGeneratingImage}
+                    className="flex-1"
+                  >
+                    {isGeneratingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Download className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                        {t("تحميل", "Download")}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => handleShareDebtCard('share')}
+                    disabled={isGeneratingImage}
+                    className="flex-1"
+                  >
+                    {isGeneratingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Share2 className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                        {t("مشاركة", "Share")}
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Button
-                  variant="outline"
-                  onClick={() => handleShareDebtCard('download')}
-                  disabled={isGeneratingImage}
-                  className="flex-1"
+                  variant="ghost"
+                  onClick={() => setDebtShareDialogOpen(false)}
+                  className="sm:hidden"
+                  data-testid="button-close-debt-dialog"
                 >
-                  {isGeneratingImage ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Download className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-                      {t("تحميل", "Download")}
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={() => handleShareDebtCard('share')}
-                  disabled={isGeneratingImage}
-                  className="flex-1"
-                >
-                  {isGeneratingImage ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Share2 className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-                      {t("مشاركة", "Share")}
-                    </>
-                  )}
+                  <X className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                  {t("إغلاق", "Close")}
                 </Button>
               </DialogFooter>
             </>
