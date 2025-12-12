@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import html2canvas from "html2canvas";
 import { 
   ArrowRight, 
   Calendar, 
@@ -33,7 +34,8 @@ import {
   Download,
   Share2,
   Copy,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Image as ImageIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -509,6 +511,64 @@ export default function EventDetail() {
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [selectedParticipantForCalendar, setSelectedParticipantForCalendar] = useState<string>("");
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [debtShareDialogOpen, setDebtShareDialogOpen] = useState(false);
+  const [selectedCreditorForShare, setSelectedCreditorForShare] = useState<string>("");
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const debtCardRef = useRef<HTMLDivElement>(null);
+
+  const handleShareDebtCard = async (action: 'share' | 'download') => {
+    if (!debtCardRef.current || !event) return;
+
+    setIsGeneratingImage(true);
+    try {
+      const canvas = await html2canvas(debtCardRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `${event.title}-debts.png`, { type: 'image/png' });
+
+      if (action === 'share' && navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: t("تذكير بالديون", "Debt Reminder"),
+          text: t(`تذكير بالديون من طلعة ${event.title}`, `Debt reminder from ${event.title} trip`),
+        });
+      } else {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `${event.title}-debts.png`;
+        link.click();
+        toast({
+          title: t("تم التحميل", "Downloaded"),
+          description: t("تم تحميل صورة الديون بنجاح", "Debt image downloaded successfully"),
+        });
+      }
+    } catch (error) {
+      console.error("Error generating image:", error);
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء إنشاء الصورة", "Error generating image"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const getCreditorDebts = (creditorId: string) => {
+    if (!settlement?.transactions) return [];
+    return settlement.transactions.filter(tx => tx.creditorId === creditorId && !tx.isSettled);
+  };
+
+  const getCreditorTotalOwed = (creditorId: string) => {
+    const debts = getCreditorDebts(creditorId);
+    return debts.reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+  };
 
   const generateICSFile = () => {
     if (!event || !selectedParticipantForCalendar) return;
@@ -1561,28 +1621,44 @@ export default function EventDetail() {
                         <span className="text-muted-foreground">{t("دفع", "Paid")}: {formatCurrency(balance.totalPaid, language)}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {balance.role === 'creditor' && (
-                        <>
-                          <TrendingUp className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium text-green-600">
-                            +{formatCurrency(balance.balance, language)}
-                          </span>
-                        </>
-                      )}
-                      {balance.role === 'debtor' && (
-                        <>
-                          <TrendingDown className="h-4 w-4 text-orange-600" />
-                          <span className="text-sm font-medium text-orange-600">
-                            {formatCurrency(balance.balance, language)}
-                          </span>
-                        </>
-                      )}
-                      {balance.role === 'settled' && (
-                        <>
-                          <Equal className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{t("متوازن", "Balanced")}</span>
-                        </>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        {balance.role === 'creditor' && (
+                          <>
+                            <TrendingUp className="h-4 w-4 text-green-600" />
+                            <span className="text-sm font-medium text-green-600">
+                              +{formatCurrency(balance.balance, language)}
+                            </span>
+                          </>
+                        )}
+                        {balance.role === 'debtor' && (
+                          <>
+                            <TrendingDown className="h-4 w-4 text-orange-600" />
+                            <span className="text-sm font-medium text-orange-600">
+                              {formatCurrency(balance.balance, language)}
+                            </span>
+                          </>
+                        )}
+                        {balance.role === 'settled' && (
+                          <>
+                            <Equal className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">{t("متوازن", "Balanced")}</span>
+                          </>
+                        )}
+                      </div>
+                      {balance.role === 'creditor' && getCreditorDebts(balance.participant.id).length > 0 && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            setSelectedCreditorForShare(balance.participant.id);
+                            setDebtShareDialogOpen(true);
+                          }}
+                          data-testid={`button-share-debts-${balance.participant.id}`}
+                        >
+                          <ImageIcon className="h-4 w-4 text-green-600" />
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -1687,6 +1763,121 @@ export default function EventDetail() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Debt Share Dialog */}
+      <Dialog open={debtShareDialogOpen} onOpenChange={setDebtShareDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("مشاركة تذكير الديون", "Share Debt Reminder")}</DialogTitle>
+            <DialogDescription>
+              {t("أنشئ صورة بقائمة الديون لمشاركتها", "Create an image with debt list to share")}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedCreditorForShare && settlement && (
+            <>
+              {/* Shareable Card */}
+              <div 
+                ref={debtCardRef}
+                className="p-6 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200"
+                style={{ fontFamily: "'Noto Kufi Arabic', sans-serif" }}
+                dir="rtl"
+              >
+                <div className="text-center mb-4">
+                  <h2 className="text-xl font-bold text-amber-900 mb-1">
+                    {t("تذكير بالديون", "Debt Reminder")}
+                  </h2>
+                  <p className="text-sm text-amber-700">{event?.title}</p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    {event?.date && formatDate(event.date, language)}
+                  </p>
+                </div>
+
+                <div className="bg-white/70 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-2xl">
+                      {(() => {
+                        const creditor = settlement.balances.find(b => b.participant.id === selectedCreditorForShare);
+                        return creditor?.participant.avatar ? (
+                          <AvatarIcon icon={creditor.participant.avatar} className="h-8 w-8" />
+                        ) : "👤";
+                      })()}
+                    </div>
+                    <div>
+                      <p className="font-bold text-amber-900">
+                        {settlement.balances.find(b => b.participant.id === selectedCreditorForShare)?.participant.name}
+                      </p>
+                      <p className="text-xs text-amber-700">{t("يستحق من الآخرين", "is owed by others")}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center text-2xl font-bold text-green-700 mb-2">
+                    {formatCurrency(getCreditorTotalOwed(selectedCreditorForShare), language)}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-amber-800 mb-2">{t("التفاصيل:", "Details:")}</p>
+                  {getCreditorDebts(selectedCreditorForShare).map((tx) => (
+                    <div 
+                      key={`${tx.debtorId}-${tx.creditorId}`}
+                      className="flex items-center justify-between bg-white/50 rounded-lg p-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                          <AvatarIcon icon={tx.debtor?.avatar} className="h-5 w-5" />
+                        </div>
+                        <span className="font-medium text-amber-900">{tx.debtor?.name}</span>
+                      </div>
+                      <span className="font-bold text-orange-700">
+                        {formatCurrency(tx.amount, language)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-amber-200 text-center">
+                  <p className="text-xs text-amber-600">
+                    {t("كشتة - تطبيق تخطيط الرحلات", "Kashta - Trip Planning App")}
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter className="flex gap-2 sm:gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleShareDebtCard('download')}
+                  disabled={isGeneratingImage}
+                  className="flex-1"
+                >
+                  {isGeneratingImage ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Download className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                      {t("تحميل", "Download")}
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => handleShareDebtCard('share')}
+                  disabled={isGeneratingImage}
+                  className="flex-1"
+                >
+                  {isGeneratingImage ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Share2 className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                      {t("مشاركة", "Share")}
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
