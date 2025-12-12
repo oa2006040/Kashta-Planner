@@ -767,6 +767,11 @@ function ContributionCard({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {(contribution.quantity && contribution.quantity > 1) && parseFloat(contribution.cost || "0") === 0 && (
+              <Badge variant="secondary">
+                {contribution.quantity}×
+              </Badge>
+            )}
             {parseFloat(contribution.cost || "0") > 0 && (
               <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                 {(contribution.quantity && contribution.quantity > 1) ? (

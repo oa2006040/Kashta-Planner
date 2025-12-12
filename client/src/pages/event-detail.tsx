@@ -178,6 +178,11 @@ function ContributionItem({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {(contribution.quantity && contribution.quantity > 1) && parseFloat(contribution.cost || "0") === 0 && (
+            <Badge variant="outline" className="text-xs">
+              {contribution.quantity}×
+            </Badge>
+          )}
           {parseFloat(contribution.cost || "0") > 0 && (
             <Badge variant="secondary" className="text-xs">
               {(contribution.quantity && contribution.quantity > 1) ? (
