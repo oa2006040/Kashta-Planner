@@ -103,7 +103,7 @@ interface ContributionItemProps {
   category?: Category;
   participants: Participant[];
   eventId: string;
-  onAssign: (contributionId: string, participantId: string, cost: string) => void;
+  onAssign: (contributionId: string, participantId: string, cost: string, quantity: number) => void;
   onDelete: (contributionId: string) => void;
   onUnassign: (contributionId: string) => void;
   isAssigning: boolean;
@@ -122,18 +122,21 @@ function ContributionItem({
   const { t, language } = useLanguage();
   const [showAssign, setShowAssign] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<string>("");
-  const [includeCost, setIncludeCost] = useState(false);
+  const [includeCost, setIncludeCost] = useState(parseFloat(contribution.cost || "0") > 0);
   const [cost, setCost] = useState(contribution.cost || "0");
+  const [quantity, setQuantity] = useState(String(contribution.quantity || 1));
 
   const hasParticipant = !!contribution.participantId;
 
   const handleAssign = () => {
     if (selectedParticipant) {
-      onAssign(contribution.id, selectedParticipant, includeCost ? cost : "0");
+      const qty = parseInt(quantity) || 1;
+      onAssign(contribution.id, selectedParticipant, includeCost ? cost : "0", qty);
       setShowAssign(false);
       setSelectedParticipant("");
       setIncludeCost(false);
       setCost("0");
+      setQuantity("1");
     }
   };
 
@@ -177,7 +180,11 @@ function ContributionItem({
         <div className="flex items-center gap-2 shrink-0">
           {parseFloat(contribution.cost || "0") > 0 && (
             <Badge variant="secondary" className="text-xs">
-              {formatCurrency(contribution.cost || 0, language)}
+              {(contribution.quantity && contribution.quantity > 1) ? (
+                <span>{contribution.quantity} × {formatCurrency(contribution.cost || 0, language)} = {formatCurrency((contribution.quantity * parseFloat(contribution.cost || "0")), language)}</span>
+              ) : (
+                formatCurrency(contribution.cost || 0, language)
+              )}
             </Badge>
           )}
           {!hasParticipant && (
@@ -282,27 +289,51 @@ function ContributionItem({
               </Button>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-2 rounded-md bg-muted/50">
-            <Checkbox
-              id={`cost-toggle-${contribution.id}`}
-              checked={includeCost}
-              onCheckedChange={(checked) => setIncludeCost(!!checked)}
-              data-testid={`checkbox-include-cost-${contribution.id}`}
-            />
-            <Label htmlFor={`cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
-              {t("إضافة تكلفة", "Add cost")}
-            </Label>
+          <div className="flex flex-col gap-2 p-2 rounded-md bg-muted/50">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">{t("الكمية", "Qty")}</Label>
+              <Input
+                type="number"
+                placeholder="1"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="w-16"
+                data-testid={`input-quantity-${contribution.id}`}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id={`cost-toggle-${contribution.id}`}
+                checked={includeCost}
+                onCheckedChange={(checked) => setIncludeCost(!!checked)}
+                data-testid={`checkbox-include-cost-${contribution.id}`}
+              />
+              <Label htmlFor={`cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
+                {t("إضافة تكلفة", "Add cost")}
+              </Label>
+            </div>
             {includeCost && (
-              <div className={`flex items-center gap-2 ${language === "ar" ? "mr-auto" : "ml-auto"}`}>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  className="w-24"
-                  data-testid={`input-cost-${contribution.id}`}
-                />
-                <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">{t("سعر الوحدة", "Unit price")}</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={cost}
+                    onChange={(e) => setCost(e.target.value)}
+                    className="w-24"
+                    data-testid={`input-cost-${contribution.id}`}
+                  />
+                  <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
+                </div>
+                {(parseInt(quantity) || 1) > 1 && parseFloat(cost) > 0 && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <span>=</span>
+                    <span className="font-medium">{((parseInt(quantity) || 1) * parseFloat(cost || "0")).toFixed(2)}</span>
+                    <span>{t("ر.ق", "QAR")}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -580,14 +611,16 @@ export default function EventDetail() {
   });
 
   const assignParticipantMutation = useMutation({
-    mutationFn: async ({ contributionId, participantId, cost }: { 
+    mutationFn: async ({ contributionId, participantId, cost, quantity }: { 
       contributionId: string; 
       participantId: string; 
       cost: string;
+      quantity: number;
     }) => {
       return apiRequest("PATCH", `/api/contributions/${contributionId}`, {
         participantId,
         cost: cost || "0",
+        quantity: quantity || 1,
         status: "confirmed",
       });
     },
@@ -608,8 +641,8 @@ export default function EventDetail() {
     },
   });
 
-  const handleAssign = (contributionId: string, participantId: string, cost: string) => {
-    assignParticipantMutation.mutate({ contributionId, participantId, cost });
+  const handleAssign = (contributionId: string, participantId: string, cost: string, quantity: number) => {
+    assignParticipantMutation.mutate({ contributionId, participantId, cost, quantity });
   };
 
   const enableShareMutation = useMutation({
@@ -697,7 +730,7 @@ export default function EventDetail() {
 
   const statusBadge = getStatusBadge(event.status || 'upcoming', t);
   const eventDate = new Date(event.date);
-  const totalBudget = event.contributions?.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0) || 0;
+  const totalBudget = event.contributions?.reduce((sum, c) => sum + (parseFloat(c.cost || "0") * (c.quantity || 1)), 0) || 0;
   const participantCount = event.eventParticipants?.length || 0;
   const itemCount = event.contributions?.length || 0;
 
@@ -1298,7 +1331,7 @@ export default function EventDetail() {
             <div className="space-y-4">
               {Object.entries(contributionsByCategory).map(([categoryId, contributions]) => {
                 const category = categories?.find((c) => c.id === categoryId);
-                const categoryTotal = contributions?.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0) || 0;
+                const categoryTotal = contributions?.reduce((sum, c) => sum + (parseFloat(c.cost || "0") * (c.quantity || 1)), 0) || 0;
                 
                 return (
                   <Card key={categoryId}>

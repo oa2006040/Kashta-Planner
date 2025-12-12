@@ -33,6 +33,7 @@ export default function ContributionForm() {
   const [selectedItems, setSelectedItems] = useState<Map<string, { 
     participantId?: string; 
     cost?: string;
+    quantity?: string;
     includeParticipant?: boolean;
     includeCost?: boolean;
   }>>(new Map());
@@ -51,7 +52,7 @@ export default function ContributionForm() {
   });
 
   const addContributionMutation = useMutation({
-    mutationFn: async (data: { eventId: string; itemId: string; participantId?: string; cost?: string }) => {
+    mutationFn: async (data: { eventId: string; itemId: string; participantId?: string; cost?: string; quantity?: number }) => {
       return apiRequest(
         "POST",
         `/api/events/${data.eventId}/contributions`,
@@ -59,6 +60,7 @@ export default function ContributionForm() {
           itemId: data.itemId,
           participantId: data.participantId || null,
           cost: data.cost || "0",
+          quantity: data.quantity || 1,
         }
       );
     },
@@ -78,14 +80,17 @@ export default function ContributionForm() {
     }
 
     try {
-      const promises = Array.from(selectedItems.entries()).map(([itemId, data]) =>
-        addContributionMutation.mutateAsync({
+      const promises = Array.from(selectedItems.entries()).map(([itemId, data]) => {
+        const quantity = parseInt(data.quantity || "1") || 1;
+        const unitCost = parseFloat(data.cost || "0") || 0;
+        return addContributionMutation.mutateAsync({
           eventId: eventId!,
           itemId,
           participantId: data.includeParticipant ? data.participantId : undefined,
-          cost: data.includeCost ? data.cost : undefined,
-        })
-      );
+          cost: data.includeCost ? unitCost.toFixed(2) : undefined,
+          quantity: quantity,
+        });
+      });
 
       await Promise.all(promises);
 
@@ -109,12 +114,12 @@ export default function ContributionForm() {
     if (newSelected.has(itemId)) {
       newSelected.delete(itemId);
     } else {
-      newSelected.set(itemId, { includeParticipant: false, includeCost: false });
+      newSelected.set(itemId, { includeParticipant: false, includeCost: false, quantity: "1" });
     }
     setSelectedItems(newSelected);
   };
 
-  const updateItemData = (itemId: string, field: "participantId" | "cost" | "includeParticipant" | "includeCost", value: string | boolean) => {
+  const updateItemData = (itemId: string, field: "participantId" | "cost" | "quantity" | "includeParticipant" | "includeCost", value: string | boolean) => {
     const newSelected = new Map(selectedItems);
     const current = newSelected.get(itemId) || {};
     newSelected.set(itemId, { ...current, [field]: value });
@@ -238,40 +243,68 @@ export default function ContributionForm() {
                               </div>
                               
                               {(itemData?.includeParticipant || itemData?.includeCost) && (
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                  {itemData?.includeParticipant && (
-                                    <div className="space-y-1.5">
-                                      <Label className="text-xs">{t("المسؤول", "Responsible")}</Label>
-                                      <Select
-                                        value={itemData?.participantId || ""}
-                                        onValueChange={(v) => updateItemData(item.id, "participantId", v)}
-                                      >
-                                        <SelectTrigger data-testid={`select-participant-${item.id}`}>
-                                          <SelectValue placeholder={t("اختر مشارك", "Select participant")} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {participants?.map((p) => (
-                                            <SelectItem key={p.id} value={p.id}>
-                                              <div className="flex items-center gap-2">
-                                                <AvatarIcon icon={p.avatar} className="h-4 w-4" />
-                                                {p.name}
-                                              </div>
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  )}
+                                <div className="space-y-3">
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    {itemData?.includeParticipant && (
+                                      <div className="space-y-1.5">
+                                        <Label className="text-xs">{t("المسؤول", "Responsible")}</Label>
+                                        <Select
+                                          value={itemData?.participantId || ""}
+                                          onValueChange={(v) => updateItemData(item.id, "participantId", v)}
+                                        >
+                                          <SelectTrigger data-testid={`select-participant-${item.id}`}>
+                                            <SelectValue placeholder={t("اختر مشارك", "Select participant")} />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {participants?.map((p) => (
+                                              <SelectItem key={p.id} value={p.id}>
+                                                <div className="flex items-center gap-2">
+                                                  <AvatarIcon icon={p.avatar} className="h-4 w-4" />
+                                                  {p.name}
+                                                </div>
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
+                                  </div>
                                   {itemData?.includeCost && (
-                                    <div className="space-y-1.5">
-                                      <Label className="text-xs">{t("التكلفة (ر.ق)", "Cost (QAR)")}</Label>
-                                      <Input
-                                        type="number"
-                                        placeholder="0.000"
-                                        value={itemData?.cost || ""}
-                                        onChange={(e) => updateItemData(item.id, "cost", e.target.value)}
-                                        data-testid={`input-cost-${item.id}`}
-                                      />
+                                    <div className="space-y-2">
+                                      <div className="grid gap-3 grid-cols-2">
+                                        <div className="space-y-1.5">
+                                          <Label className="text-xs">{t("الكمية", "Quantity")}</Label>
+                                          <Input
+                                            type="number"
+                                            min="1"
+                                            placeholder="1"
+                                            value={itemData?.quantity || "1"}
+                                            onChange={(e) => updateItemData(item.id, "quantity", e.target.value)}
+                                            data-testid={`input-quantity-${item.id}`}
+                                          />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                          <Label className="text-xs">{t("سعر الوحدة (ر.ق)", "Unit Price (QAR)")}</Label>
+                                          <Input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            value={itemData?.cost || ""}
+                                            onChange={(e) => updateItemData(item.id, "cost", e.target.value)}
+                                            data-testid={`input-cost-${item.id}`}
+                                          />
+                                        </div>
+                                      </div>
+                                      {(parseFloat(itemData?.cost || "0") > 0 && parseInt(itemData?.quantity || "1") > 0) && (
+                                        <div className="flex items-center justify-between p-2 rounded-md bg-primary/10 text-sm">
+                                          <span className="text-muted-foreground">
+                                            {itemData?.quantity || 1} × {parseFloat(itemData?.cost || "0").toFixed(2)} {t("ر.ق", "QAR")}
+                                          </span>
+                                          <span className="font-semibold">
+                                            = {((parseInt(itemData?.quantity || "1") || 1) * (parseFloat(itemData?.cost || "0") || 0)).toFixed(2)} {t("ر.ق", "QAR")}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>

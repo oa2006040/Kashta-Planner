@@ -195,7 +195,7 @@ export default function SharedEvent() {
   });
 
   const updateContributionMutation = useMutation({
-    mutationFn: async ({ contributionId, data }: { contributionId: string; data: { participantId?: string | null; cost?: string } }) => {
+    mutationFn: async ({ contributionId, data }: { contributionId: string; data: { participantId?: string | null; cost?: string; quantity?: number } }) => {
       return apiRequest("PATCH", `/api/shared/${token}/contributions/${contributionId}`, data);
     },
     onSuccess: () => {
@@ -273,7 +273,7 @@ export default function SharedEvent() {
   const existingItemIds = contributions.map(c => c.itemId);
   const availableItems = items?.filter(item => !existingItemIds.includes(item.id)) || [];
 
-  const totalBudget = contributions.reduce((sum, c) => sum + parseFloat(c.cost || "0"), 0);
+  const totalBudget = contributions.reduce((sum, c) => sum + (parseFloat(c.cost || "0") * (c.quantity || 1)), 0);
   const assignedItems = contributions.filter(c => c.participantId);
   const unassignedItems = contributions.filter(c => !c.participantId);
 
@@ -562,10 +562,10 @@ export default function SharedEvent() {
                         contribution={contribution}
                         category={categories?.find(c => c.id === contribution.item?.categoryId)}
                         participants={participants}
-                        onAssign={(participantId, cost) => 
+                        onAssign={(participantId, cost, quantity) => 
                           updateContributionMutation.mutate({ 
                             contributionId: contribution.id, 
-                            data: { participantId, cost } 
+                            data: { participantId, cost, quantity } 
                           })
                         }
                         onDelete={() => deleteContributionMutation.mutate(contribution.id)}
@@ -587,10 +587,10 @@ export default function SharedEvent() {
                         contribution={contribution}
                         category={categories?.find(c => c.id === contribution.item?.categoryId)}
                         participants={participants}
-                        onAssign={(participantId, cost) => 
+                        onAssign={(participantId, cost, quantity) => 
                           updateContributionMutation.mutate({ 
                             contributionId: contribution.id, 
-                            data: { participantId, cost } 
+                            data: { participantId, cost, quantity } 
                           })
                         }
                         onUnassign={() => 
@@ -635,7 +635,7 @@ interface ContributionCardProps {
   contribution: ContributionWithDetails;
   category?: Category;
   participants: Participant[];
-  onAssign: (participantId: string, cost: string) => void;
+  onAssign: (participantId: string, cost: string, quantity: number) => void;
   onUnassign?: () => void;
   onDelete: () => void;
   isLoading: boolean;
@@ -656,17 +656,21 @@ function ContributionCard({
 }: ContributionCardProps) {
   const [showAssign, setShowAssign] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState("");
-  const [cost, setCost] = useState("0");
-  const [includeCost, setIncludeCost] = useState(false);
+  const [cost, setCost] = useState(contribution.cost || "0");
+  const [quantity, setQuantity] = useState(String(contribution.quantity || 1));
+  const [includeCost, setIncludeCost] = useState(parseFloat(contribution.cost || "0") > 0);
   
   const hasParticipant = !!contribution.participantId;
 
   const handleAssign = () => {
     if (selectedParticipant) {
-      onAssign(selectedParticipant, includeCost ? cost : "0");
+      const qty = parseInt(quantity) || 1;
+      const unitCost = parseFloat(cost) || 0;
+      onAssign(selectedParticipant, includeCost ? unitCost.toFixed(2) : "0", qty);
       setShowAssign(false);
       setSelectedParticipant("");
       setCost("0");
+      setQuantity("1");
       setIncludeCost(false);
     }
   };
@@ -706,7 +710,11 @@ function ContributionCard({
           <div className="flex items-center gap-2 shrink-0">
             {parseFloat(contribution.cost || "0") > 0 && (
               <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                {formatCurrency(parseFloat(contribution.cost || "0"), language)}
+                {(contribution.quantity && contribution.quantity > 1) ? (
+                  <span>{contribution.quantity} × {formatCurrency(parseFloat(contribution.cost || "0"), language)} = {formatCurrency((contribution.quantity * parseFloat(contribution.cost || "0")), language)}</span>
+                ) : (
+                  formatCurrency(parseFloat(contribution.cost || "0"), language)
+                )}
               </Badge>
             )}
             {!hasParticipant ? (
@@ -739,7 +747,17 @@ function ContributionCard({
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{t("الكمية", "Quantity")}</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={quantity}
+                          onChange={(e) => setQuantity(e.target.value)}
+                          placeholder="1"
+                        />
+                      </div>
                       <div className="flex items-center gap-2">
                         <Checkbox 
                           id="include-cost" 
@@ -749,14 +767,29 @@ function ContributionCard({
                         <Label htmlFor="include-cost">{t("إضافة تكلفة", "Add cost")}</Label>
                       </div>
                       {includeCost && (
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={cost}
-                          onChange={(e) => setCost(e.target.value)}
-                          placeholder={t("التكلفة بالريال", "Cost in QAR")}
-                        />
+                        <div className="space-y-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">{t("سعر الوحدة (ر.ق)", "Unit Price (QAR)")}</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={cost}
+                              onChange={(e) => setCost(e.target.value)}
+                              placeholder="0.00"
+                            />
+                          </div>
+                          {(parseFloat(cost) > 0 && parseInt(quantity) > 1) && (
+                            <div className="flex items-center justify-between p-2 rounded-md bg-primary/10 text-sm">
+                              <span className="text-muted-foreground">
+                                {quantity} × {parseFloat(cost).toFixed(2)} {t("ر.ق", "QAR")}
+                              </span>
+                              <span className="font-semibold">
+                                = {((parseInt(quantity) || 1) * (parseFloat(cost) || 0)).toFixed(2)} {t("ر.ق", "QAR")}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
