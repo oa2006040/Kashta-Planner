@@ -11,7 +11,8 @@ import {
   Trash2,
   FolderPlus,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Pencil
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -320,19 +321,35 @@ function ItemCard({
   category, 
   categories,
   onDelete,
-  onMove
+  onMove,
+  onEdit
 }: { 
   item: Item; 
   category?: Category;
   categories: Category[];
   onDelete: (id: string) => void;
   onMove: (itemId: string, newCategoryId: string) => void;
+  onEdit: (itemId: string, data: { name?: string; description?: string | null; isCommon?: boolean | null }) => void;
 }) {
   const { t, language } = useLanguage();
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [editName, setEditName] = useState(item.name);
+  const [editDescription, setEditDescription] = useState(item.description || "");
+  const [editIsCommon, setEditIsCommon] = useState(item.isCommon ?? false);
   
   const otherCategories = categories.filter(c => c.id !== category?.id);
+  
+  const handleEditSubmit = () => {
+    if (!editName.trim()) return;
+    onEdit(item.id, {
+      name: editName.trim(),
+      description: editDescription.trim() || null,
+      isCommon: editIsCommon,
+    });
+    setEditDialogOpen(false);
+  };
   
   return (
     <div 
@@ -354,6 +371,73 @@ function ItemCard({
         </Badge>
       )}
       <div className="flex items-center gap-1 shrink-0">
+        <Dialog open={editDialogOpen} onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (open) {
+            setEditName(item.name);
+            setEditDescription(item.description || "");
+            setEditIsCommon(item.isCommon ?? false);
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
+              data-testid={`button-edit-item-${item.id}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("تعديل المستلزم", "Edit Item")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">{t("اسم المستلزم", "Item Name")}</Label>
+                <Input
+                  id="edit-name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  data-testid="input-edit-item-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">{t("الوصف", "Description")}</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="resize-none"
+                  data-testid="input-edit-item-description"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="edit-isCommon">{t("مستلزم شائع", "Common Item")}</Label>
+                <Switch
+                  id="edit-isCommon"
+                  checked={editIsCommon}
+                  onCheckedChange={setEditIsCommon}
+                  data-testid="switch-edit-item-common"
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <DialogClose asChild>
+                <Button variant="outline">{t("إلغاء", "Cancel")}</Button>
+              </DialogClose>
+              <Button
+                onClick={handleEditSubmit}
+                disabled={!editName.trim()}
+                data-testid="button-confirm-edit"
+              >
+                {t("حفظ", "Save")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
         <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -456,7 +540,8 @@ function CategorySection({
   categories,
   onDeleteCategory,
   onDeleteItem,
-  onMoveItem
+  onMoveItem,
+  onEditItem
 }: { 
   category: Category; 
   items: Item[]; 
@@ -464,6 +549,7 @@ function CategorySection({
   onDeleteCategory: (id: string) => void;
   onDeleteItem: (id: string) => void;
   onMoveItem: (itemId: string, newCategoryId: string) => void;
+  onEditItem: (itemId: string, data: { name?: string; description?: string | null; isCommon?: boolean | null }) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const { t, language } = useLanguage();
@@ -539,6 +625,7 @@ function CategorySection({
               categories={categories}
               onDelete={onDeleteItem}
               onMove={onMoveItem}
+              onEdit={onEditItem}
             />
           ))}
         </CardContent>
@@ -954,6 +1041,27 @@ export default function Items() {
     },
   });
 
+  const editItemMutation = useMutation({
+    mutationFn: async ({ itemId, data }: { itemId: string; data: { name?: string; description?: string | null; isCommon?: boolean | null } }) => {
+      return apiRequest("PATCH", `/api/items/${itemId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      toast({
+        title: t("تم التعديل", "Updated"),
+        description: t("تم تعديل المستلزم بنجاح", "Item updated successfully"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تعديل المستلزم", "An error occurred while updating the item"),
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredCategories = categoriesWithItems?.map((cat) => ({
     ...cat,
     items: cat.items.filter((item) =>
@@ -1068,6 +1176,7 @@ export default function Items() {
               onDeleteCategory={(id) => deleteCategoryMutation.mutate(id)}
               onDeleteItem={(id) => deleteItemMutation.mutate(id)}
               onMoveItem={(itemId, newCategoryId) => moveItemMutation.mutate({ itemId, newCategoryId })}
+              onEditItem={(itemId, data) => editItemMutation.mutate({ itemId, data })}
             />
           ))}
         </div>
