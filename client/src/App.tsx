@@ -26,9 +26,10 @@ import Debt from "@/pages/debt";
 import DebtDetail from "@/pages/debt-detail";
 import SettlementLog from "@/pages/settlement-log";
 import Settings from "@/pages/settings";
+import SharedEvent from "@/pages/shared-event";
 import NotFound from "@/pages/not-found";
 
-function Router() {
+function MainRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
@@ -53,42 +54,53 @@ function Router() {
   );
 }
 
-function App() {
+function MainLayout() {
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3.5rem",
   };
 
   return (
+    <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <SidebarInset className="flex flex-col flex-1 min-w-0">
+          <header className="flex h-14 sm:h-16 items-center justify-between gap-2 border-b px-3 sm:px-4 sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <SidebarTrigger className="h-10 w-10 sm:h-9 sm:w-9" data-testid="button-sidebar-toggle" />
+              <Link href="/" className="flex items-center gap-2 sm:hidden" data-testid="link-home-logo-mobile">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <Flame className="h-4 w-4" />
+                </div>
+                <span className="font-bold">كشتة</span>
+              </Link>
+            </div>
+            <div className="flex items-center gap-1">
+              <LanguageToggle />
+              <ThemeToggle />
+            </div>
+          </header>
+          <main className="flex-1 overflow-auto">
+            <MainRouter />
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="kashta-ui-theme">
         <LanguageProvider defaultLanguage="ar" storageKey="kashta-language">
           <TooltipProvider>
-            <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-              <SidebarInset className="flex flex-col flex-1 min-w-0">
-                <header className="flex h-14 sm:h-16 items-center justify-between gap-2 border-b px-3 sm:px-4 sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <SidebarTrigger className="h-10 w-10 sm:h-9 sm:w-9" data-testid="button-sidebar-toggle" />
-                    <Link href="/" className="flex items-center gap-2 sm:hidden" data-testid="link-home-logo-mobile">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                        <Flame className="h-4 w-4" />
-                      </div>
-                      <span className="font-bold">كشتة</span>
-                    </Link>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <LanguageToggle />
-                    <ThemeToggle />
-                  </div>
-                </header>
-                <main className="flex-1 overflow-auto">
-                  <Router />
-                </main>
-              </SidebarInset>
-            </div>
-            </SidebarProvider>
+            <Switch>
+              <Route path="/share/:token" component={SharedEvent} />
+              <Route>
+                <MainLayout />
+              </Route>
+            </Switch>
             <Toaster />
           </TooltipProvider>
         </LanguageProvider>
