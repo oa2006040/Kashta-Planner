@@ -68,6 +68,7 @@ import { formatDate, formatHijriDate, formatCurrency, formatNumber } from "@/lib
 import { CategoryIcon } from "@/components/category-icon";
 import { AvatarIcon } from "@/components/avatar-icon";
 import { useLanguage } from "@/components/language-provider";
+import { ObjectUploader } from "@/components/ObjectUploader";
 import type { EventWithDetails, Contribution, Participant, Category, Item } from "@shared/schema";
 
 function getStatusBadge(status: string, t: (ar: string, en: string) => string) {
@@ -236,6 +237,26 @@ export default function SharedEvent() {
       toast({
         title: t("خطأ", "Error"),
         description: t("حدث خطأ أثناء حذف المستلزم", "An error occurred while removing item"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const receiptUploadMutation = useMutation({
+    mutationFn: async ({ contributionId, receiptUrl }: { contributionId: string; receiptUrl: string }) => {
+      return apiRequest("PATCH", `/api/shared/${token}/contributions/${contributionId}`, { receiptUrl });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shared", token] });
+      toast({
+        title: t("تم الرفع", "Uploaded"),
+        description: t("تم رفع الفاتورة بنجاح", "Receipt uploaded successfully"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء رفع الفاتورة", "Error uploading receipt"),
         variant: "destructive",
       });
     },
@@ -630,6 +651,9 @@ export default function SharedEvent() {
                           })
                         }
                         onDelete={() => deleteContributionMutation.mutate(contribution.id)}
+                        onReceiptUpload={(receiptUrl) => 
+                          receiptUploadMutation.mutate({ contributionId: contribution.id, receiptUrl })
+                        }
                         isLoading={updateContributionMutation.isPending || deleteContributionMutation.isPending}
                         language={language}
                         t={t}
@@ -661,6 +685,9 @@ export default function SharedEvent() {
                           })
                         }
                         onDelete={() => deleteContributionMutation.mutate(contribution.id)}
+                        onReceiptUpload={(receiptUrl) => 
+                          receiptUploadMutation.mutate({ contributionId: contribution.id, receiptUrl })
+                        }
                         isLoading={updateContributionMutation.isPending || deleteContributionMutation.isPending}
                         language={language}
                         t={t}
@@ -699,6 +726,7 @@ interface ContributionCardProps {
   onAssign: (participantId: string, cost: string, quantity: number) => void;
   onUnassign?: () => void;
   onDelete: () => void;
+  onReceiptUpload: (receiptUrl: string) => void;
   isLoading: boolean;
   language: "ar" | "en";
   t: (ar: string, en: string) => string;
@@ -711,18 +739,50 @@ function ContributionCard({
   onAssign,
   onUnassign,
   onDelete,
+  onReceiptUpload,
   isLoading,
   language,
   t,
 }: ContributionCardProps) {
   const [showAssign, setShowAssign] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState("");
   const [cost, setCost] = useState(contribution.cost || "0");
   const [quantity, setQuantity] = useState(String(contribution.quantity || 1));
   const [includeCost, setIncludeCost] = useState(parseFloat(contribution.cost || "0") > 0);
   
   const hasParticipant = !!contribution.participantId;
+  const hasCost = parseFloat(contribution.cost || "0") > 0;
+  const hasReceipt = !!contribution.receiptUrl;
+
+  const handleReceiptUpload = async (uploadedUrls: string[]) => {
+    if (uploadedUrls.length > 0) {
+      try {
+        const res = await fetch("/api/receipts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uploadURL: uploadedUrls[0] }),
+        });
+        if (res.ok) {
+          const { objectPath } = await res.json();
+          onReceiptUpload(objectPath);
+        }
+      } catch (error) {
+        console.error("Error normalizing receipt path:", error);
+      }
+    }
+  };
+
+  const getUploadParameters = async () => {
+    const res = await fetch("/api/objects/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) throw new Error("Failed to get upload URL");
+    const { uploadURL } = await res.json();
+    return { method: "PUT" as const, url: uploadURL };
+  };
 
   const handleAssign = () => {
     if (selectedParticipant) {
@@ -800,6 +860,51 @@ function ContributionCard({
                   formatCurrency(parseFloat(contribution.cost || "0"), language)
                 )}
               </Badge>
+            )}
+            {hasCost && hasReceipt && (
+              <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
+                <DialogTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-green-600"
+                    data-testid={`button-view-receipt-${contribution.id}`}
+                  >
+                    <Receipt className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>{t("عرض الفاتورة", "View Receipt")}</DialogTitle>
+                    <DialogDescription>
+                      {contribution.item?.name}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex justify-center">
+                    <img
+                      src={contribution.receiptUrl || ""}
+                      alt={t("صورة الفاتورة", "Receipt image")}
+                      className="max-h-96 rounded-lg object-contain"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowReceipt(false)}>
+                      {t("إغلاق", "Close")}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            {hasCost && !hasReceipt && (
+              <ObjectUploader
+                onGetUploadParameters={getUploadParameters}
+                onComplete={handleReceiptUpload}
+                buttonVariant="ghost"
+                buttonSize="icon"
+                title={t("رفع الفاتورة", "Upload Receipt")}
+              >
+                <Receipt className="h-4 w-4 text-muted-foreground" />
+              </ObjectUploader>
             )}
             {!hasParticipant ? (
               <Dialog open={showAssign} onOpenChange={setShowAssign}>
