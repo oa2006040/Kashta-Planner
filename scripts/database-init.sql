@@ -386,6 +386,29 @@ CREATE TABLE IF NOT EXISTS event_roles (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Add missing columns to event_roles
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_roles' AND column_name = 'name_ar') THEN
+        ALTER TABLE event_roles ADD COLUMN name_ar TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_roles' AND column_name = 'description') THEN
+        ALTER TABLE event_roles ADD COLUMN description TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_roles' AND column_name = 'is_creator_role') THEN
+        ALTER TABLE event_roles ADD COLUMN is_creator_role BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_roles' AND column_name = 'is_default') THEN
+        ALTER TABLE event_roles ADD COLUMN is_default BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_roles' AND column_name = 'sort_order') THEN
+        ALTER TABLE event_roles ADD COLUMN sort_order INTEGER DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_roles' AND column_name = 'created_at') THEN
+        ALTER TABLE event_roles ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
+    END IF;
+END $$;
+
 -- ==========================================
 -- ROLE_PERMISSIONS TABLE
 -- ==========================================
