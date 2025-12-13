@@ -400,11 +400,17 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/events/:id", async (req, res) => {
+  app.patch("/api/events/:id", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
       }
       
       // Check if trying to cancel - prevent if event has settlements
@@ -444,11 +450,17 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/events/:id", async (req, res) => {
+  app.delete("/api/events/:id", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
       }
       
       // Check if event can be deleted (no non-zero cost contributions)
@@ -473,11 +485,17 @@ export async function registerRoutes(
   });
 
   // Enable sharing for an event
-  app.post("/api/events/:id/share", async (req, res) => {
+  app.post("/api/events/:id/share", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
       }
       
       const result = await storage.enableEventSharing(eventId);
@@ -498,11 +516,17 @@ export async function registerRoutes(
   });
 
   // Disable sharing for an event
-  app.delete("/api/events/:id/share", async (req, res) => {
+  app.delete("/api/events/:id/share", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
       }
       
       await storage.disableEventSharing(eventId);
@@ -704,12 +728,19 @@ export async function registerRoutes(
   });
   
   // Check if event can be deleted
-  app.get("/api/events/:id/can-delete", async (req, res) => {
+  app.get("/api/events/:id/can-delete", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const result = await storage.canDeleteEvent(eventId);
       res.json(result);
     } catch (error) {
@@ -719,12 +750,19 @@ export async function registerRoutes(
   });
   
   // Check if event can be cancelled
-  app.get("/api/events/:id/can-cancel", async (req, res) => {
+  app.get("/api/events/:id/can-cancel", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const result = await storage.canCancelEvent(eventId);
       res.json(result);
     } catch (error) {
@@ -734,12 +772,19 @@ export async function registerRoutes(
   });
 
   // Event Participants
-  app.post("/api/events/:eventId/participants", async (req, res) => {
+  app.post("/api/events/:eventId/participants", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const data = insertEventParticipantSchema.parse({
         ...req.body,
         eventId,
@@ -755,12 +800,19 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/events/:eventId/participants/:participantId", async (req, res) => {
+  app.delete("/api/events/:eventId/participants/:participantId", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       // Use cascade delete to remove all contributions by this participant
       await storage.removeParticipantFromEventWithCascade(eventId, req.params.participantId);
       res.status(204).send();
@@ -771,12 +823,19 @@ export async function registerRoutes(
   });
 
   // Add participant with required contributions
-  app.post("/api/events/:eventId/participants-with-contributions", async (req, res) => {
+  app.post("/api/events/:eventId/participants-with-contributions", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const { participantId, itemIds, costs } = req.body;
       
       if (!participantId) {
@@ -802,12 +861,19 @@ export async function registerRoutes(
   });
 
   // Contributions
-  app.get("/api/events/:eventId/contributions", async (req, res) => {
+  app.get("/api/events/:eventId/contributions", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const contributions = await storage.getContributions(eventId);
       res.json(contributions);
     } catch (error) {
@@ -816,12 +882,19 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/events/:eventId/contributions", async (req, res) => {
+  app.post("/api/events/:eventId/contributions", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const data = insertContributionSchema.parse({
         ...req.body,
         eventId,
@@ -837,8 +910,20 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/contributions/:id", async (req, res) => {
+  app.patch("/api/contributions/:id", isAuthenticated, async (req: any, res) => {
     try {
+      // Get contribution first to find its event
+      const existing = await storage.getContribution(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Contribution not found" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const data = insertContributionSchema.partial().parse(req.body);
       const contribution = await storage.updateContribution(req.params.id, data);
       if (!contribution) {
@@ -854,8 +939,20 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/contributions/:id/unassign", async (req, res) => {
+  app.post("/api/contributions/:id/unassign", isAuthenticated, async (req: any, res) => {
     try {
+      // Get contribution first to find its event
+      const existing = await storage.getContribution(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Contribution not found" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       // Unassign contribution (reset to pending) and prune participant if no other contributions
       const result = await storage.unassignContribution(req.params.id);
       res.json({ unassigned: result.unassigned, participantPruned: result.participantPruned });
@@ -865,8 +962,20 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/contributions/:id", async (req, res) => {
+  app.delete("/api/contributions/:id", isAuthenticated, async (req: any, res) => {
     try {
+      // Get contribution first to find its event
+      const existing = await storage.getContribution(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Contribution not found" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       // Use cascade delete to auto-remove participant if no contributions remain
       const result = await storage.deleteContributionAndPruneParticipant(req.params.id);
       res.json({ deleted: result.deleted, participantPruned: result.participantPruned });
@@ -899,12 +1008,19 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/events/:eventId/settlement", async (req, res) => {
+  app.get("/api/events/:eventId/settlement", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const settlement = await storage.getEventSettlement(eventId);
       if (!settlement) {
         return res.status(404).json({ error: "Event not found" });
@@ -916,12 +1032,19 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/events/:eventId/settlements/:debtorId/:creditorId", async (req, res) => {
+  app.patch("/api/events/:eventId/settlements/:debtorId/:creditorId", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const { debtorId, creditorId } = req.params;
       
       const updated = await storage.toggleSettlementStatus(eventId, debtorId, creditorId);
