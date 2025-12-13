@@ -32,6 +32,7 @@ import Notifications from "@/pages/notifications";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import Account from "@/pages/account";
 import NotFound from "@/pages/not-found";
 
 function MainRouter() {
@@ -54,6 +55,7 @@ function MainRouter() {
       <Route path="/debt/:participantId" component={DebtDetail} />
       <Route path="/settlement-log" component={SettlementLog} />
       <Route path="/settings" component={Settings} />
+      <Route path="/account" component={Account} />
       <Route path="/notifications" component={Notifications} />
       <Route component={NotFound} />
     </Switch>

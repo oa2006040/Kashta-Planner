@@ -13,6 +13,7 @@ import {
   Flame,
   Star,
   Bell,
+  UserCog,
 } from "lucide-react";
 import {
   Sidebar,
@@ -161,6 +162,18 @@ export function AppSidebar() {
           <SidebarGroupLabel>{t("الإعدادات", "Settings")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === "/account"}
+                  tooltip={t("الحساب", "Account")}
+                >
+                  <Link href="/account" data-testid="link-nav-account">
+                    <UserCog className="h-4 w-4" />
+                    <span>{t("الحساب", "Account")}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
