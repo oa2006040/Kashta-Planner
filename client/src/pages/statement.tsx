@@ -124,9 +124,14 @@ export default function Statement() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Receipt className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">{t("لا توجد تسويات", "No Settlements")}</h3>
-            <p className="text-muted-foreground mb-4">
-              {t("ستظهر هنا تسويات المصاريف عند إضافة مستلزمات بتكاليف للطلعات", "Expense settlements will appear here when items with costs are added to events")}
+            <h3 className="text-lg font-medium mb-2" data-testid="text-empty-state-title">
+              {t("لا توجد تسويات لفعالياتك", "No settlements for your events")}
+            </h3>
+            <p className="text-muted-foreground mb-4" data-testid="text-empty-state-description">
+              {t(
+                "ستظهر هنا تسويات المصاريف عند إضافة مستلزمات بتكاليف للفعاليات التي تشارك فيها",
+                "Expense settlements will appear here when items with costs are added to events you participate in"
+              )}
             </p>
             <Link href="/events">
               <Button data-testid="button-go-events">

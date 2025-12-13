@@ -139,6 +139,7 @@ export interface IStorage {
   // Settlements
   getEventSettlement(eventId: number): Promise<EventSettlement | null>;
   getAllSettlements(): Promise<EventSettlement[]>;
+  getSettlementsForUser(userId: string): Promise<EventSettlement[]>;
   getAllSettlementRecords(): Promise<SettlementRecord[]>;
   toggleSettlementStatus(eventId: number, debtorId: string, creditorId: string): Promise<SettlementRecord | undefined>;
   syncEventSettlement(eventId: number): Promise<void>;
@@ -1341,6 +1342,45 @@ export class DatabaseStorage implements IStorage {
         settlements.push(settlement);
       }
     }
+    
+    return settlements;
+  }
+  
+  async getSettlementsForUser(userId: string): Promise<EventSettlement[]> {
+    // Get the participant record for this user
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) {
+      return [];
+    }
+    
+    // Get events where this participant is ACTIVELY participating (not pending/declined)
+    const userEventParticipants = await db.select()
+      .from(eventParticipants)
+      .where(
+        and(
+          eq(eventParticipants.participantId, participant.id),
+          eq(eventParticipants.status, 'active')
+        )
+      );
+    
+    if (userEventParticipants.length === 0) {
+      return [];
+    }
+    
+    const userEventIds = userEventParticipants.map(ep => ep.eventId);
+    
+    // Get settlements only for user's active events
+    const settlements: EventSettlement[] = [];
+    
+    for (const eventId of userEventIds) {
+      const settlement = await this.getEventSettlement(eventId);
+      if (settlement && settlement.transactions.length > 0) {
+        settlements.push(settlement);
+      }
+    }
+    
+    // Sort by event date descending
+    settlements.sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
     
     return settlements;
   }

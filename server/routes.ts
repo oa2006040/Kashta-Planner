@@ -1147,10 +1147,22 @@ export async function registerRoutes(
     }
   });
 
-  // Settlements
-  app.get("/api/settlements", async (req, res) => {
+  // Settlements - scoped to user's events only (admins see all)
+  app.get("/api/settlements", isAuthenticated, async (req: any, res) => {
     try {
-      const settlements = await storage.getAllSettlements();
+      const userId = req.session!.userId!;
+      const user = await storage.getUser(userId);
+      const isAdmin = user?.isAdmin ?? false;
+      
+      let settlements;
+      if (isAdmin) {
+        // Admins can see all settlements
+        settlements = await storage.getAllSettlements();
+      } else {
+        // Regular users only see settlements for events they participate in
+        settlements = await storage.getSettlementsForUser(userId);
+      }
+      
       res.json(settlements);
     } catch (error) {
       console.error("Error fetching settlements:", error);
