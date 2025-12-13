@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Home,
   Calendar,
-  Users,
   Package,
   History,
   Receipt,
@@ -53,11 +52,6 @@ export function AppSidebar() {
       title: t("الطلعات", "Events"),
       url: "/events",
       icon: Calendar,
-    },
-    {
-      title: t("المستخدمين", "Users"),
-      url: "/users",
-      icon: Users,
     },
     {
       title: t("المستلزمات", "Items"),
