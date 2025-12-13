@@ -313,12 +313,14 @@ export async function registerRoutes(
     }
   });
 
-  // Events
-  app.get("/api/events", async (req, res) => {
+  // Events - with access control (users only see their own events)
+  app.get("/api/events", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       // Sync event statuses based on current date before returning
       await storage.syncEventStatuses();
-      const events = await storage.getEvents();
+      // Only return events the user has access to
+      const events = await storage.getEventsForUser(userId);
       res.json(events);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -326,12 +328,20 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/events/:id", async (req, res) => {
+  app.get("/api/events/:id", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.id, 10);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
       }
+      
+      const userId = req.user.claims.sub;
+      // Check if user has access to this event
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       // Sync event statuses before returning single event
       await storage.syncEventStatuses();
       const event = await storage.getEventWithDetails(eventId);
