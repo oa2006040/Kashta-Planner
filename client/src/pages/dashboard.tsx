@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/components/language-provider";
 import {
   Calendar,
@@ -232,6 +233,7 @@ function EventCardSkeleton() {
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { t, language } = useLanguage();
   
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
@@ -643,16 +645,18 @@ export default function Dashboard() {
                   {t("إضافة طلعة", "Add Event")}
                 </Button>
               </Link>
-              <Link href="/participants/new" className="block">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start h-10 sm:h-9"
-                  data-testid="button-quick-new-participant"
-                >
-                  <Users className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-                  {t("إضافة مشارك", "Add Participant")}
-                </Button>
-              </Link>
+              {user?.isAdmin && (
+                <Link href="/participants/new" className="block">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start h-10 sm:h-9"
+                    data-testid="button-quick-new-participant"
+                  >
+                    <Users className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                    {t("إضافة مشارك", "Add Participant")}
+                  </Button>
+                </Link>
+              )}
               <Link href="/items" className="block">
                 <Button
                   variant="outline"
@@ -666,94 +670,96 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent Participants */}
-          <Card>
-            <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-                  <Users className="h-4 w-4 text-primary" />
-                  {t("المشاركين", "Participants")}
-                </CardTitle>
-                <Link href="/participants">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 sm:h-9"
-                    data-testid="link-all-participants"
-                  >
-                    {t("الكل", "All")}
-                    <ChevronLeft className={`h-3 w-3 ${language === "ar" ? "mr-1" : "ml-1"}`} />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
-              {participantsLoading ? (
-                <div className="space-y-2 sm:space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-2 sm:gap-3">
-                      <Skeleton className="h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0" />
-                      <div className="flex-1">
-                        <Skeleton className="h-4 w-20 sm:w-24 mb-1" />
-                        <Skeleton className="h-3 w-12 sm:w-16" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : recentParticipants && recentParticipants.length > 0 ? (
-                <div className="space-y-1 sm:space-y-2">
-                  {recentParticipants.slice(0, 5).map((participant) => (
-                    <Link
-                      key={participant.id}
-                      href={`/participants/${participant.id}/edit`}
-                    >
-                      <div
-                        className="flex items-center gap-2 sm:gap-3 p-2 rounded-lg hover-elevate cursor-pointer -mx-1 sm:-mx-2"
-                        data-testid={`card-participant-${participant.id}`}
-                      >
-                        <div
-                          className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full shrink-0"
-                          style={{
-                            backgroundColor: `${getAvatarColor(participant.name)}20`,
-                          }}
-                        >
-                          <AvatarIcon
-                            icon={participant.avatar}
-                            className="h-4 w-4 sm:h-5 sm:w-5"
-                            color={getAvatarColor(participant.name)}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate text-sm sm:text-base">
-                            {participant.name}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-muted-foreground">
-                            {formatNumber(participant.tripCount || 0, language)} {t("طلعة", "trips")}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-4 sm:py-6">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {t("لا يوجد مشاركين", "No participants")}
-                  </p>
-                  <Link href="/participants/new">
+          {/* Recent Participants - Admin Only */}
+          {user?.isAdmin && (
+            <Card>
+              <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    {t("المشاركين", "Participants")}
+                  </CardTitle>
+                  <Link href="/participants">
                     <Button
-                      variant="outline"
-                      className="h-10 sm:h-9"
-                      data-testid="button-add-first-participant"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 sm:h-9"
+                      data-testid="link-all-participants"
                     >
-                      <Plus className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
-                      {t("إضافة", "Add")}
+                      {t("الكل", "All")}
+                      <ChevronLeft className={`h-3 w-3 ${language === "ar" ? "mr-1" : "ml-1"}`} />
                     </Button>
                   </Link>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+                {participantsLoading ? (
+                  <div className="space-y-2 sm:space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-2 sm:gap-3">
+                        <Skeleton className="h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0" />
+                        <div className="flex-1">
+                          <Skeleton className="h-4 w-20 sm:w-24 mb-1" />
+                          <Skeleton className="h-3 w-12 sm:w-16" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : recentParticipants && recentParticipants.length > 0 ? (
+                  <div className="space-y-1 sm:space-y-2">
+                    {recentParticipants.slice(0, 5).map((participant) => (
+                      <Link
+                        key={participant.id}
+                        href={`/participants/${participant.id}/edit`}
+                      >
+                        <div
+                          className="flex items-center gap-2 sm:gap-3 p-2 rounded-lg hover-elevate cursor-pointer -mx-1 sm:-mx-2"
+                          data-testid={`card-participant-${participant.id}`}
+                        >
+                          <div
+                            className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full shrink-0"
+                            style={{
+                              backgroundColor: `${getAvatarColor(participant.name)}20`,
+                            }}
+                          >
+                            <AvatarIcon
+                              icon={participant.avatar}
+                              className="h-4 w-4 sm:h-5 sm:w-5"
+                              color={getAvatarColor(participant.name)}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate text-sm sm:text-base">
+                              {participant.name}
+                            </p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">
+                              {formatNumber(participant.tripCount || 0, language)} {t("طلعة", "trips")}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 sm:py-6">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {t("لا يوجد مشاركين", "No participants")}
+                    </p>
+                    <Link href="/participants/new">
+                      <Button
+                        variant="outline"
+                        className="h-10 sm:h-9"
+                        data-testid="button-add-first-participant"
+                      >
+                        <Plus className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                        {t("إضافة", "Add")}
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Date Card - Hijri & Gregorian */}
           <Card className="bg-gradient-to-l from-primary/10 to-transparent">
