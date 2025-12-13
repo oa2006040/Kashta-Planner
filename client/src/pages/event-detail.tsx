@@ -1484,6 +1484,7 @@ export default function EventDetail() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          {isOwner && (
           <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
             <DialogTrigger asChild>
               <Button 
@@ -1571,6 +1572,7 @@ export default function EventDetail() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </div>
 
