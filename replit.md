@@ -39,7 +39,8 @@ Core entities defined in `shared/schema.ts`:
 - **Contributions**: Items contributed by participants for events
 - **ActivityLogs**: Audit trail of actions
 - **SettlementRecords**: Tracks debts between participants after expense splitting
-- **Users**: User accounts (future authentication)
+- **Users**: User accounts with Replit OIDC authentication
+- **Sessions**: Session storage for authentication state
 
 ### Expense Settlement System
 The app includes a complete expense settlement system:
@@ -68,6 +69,15 @@ Object storage integration for receipt verification:
   - `contributions.receiptUrl` field stores object path
   - Receipt icon shows on contributions with costs (green if receipt attached, grey if not)
   - Upload available for any contribution with cost > 0
+
+### Authentication System
+Replit OIDC authentication is fully integrated:
+- **server/replitAuth.ts**: OIDC setup with token refresh handling
+- **Routes**: `/api/login`, `/api/callback`, `/api/logout`, `/api/auth/status`, `/api/auth/user`
+- **Public Status Endpoint**: `GET /api/auth/status` returns auth state with login/logout URLs
+- **Frontend Hook**: `useAuth()` provides user, isAuthenticated, loginUrl, logoutUrl
+- **Landing Page**: Shows for unauthenticated users with login button
+- **Session Storage**: PostgreSQL-backed sessions via connect-pg-simple
 
 ### Key Design Patterns
 - Shared schema between client and server via `@shared/*` path alias
