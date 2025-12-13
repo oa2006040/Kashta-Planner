@@ -1051,12 +1051,34 @@ export async function registerRoutes(
     }
   });
 
-  // Activity Logs
-  app.get("/api/activity-logs", async (req, res) => {
+  // Activity Logs - filtered by user's events (admins see all)
+  app.get("/api/activity-logs", isAuthenticated, async (req: any, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 100;
-      const logs = await storage.getActivityLogs(limit);
-      res.json(logs);
+      const userId = req.session!.userId!;
+      
+      // Check if user is admin
+      const user = await storage.getUser(userId);
+      if (user?.isAdmin) {
+        // Admins see all activity logs
+        const logs = await storage.getActivityLogs(limit);
+        return res.json(logs);
+      }
+      
+      // Regular users only see logs for events they participate in
+      const userEvents = await storage.getEventsForUser(userId);
+      const userEventIds = userEvents.map(e => e.id);
+      
+      if (userEventIds.length === 0) {
+        return res.json([]);
+      }
+      
+      const allLogs = await storage.getActivityLogs(limit * 10); // Get more to filter
+      const filteredLogs = allLogs
+        .filter(log => log.eventId && userEventIds.includes(log.eventId))
+        .slice(0, limit);
+      
+      res.json(filteredLogs);
     } catch (error) {
       console.error("Error fetching activity logs:", error);
       res.status(500).json({ error: "Failed to fetch activity logs" });
