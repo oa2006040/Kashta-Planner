@@ -890,9 +890,14 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+      
+      // Check if user can manage participants
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) {
+        const canManage = await storage.canUserManageParticipants(eventId, userId);
+        if (!canManage) {
+          return res.status(403).json({ error: "Access denied - you don't have permission to manage participants" });
+        }
       }
       
       const data = insertEventParticipantSchema.parse({
@@ -918,9 +923,14 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+      
+      // Check if user can manage participants
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) {
+        const canManage = await storage.canUserManageParticipants(eventId, userId);
+        if (!canManage) {
+          return res.status(403).json({ error: "Access denied - you don't have permission to manage participants" });
+        }
       }
       
       // Use cascade delete to remove all contributions by this participant
@@ -941,9 +951,14 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+      
+      // Check if user can manage participants
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) {
+        const canManage = await storage.canUserManageParticipants(eventId, userId);
+        if (!canManage) {
+          return res.status(403).json({ error: "Access denied - you don't have permission to manage participants" });
+        }
       }
       
       const { participantId, itemIds, costs } = req.body;
