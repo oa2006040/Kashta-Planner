@@ -1659,17 +1659,8 @@ export async function registerRoutes(
       }
       
       const payload = notification.payload as any;
-      if (!payload?.eventParticipantId || !payload?.invitationId) {
+      if (!payload?.invitationId || !payload?.eventId) {
         return res.status(400).json({ error: "بيانات الدعوة غير صالحة" });
-      }
-      
-      // Idempotency guard: check if event participant exists and is still pending
-      const eventParticipant = await storage.getEventParticipantById(payload.eventParticipantId);
-      if (!eventParticipant) {
-        return res.status(404).json({ error: "المشاركة لم تعد موجودة" });
-      }
-      if (eventParticipant.status !== 'pending') {
-        return res.status(409).json({ error: "تم معالجة هذه الدعوة مسبقاً" });
       }
       
       // Idempotency guard: check if invitation exists and is still pending
@@ -1681,12 +1672,38 @@ export async function registerRoutes(
         return res.status(409).json({ error: "تم معالجة هذه الدعوة مسبقاً" });
       }
       
-      await storage.updateEventParticipantStatus(payload.eventParticipantId, 'active');
+      // Get or create participant for the user
+      const participant = await storage.ensureParticipantForUser(userId);
+      
+      // Check if already a participant in this event
+      const existingEps = await storage.getEventParticipants(payload.eventId);
+      const existingEp = existingEps.find(ep => ep.participantId === participant.id);
+      
+      if (existingEp && existingEp.status === 'active') {
+        // Already accepted
+        await storage.updateInvitationStatus(payload.invitationId, 'accepted');
+        await storage.markNotificationRead(notificationId);
+        return res.json({ success: true, eventId: payload.eventId, message: "أنت مشارك في هذه الفعالية بالفعل" });
+      }
+      
+      // Add user as participant to the event (NOW is when they join, not when invited)
+      const defaultRole = await storage.getDefaultRole(payload.eventId);
+      await storage.addParticipantToEvent({
+        eventId: payload.eventId,
+        participantId: participant.id,
+        status: 'active',
+        role: 'member',
+        roleId: defaultRole?.id || null,
+        confirmedAt: new Date(),
+      });
+      
+      // Update invitation status to accepted
       await storage.updateInvitationStatus(payload.invitationId, 'accepted');
       await storage.markNotificationRead(notificationId);
       
+      // Increment trip count (uses updateParticipant with SQL increment pattern)
+      
       const event = await storage.getEvent(payload.eventId);
-      const participant = await storage.getParticipantByUserId(userId);
       
       await storage.createActivityLog({
         eventId: payload.eventId,
@@ -1720,17 +1737,8 @@ export async function registerRoutes(
       }
       
       const payload = notification.payload as any;
-      if (!payload?.eventParticipantId || !payload?.invitationId) {
+      if (!payload?.invitationId || !payload?.eventId) {
         return res.status(400).json({ error: "بيانات الدعوة غير صالحة" });
-      }
-      
-      // Idempotency guard: check if event participant exists and is still pending
-      const eventParticipant = await storage.getEventParticipantById(payload.eventParticipantId);
-      if (!eventParticipant) {
-        return res.status(404).json({ error: "المشاركة لم تعد موجودة" });
-      }
-      if (eventParticipant.status !== 'pending') {
-        return res.status(409).json({ error: "تم معالجة هذه الدعوة مسبقاً" });
       }
       
       // Idempotency guard: check if invitation exists and is still pending
@@ -1742,7 +1750,7 @@ export async function registerRoutes(
         return res.status(409).json({ error: "تم معالجة هذه الدعوة مسبقاً" });
       }
       
-      await storage.updateEventParticipantStatus(payload.eventParticipantId, 'declined');
+      // Update invitation status to declined (no eventParticipant to update since user never joined)
       await storage.updateInvitationStatus(payload.invitationId, 'declined');
       await storage.markNotificationRead(notificationId);
       
@@ -1878,24 +1886,14 @@ export async function registerRoutes(
         expiresAt,
       });
       
-      let eventParticipantId: string | null = null;
-      if (existingUser && invitedParticipantId) {
-        const defaultRole = await storage.getDefaultRole(eventId);
-        const newEp = await storage.addParticipantToEvent({
-          eventId,
-          participantId: invitedParticipantId,
-          status: 'pending',
-          role: 'member',
-          roleId: defaultRole?.id || null,
-        });
-        eventParticipantId = newEp.id;
-        
+      // Send notification to existing users (but don't add them to event yet - only after acceptance)
+      if (existingUser) {
         await storage.createNotification({
           userId: existingUser.id,
           type: 'event_invite',
           title: 'دعوة للانضمام لفعالية',
           message: `تمت دعوتك للانضمام إلى "${event.title}"`,
-          payload: { eventId, invitationId: invitation.id, eventParticipantId },
+          payload: { eventId, invitationId: invitation.id, invitedParticipantId },
           actionUrl: `/notifications`,
         });
       }
