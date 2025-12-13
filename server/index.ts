@@ -11,15 +11,9 @@ const httpServer = createServer(app);
 
 // Validate required environment variables
 const sessionSecret = process.env.SESSION_SECRET;
-console.log("Environment check:");
-console.log("- SESSION_SECRET:", sessionSecret ? `set (${sessionSecret.length} chars)` : "NOT SET");
-console.log("- DATABASE_URL:", process.env.DATABASE_URL ? "set" : "NOT SET");
-console.log("- NODE_ENV:", process.env.NODE_ENV || "not set");
-
 if (!sessionSecret || sessionSecret.trim().length === 0) {
   console.error("FATAL: SESSION_SECRET environment variable is not set or empty!");
   console.error("Please set SESSION_SECRET in your environment variables.");
-  console.error("All env var keys:", Object.keys(process.env).filter(k => !k.startsWith('npm_')).join(', '));
   process.exit(1);
 }
 
