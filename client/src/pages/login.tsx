@@ -15,18 +15,31 @@ import { loginUserSchema, type LoginUser } from "@shared/schema";
 import { useLanguage } from "@/components/language-provider";
 import { LanguageToggle } from "@/components/language-toggle";
 
+const REMEMBERED_EMAIL_KEY = "kashta_remembered_email";
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { tr } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
 
+  // Get saved email from localStorage
+  const getSavedEmail = () => {
+    try {
+      return localStorage.getItem(REMEMBERED_EMAIL_KEY) || "";
+    } catch {
+      return "";
+    }
+  };
+
+  const savedEmail = getSavedEmail();
+
   const form = useForm<LoginUser>({
     resolver: zodResolver(loginUserSchema),
     defaultValues: {
-      email: "",
+      email: savedEmail,
       password: "",
-      rememberMe: false,
+      rememberMe: !!savedEmail,
     },
   });
 
@@ -53,6 +66,16 @@ export default function Login() {
   });
 
   const onSubmit = (data: LoginUser) => {
+    // Save or remove email based on rememberMe checkbox
+    try {
+      if (data.rememberMe) {
+        localStorage.setItem(REMEMBERED_EMAIL_KEY, data.email);
+      } else {
+        localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
     loginMutation.mutate(data);
   };
 
