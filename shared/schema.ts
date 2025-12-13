@@ -94,6 +94,7 @@ export const events = pgTable("events", {
   totalBudget: decimal("total_budget", { precision: 10, scale: 2 }).default("0"),
   shareToken: text("share_token").unique(),
   isShareEnabled: boolean("is_share_enabled").default(false),
+  creatorParticipantId: varchar("creator_participant_id").references(() => participants.id), // Event creator/owner
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -115,7 +116,8 @@ export const eventParticipants = pgTable("event_participants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   participantId: varchar("participant_id").notNull().references(() => participants.id, { onDelete: "cascade" }),
-  role: text("role").default("member"), // organizer, member
+  role: text("role").default("member"), // manager, co_manager, member, viewer
+  status: text("status").default("active"), // pending, active, declined
   confirmedAt: timestamp("confirmed_at"),
 });
 
@@ -239,6 +241,95 @@ export const insertSettlementActivityLogSchema = createInsertSchema(settlementAc
 export type InsertSettlementActivityLog = z.infer<typeof insertSettlementActivityLogSchema>;
 export type SettlementActivityLog = typeof settlementActivityLog.$inferSelect;
 
+// Event Invitations table - for inviting users to events
+export const eventInvitations = pgTable("event_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  inviterParticipantId: varchar("inviter_participant_id").references(() => participants.id),
+  invitedParticipantId: varchar("invited_participant_id").references(() => participants.id),
+  status: text("status").default("pending"), // pending, accepted, declined, expired
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const eventInvitationsRelations = relations(eventInvitations, ({ one }) => ({
+  event: one(events, {
+    fields: [eventInvitations.eventId],
+    references: [events.id],
+  }),
+  inviter: one(participants, {
+    fields: [eventInvitations.inviterParticipantId],
+    references: [participants.id],
+  }),
+}));
+
+export const insertEventInvitationSchema = createInsertSchema(eventInvitations).omit({ id: true, createdAt: true });
+export type InsertEventInvitation = z.infer<typeof insertEventInvitationSchema>;
+export type EventInvitation = typeof eventInvitations.$inferSelect;
+
+// Notifications table - user notifications
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // event_invite, manager_assigned, debt_claim, debt_confirmed, debt_rejected
+  title: text("title").notNull(),
+  message: text("message"),
+  payload: jsonb("payload"), // Additional data (eventId, participantId, etc.)
+  isRead: boolean("is_read").default(false),
+  actionUrl: text("action_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+// Settlement Claims table - for debt confirmation workflow
+export const settlementClaims = pgTable("settlement_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  settlementRecordId: varchar("settlement_record_id").references(() => settlementRecords.id),
+  eventId: integer("event_id").notNull().references(() => events.id),
+  debtorParticipantId: varchar("debtor_participant_id").notNull().references(() => participants.id),
+  creditorParticipantId: varchar("creditor_participant_id").notNull().references(() => participants.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").default("pending"), // pending, confirmed, rejected
+  submittedByParticipantId: varchar("submitted_by_participant_id").references(() => participants.id),
+  respondedAt: timestamp("responded_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const settlementClaimsRelations = relations(settlementClaims, ({ one }) => ({
+  event: one(events, {
+    fields: [settlementClaims.eventId],
+    references: [events.id],
+  }),
+  debtor: one(participants, {
+    fields: [settlementClaims.debtorParticipantId],
+    references: [participants.id],
+  }),
+  creditor: one(participants, {
+    fields: [settlementClaims.creditorParticipantId],
+    references: [participants.id],
+  }),
+  submittedBy: one(participants, {
+    fields: [settlementClaims.submittedByParticipantId],
+    references: [participants.id],
+  }),
+}));
+
+export const insertSettlementClaimSchema = createInsertSchema(settlementClaims).omit({ id: true, createdAt: true });
+export type InsertSettlementClaim = z.infer<typeof insertSettlementClaimSchema>;
+export type SettlementClaim = typeof settlementClaims.$inferSelect;
+
 // User storage table.
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
@@ -330,3 +421,68 @@ export type ParticipantDebtPortfolio = {
     role: 'creditor' | 'debtor' | 'settled';
   }[];
 };
+
+// Extended types for invitations and notifications
+export type EventInvitationWithDetails = EventInvitation & {
+  event: Event;
+  inviter?: Participant;
+};
+
+export type NotificationWithPayload = Notification & {
+  payload: {
+    eventId?: number;
+    participantId?: string;
+    invitationId?: string;
+    claimId?: string;
+    amount?: number;
+  } | null;
+};
+
+export type SettlementClaimWithDetails = SettlementClaim & {
+  event: Event;
+  debtor: Participant;
+  creditor: Participant;
+  submittedBy?: Participant;
+};
+
+// Role permissions type
+export type EventRole = 'manager' | 'co_manager' | 'member' | 'viewer';
+
+export const EVENT_ROLE_PERMISSIONS = {
+  manager: {
+    canInvite: true,
+    canAssignRoles: true,
+    canEditEvent: true,
+    canDeleteEvent: true,
+    canViewAllDebts: true,
+    canAssignOthers: true,
+    canAssignSelf: true,
+  },
+  co_manager: {
+    canInvite: true,
+    canAssignRoles: false,
+    canEditEvent: true,
+    canDeleteEvent: false,
+    canViewAllDebts: true,
+    canAssignOthers: true,
+    canAssignSelf: true,
+  },
+  member: {
+    canInvite: false,
+    canAssignRoles: false,
+    canEditEvent: false,
+    canDeleteEvent: false,
+    canViewAllDebts: false,
+    canAssignOthers: false,
+    canAssignSelf: true,
+  },
+  viewer: {
+    canInvite: false,
+    canAssignRoles: false,
+    canEditEvent: false,
+    canDeleteEvent: false,
+    canViewAllDebts: false,
+    canAssignOthers: false,
+    canAssignSelf: false,
+  },
+} as const;
