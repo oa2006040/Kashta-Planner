@@ -182,9 +182,22 @@ export class DatabaseStorage implements IStorage {
     const allCategories = await db.select().from(categories).orderBy(categories.sortOrder);
     const allItems = await db.select().from(items);
     
+    // Get all unique owner IDs
+    const ownerIds = Array.from(new Set(allItems.filter(i => i.ownerId).map(i => i.ownerId!)));
+    const ownersList = ownerIds.length > 0
+      ? await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(inArray(users.id, ownerIds))
+      : [];
+    
+    // Map items with owner info
+    const itemsWithOwner = allItems.map(item => ({
+      ...item,
+      owner: item.ownerId ? ownersList.find(u => u.id === item.ownerId) || null : null,
+    }));
+    
     return allCategories.map(cat => ({
       ...cat,
-      items: allItems.filter(item => item.categoryId === cat.id),
+      items: itemsWithOwner.filter(item => item.categoryId === cat.id),
     }));
   }
 
@@ -1490,10 +1503,10 @@ export class DatabaseStorage implements IStorage {
     };
   }
   
-  async getDebtPortfolio(participantId: string): Promise<ParticipantDebtPortfolio | undefined> {
+  async getDebtPortfolio(participantId: string): Promise<ParticipantDebtPortfolio | null> {
     // Get participant
     const [participant] = await db.select().from(participants).where(eq(participants.id, participantId));
-    if (!participant) return undefined;
+    if (!participant) return null;
     
     // Get all events this participant was in
     const participantEvents = await db.select()

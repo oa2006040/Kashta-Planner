@@ -55,7 +55,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatNumber } from "@/lib/constants";
 import { CategoryIcon, AVAILABLE_ICON_NAMES } from "@/components/category-icon";
 import { useLanguage } from "@/components/language-provider";
-import type { Category, Item, CategoryWithItems, User } from "@shared/schema";
+import type { Category, ItemWithOwner, CategoryWithItems, User } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 
 const ICON_ARABIC_NAMES: Record<string, string> = {
@@ -326,7 +326,7 @@ function ItemCard({
   onEdit,
   user
 }: { 
-  item: Item; 
+  item: ItemWithOwner; 
   category?: Category;
   categories: Category[];
   onDelete: (id: string) => void;
@@ -339,7 +339,12 @@ function ItemCard({
   const isSystemItem = item.ownerId === null;
   const isOwnItem = item.ownerId === user?.id;
   const isAdmin = user?.isAdmin ?? false;
-  const canEdit = isAdmin || isOwnItem || (isSystemItem && isAdmin);
+  const canEdit = isAdmin || isOwnItem;
+  
+  // Get owner display name for user-owned items
+  const ownerName = item.owner 
+    ? `${item.owner.firstName || ''} ${item.owner.lastName || ''}`.trim() || t("مستخدم", "User")
+    : null;
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
@@ -373,6 +378,11 @@ function ItemCard({
           <p className="text-xs text-muted-foreground truncate">{item.description}</p>
         )}
       </div>
+      {!isSystemItem && ownerName && (
+        <Badge variant="outline" className="text-xs shrink-0">
+          {ownerName}
+        </Badge>
+      )}
       {item.isCommon && (
         <Badge variant="secondary" className="text-xs shrink-0">
           {t("شائع", "Common")}
@@ -556,7 +566,7 @@ function CategorySection({
   user
 }: { 
   category: Category; 
-  items: Item[]; 
+  items: ItemWithOwner[]; 
   categories: Category[];
   onDeleteCategory: (id: string) => void;
   onDeleteItem: (id: string) => void;

@@ -427,7 +427,7 @@ export type EventWithDetails = Event & {
 };
 
 export type CategoryWithItems = Category & {
-  items: Item[];
+  items: ItemWithOwner[];
 };
 
 export type ParticipantWithStats = Participant & {
