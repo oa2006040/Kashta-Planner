@@ -9,7 +9,8 @@ import {
   TrendingDown,
   Equal,
   Wallet,
-  Calendar
+  Calendar,
+  ShieldAlert
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,12 +23,54 @@ import type { ParticipantDebtSummary } from "@shared/schema";
 
 export default function DebtPage() {
   const { t, language } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+  
+  const isAdmin = user?.isAdmin ?? false;
+  
   const { data: summaries, isLoading, error } = useQuery<ParticipantDebtSummary[]>({
     queryKey: ['/api/debt'],
     refetchInterval: 5000,
-    enabled: isAuthenticated,
+    enabled: !authLoading && isAuthenticated && isAdmin,
   });
+
+  // Show loading while auth is loading
+  if (authLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-40" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Admin-only page
+  if (!isAdmin) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <ShieldAlert className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">
+              {t("الوصول مقيد", "Access Restricted")}
+            </h3>
+            <p className="text-muted-foreground">
+              {t("هذه الصفحة متاحة للمسؤولين فقط", "This page is only available to administrators")}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

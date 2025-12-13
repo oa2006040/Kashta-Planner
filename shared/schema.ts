@@ -415,9 +415,14 @@ export type User = typeof users.$inferSelect;
 // Safe user type without password hash for API responses
 export type SafeUser = Omit<User, 'passwordHash'>;
 
+// Item with owner info for display
+export type ItemWithOwner = Item & {
+  owner?: { id: string; firstName: string | null; lastName: string | null } | null;
+};
+
 // Extended types for frontend use
 export type EventWithDetails = Event & {
-  contributions: (Contribution & { item: Item; participant: Participant | null })[];
+  contributions: (Contribution & { item: ItemWithOwner; participant: Participant | null })[];
   eventParticipants: (EventParticipant & { participant: Participant })[];
 };
 

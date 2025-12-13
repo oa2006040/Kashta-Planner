@@ -135,17 +135,27 @@ export async function registerRoutes(
     }
   });
 
-  // Items
-  app.get("/api/items", async (req, res) => {
+  // Items - with ownership control
+  // GET items: authenticated users see system items + their own items, admins see all
+  app.get("/api/items", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session!.userId!;
+      const user = await storage.getUser(userId);
       const categoryId = req.query.categoryId as string;
-      if (categoryId) {
-        const items = await storage.getItemsByCategory(categoryId);
-        res.json(items);
+      
+      // Admins see all items, regular users see system + their own
+      let itemsList;
+      if (user?.isAdmin) {
+        itemsList = categoryId 
+          ? await storage.getItemsByCategory(categoryId)
+          : await storage.getItems();
       } else {
-        const items = await storage.getItems();
-        res.json(items);
+        itemsList = await storage.getItemsForUser(userId);
+        if (categoryId) {
+          itemsList = itemsList.filter(item => item.categoryId === categoryId);
+        }
       }
+      res.json(itemsList);
     } catch (error) {
       console.error("Error fetching items:", error);
       res.status(500).json({ error: "Failed to fetch items" });
@@ -165,10 +175,14 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/items", async (req, res) => {
+  // POST items: users create their own items (ownerId = userId)
+  app.post("/api/items", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session!.userId!;
       const data = insertItemSchema.parse(req.body);
-      const item = await storage.createItem(data);
+      
+      // Set ownerId to current user (users create their own items)
+      const item = await storage.createItem({ ...data, ownerId: userId });
       
       // Log activity
       await storage.createActivityLog({
@@ -186,9 +200,32 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/items/:id", async (req, res) => {
+  // PATCH items: users can only edit their own items, admins can edit system items
+  app.patch("/api/items/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session!.userId!;
+      const user = await storage.getUser(userId);
+      const existingItem = await storage.getItem(req.params.id);
+      
+      if (!existingItem) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      // Check ownership: user can edit own items, admin can edit system items
+      const isSystemItem = existingItem.ownerId === null;
+      const isOwnItem = existingItem.ownerId === userId;
+      
+      if (isSystemItem && !user?.isAdmin) {
+        return res.status(403).json({ error: "لا يمكن تعديل مستلزمات النظام" });
+      }
+      if (!isSystemItem && !isOwnItem && !user?.isAdmin) {
+        return res.status(403).json({ error: "لا يمكنك تعديل هذا المستلزم" });
+      }
+      
       const data = insertItemSchema.partial().parse(req.body);
+      // Don't allow changing ownerId
+      delete (data as any).ownerId;
+      
       const item = await storage.updateItem(req.params.id, data);
       if (!item) {
         return res.status(404).json({ error: "Item not found" });
@@ -210,11 +247,26 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/items/:id", async (req, res) => {
+  // DELETE items: users can only delete their own items, admins can delete system items
+  app.delete("/api/items/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session!.userId!;
+      const user = await storage.getUser(userId);
       const item = await storage.getItem(req.params.id);
+      
       if (!item) {
         return res.status(404).json({ error: "Item not found" });
+      }
+      
+      // Check ownership: user can delete own items, admin can delete system items
+      const isSystemItem = item.ownerId === null;
+      const isOwnItem = item.ownerId === userId;
+      
+      if (isSystemItem && !user?.isAdmin) {
+        return res.status(403).json({ error: "لا يمكن حذف مستلزمات النظام" });
+      }
+      if (!isSystemItem && !isOwnItem && !user?.isAdmin) {
+        return res.status(403).json({ error: "لا يمكنك حذف هذا المستلزم" });
       }
       
       const deleted = await storage.deleteItem(req.params.id);

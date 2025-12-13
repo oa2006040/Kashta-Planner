@@ -61,6 +61,7 @@ export interface IStorage {
   
   // Items
   getItems(): Promise<Item[]>;
+  getItemsForUser(userId: string): Promise<Item[]>; // System items + user's own items
   getItemsByCategory(categoryId: string): Promise<Item[]>;
   getItem(id: string): Promise<Item | undefined>;
   createItem(item: InsertItem): Promise<Item>;
@@ -206,6 +207,16 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(items);
   }
 
+  async getItemsForUser(userId: string): Promise<Item[]> {
+    // Return system items (ownerId = null) + user's own items
+    return db.select().from(items).where(
+      or(
+        sql`${items.ownerId} IS NULL`,
+        eq(items.ownerId, userId)
+      )
+    );
+  }
+
   async getItemsByCategory(categoryId: string): Promise<Item[]> {
     return db.select().from(items).where(eq(items.categoryId, categoryId));
   }
@@ -302,9 +313,22 @@ export class DatabaseStorage implements IStorage {
       ? await db.select().from(items).where(inArray(items.id, itemIds))
       : [];
 
+    // Get item owners (users) for private items
+    const ownerIds = Array.from(new Set(itemsList.filter(i => i.ownerId).map(i => i.ownerId!)));
+    const ownersList = ownerIds.length > 0
+      ? await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(inArray(users.id, ownerIds))
+      : [];
+
+    // Map items with owner info
+    const itemsWithOwner = itemsList.map(item => ({
+      ...item,
+      owner: item.ownerId ? ownersList.find(u => u.id === item.ownerId) || null : null,
+    }));
+
     const contributionsWithDetails = contributionsList.map(c => ({
       ...c,
-      item: itemsList.find(i => i.id === c.itemId)!,
+      item: itemsWithOwner.find(i => i.id === c.itemId)!,
       participant: c.participantId 
         ? participantsList.find(p => p.id === c.participantId) || null
         : null,

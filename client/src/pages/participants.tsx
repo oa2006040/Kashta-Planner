@@ -9,8 +9,10 @@ import {
   MoreVertical,
   Edit2,
   Trash2,
-  Calendar
+  Calendar,
+  ShieldAlert
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -128,14 +130,50 @@ function ParticipantCardSkeleton() {
 }
 
 export default function Participants() {
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const isAdmin = user?.isAdmin ?? false;
+
   const { data: participants, isLoading } = useQuery<Participant[]>({
     queryKey: ["/api/participants"],
+    enabled: !authLoading && isAuthenticated && isAdmin,
   });
+
+  // Show loading while auth is loading
+  if (authLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <ParticipantCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Admin-only page
+  if (!isAdmin) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <ShieldAlert className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">
+              {t("الوصول مقيد", "Access Restricted")}
+            </h3>
+            <p className="text-muted-foreground">
+              {t("هذه الصفحة متاحة للمسؤولين فقط", "This page is only available to administrators")}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {

@@ -837,7 +837,14 @@ function ContributionCard({
               )}
             </div>
             <div className="flex-1">
-              <p className="font-medium break-words">{contribution.item?.name}</p>
+              <p className="font-medium break-words">
+                {contribution.item?.name}
+                {(contribution.item as any)?.ownerId && (contribution.item as any)?.owner && (
+                  <span className="text-muted-foreground text-xs font-normal mr-2">
+                    ({(contribution.item as any).owner.firstName}{(contribution.item as any).owner.lastName ? ` ${(contribution.item as any).owner.lastName}` : ''})
+                  </span>
+                )}
+              </p>
               {category && (
                 <Badge variant="outline" className="text-xs mt-1">
                   <CategoryIcon icon={category.icon} color={category.color} className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />

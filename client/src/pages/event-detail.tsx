@@ -97,7 +97,15 @@ function getStatusBadge(status: string, t: (ar: string, en: string) => string) {
 }
 
 type ContributionWithDetails = Contribution & { 
-  item: { id: string; categoryId: string; name: string; description: string | null; isCommon: boolean }; 
+  item: { 
+    id: string; 
+    categoryId: string; 
+    name: string; 
+    description: string | null; 
+    isCommon: boolean;
+    ownerId?: string | null;
+    owner?: { id: string; firstName: string | null; lastName: string | null } | null;
+  }; 
   participant: Participant | null 
 };
 
@@ -220,7 +228,14 @@ function ContributionItem({
           )}
         </div>
         <div className="flex-1">
-          <p className="font-medium break-words">{contribution.item?.name}</p>
+          <p className="font-medium break-words">
+            {contribution.item?.name}
+            {contribution.item?.ownerId && contribution.item?.owner && (
+              <span className="text-muted-foreground text-xs font-normal mr-2">
+                ({contribution.item.owner.firstName}{contribution.item.owner.lastName ? ` ${contribution.item.owner.lastName}` : ''})
+              </span>
+            )}
+          </p>
           {category && (
             <Badge variant="outline" className="text-xs mt-1">
               <CategoryIcon icon={category.icon} color={category.color} className={`h-3 w-3 ${language === "ar" ? "ml-1" : "mr-1"}`} />
