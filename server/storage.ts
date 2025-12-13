@@ -152,6 +152,13 @@ export interface IStorage {
   canCancelEvent(eventId: number): Promise<{ canCancel: boolean; reason?: string }>;
   canDeleteEvent(eventId: number): Promise<{ canDelete: boolean; reason?: string }>;
   
+  // Creator leave/delete event
+  isEventCreator(eventId: number, userId: string): Promise<boolean>;
+  getOtherActiveParticipants(eventId: number, creatorParticipantId: string): Promise<Participant[]>;
+  transferEventOwnership(eventId: number, newOwnerParticipantId: string): Promise<Event | undefined>;
+  deleteEventWithFullCleanup(eventId: number): Promise<boolean>;
+  creatorLeaveEvent(eventId: number, userId: string, newOwnerParticipantId?: string): Promise<{ success: boolean; eventDeleted: boolean; error?: string }>;
+  
   // Participant protection (deletion)
   canDeleteParticipant(participantId: string): Promise<{ canDelete: boolean; reason?: string }>;
   
@@ -1548,6 +1555,128 @@ export class DatabaseStorage implements IStorage {
     }
     
     return { canDelete: true };
+  }
+
+  // Creator leave/delete event methods
+  async isEventCreator(eventId: number, userId: string): Promise<boolean> {
+    const event = await this.getEvent(eventId);
+    if (!event || !event.creatorParticipantId) return false;
+    
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) return false;
+    
+    return event.creatorParticipantId === participant.id;
+  }
+
+  async getOtherActiveParticipants(eventId: number, creatorParticipantId: string): Promise<Participant[]> {
+    const activeEps = await db.select()
+      .from(eventParticipants)
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.status, 'active')
+      ));
+    
+    const otherParticipantIds = activeEps
+      .filter(ep => ep.participantId !== creatorParticipantId)
+      .map(ep => ep.participantId);
+    
+    if (otherParticipantIds.length === 0) return [];
+    
+    return db.select().from(participants).where(inArray(participants.id, otherParticipantIds));
+  }
+
+  async transferEventOwnership(eventId: number, newOwnerParticipantId: string): Promise<Event | undefined> {
+    const [updated] = await db.update(events)
+      .set({ creatorParticipantId: newOwnerParticipantId })
+      .where(eq(events.id, eventId))
+      .returning();
+    
+    // Grant the new owner organizer permissions
+    await db.update(eventParticipants)
+      .set({ role: 'organizer', canEdit: true, canManageParticipants: true })
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, newOwnerParticipantId)
+      ));
+    
+    // Also assign the Owner role if it exists
+    const creatorRole = await this.getCreatorRole(eventId);
+    if (creatorRole) {
+      const [newOwnerEp] = await db.select()
+        .from(eventParticipants)
+        .where(and(
+          eq(eventParticipants.eventId, eventId),
+          eq(eventParticipants.participantId, newOwnerParticipantId)
+        ));
+      if (newOwnerEp) {
+        await this.assignRoleToParticipant(newOwnerEp.id, creatorRole.id);
+      }
+    }
+    
+    return updated;
+  }
+
+  async deleteEventWithFullCleanup(eventId: number): Promise<boolean> {
+    // Decrement trip count for all participants
+    const eventParticipantsList = await db.select()
+      .from(eventParticipants)
+      .where(eq(eventParticipants.eventId, eventId));
+    
+    for (const ep of eventParticipantsList) {
+      await db.update(participants)
+        .set({ tripCount: sql`GREATEST(${participants.tripCount} - 1, 0)` })
+        .where(eq(participants.id, ep.participantId));
+    }
+    
+    // Delete the event (cascades to related records due to foreign key constraints)
+    await db.delete(events).where(eq(events.id, eventId));
+    return true;
+  }
+
+  async creatorLeaveEvent(eventId: number, userId: string, newOwnerParticipantId?: string): Promise<{ success: boolean; eventDeleted: boolean; error?: string }> {
+    const isCreator = await this.isEventCreator(eventId, userId);
+    if (!isCreator) {
+      return { success: false, eventDeleted: false, error: "ليس لديك صلاحية لهذا الإجراء" };
+    }
+    
+    const event = await this.getEvent(eventId);
+    if (!event) {
+      return { success: false, eventDeleted: false, error: "الطلعة غير موجودة" };
+    }
+    
+    const creatorParticipant = await this.getParticipantByUserId(userId);
+    if (!creatorParticipant) {
+      return { success: false, eventDeleted: false, error: "المشارك غير موجود" };
+    }
+    
+    const otherParticipants = await this.getOtherActiveParticipants(eventId, creatorParticipant.id);
+    
+    // If no other participants, delete the event entirely
+    if (otherParticipants.length === 0) {
+      await this.deleteEventWithFullCleanup(eventId);
+      return { success: true, eventDeleted: true };
+    }
+    
+    // If other participants exist, must assign a new owner
+    if (!newOwnerParticipantId) {
+      return { 
+        success: false, 
+        eventDeleted: false, 
+        error: "يجب تحديد مالك جديد للطلعة قبل المغادرة" 
+      };
+    }
+    
+    // Validate the new owner is an active participant
+    const isValidNewOwner = otherParticipants.some(p => p.id === newOwnerParticipantId);
+    if (!isValidNewOwner) {
+      return { success: false, eventDeleted: false, error: "المالك الجديد غير صالح" };
+    }
+    
+    // Transfer ownership and remove the creator from the event
+    await this.transferEventOwnership(eventId, newOwnerParticipantId);
+    await this.removeParticipantFromEventWithCascade(eventId, creatorParticipant.id);
+    
+    return { success: true, eventDeleted: false };
   }
   
   async canDeleteParticipant(participantId: string): Promise<{ canDelete: boolean; reason?: string }> {

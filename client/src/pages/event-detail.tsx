@@ -37,7 +37,8 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Shield,
-  Settings
+  Settings,
+  LogOut
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,7 @@ import { CategoryIcon } from "@/components/category-icon";
 import { AvatarIcon } from "@/components/avatar-icon";
 import { useLanguage } from "@/components/language-provider";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { useAuth } from "@/hooks/useAuth";
 import type { EventWithDetails, Contribution, Participant, Category, EventSettlement, EventRoleRecord, PermissionKey } from "@shared/schema";
 
 // Permission keys for display in role management UI
@@ -631,6 +633,23 @@ export default function EventDetail() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const debtCardRef = useRef<HTMLDivElement>(null);
   const [roleManagementOpen, setRoleManagementOpen] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [selectedNewOwner, setSelectedNewOwner] = useState<string>("");
+  
+  // Get current user for creator check
+  const { user } = useAuth();
+
+  // Check if current user is the creator
+  const isCreator = event?.creatorParticipantId && user && 
+    event.eventParticipants?.some(ep => 
+      ep.participantId === event.creatorParticipantId && ep.participant.userId === user.id
+    );
+
+  // Fetch other participants for ownership transfer when leave dialog is open
+  const { data: otherParticipants } = useQuery<Participant[]>({
+    queryKey: ["/api/events", params?.id, "other-participants"],
+    enabled: !!params?.id && leaveDialogOpen && !!isCreator,
+  });
 
   // Fetch event roles
   type EventRoleWithPermissions = EventRoleRecord & { permissions: string[] };
@@ -940,6 +959,41 @@ export default function EventDetail() {
       toast({
         title: t("خطأ", "Error"),
         description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Creator leave event mutation
+  const leaveEventMutation = useMutation({
+    mutationFn: async (newOwnerParticipantId?: string) => {
+      const response = await apiRequest("POST", `/api/events/${params?.id}/leave`, { newOwnerParticipantId });
+      return response.json() as Promise<{ success: boolean; eventDeleted?: boolean; newOwnerId?: string }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setLeaveDialogOpen(false);
+      setSelectedNewOwner("");
+      
+      if (data.eventDeleted) {
+        toast({
+          title: t("تم حذف الطلعة", "Event Deleted"),
+          description: t("تم حذف الطلعة بعد مغادرتك لأنه لم يتبق مشاركين آخرين", "Event deleted after you left as no other participants remained"),
+        });
+        navigate("/events");
+      } else {
+        toast({
+          title: t("تم نقل الملكية", "Ownership Transferred"),
+          description: t("تم نقل ملكية الطلعة ومغادرتك بنجاح", "Event ownership transferred and you left successfully"),
+        });
+        navigate("/events");
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: error.message || t("حدث خطأ أثناء مغادرة الطلعة", "Error leaving event"),
         variant: "destructive",
       });
     },
@@ -1285,6 +1339,81 @@ export default function EventDetail() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          {isCreator && (
+            <Dialog open={leaveDialogOpen} onOpenChange={(open) => {
+              setLeaveDialogOpen(open);
+              if (!open) setSelectedNewOwner("");
+            }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon" data-testid="button-leave-event">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{t("مغادرة الطلعة", "Leave Event")}</DialogTitle>
+                  <DialogDescription>
+                    {otherParticipants && otherParticipants.length > 0 
+                      ? t("لمغادرة الطلعة، يجب نقل الملكية لمشارك آخر أولاً", "To leave this event, you must transfer ownership to another participant first")
+                      : t("لا يوجد مشاركين آخرين. مغادرتك ستؤدي لحذف الطلعة نهائياً", "No other participants. Leaving will permanently delete this event")
+                    }
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  {otherParticipants && otherParticipants.length > 0 ? (
+                    <div className="space-y-2">
+                      <Label>{t("اختر المالك الجديد", "Select New Owner")}</Label>
+                      <Select value={selectedNewOwner} onValueChange={setSelectedNewOwner}>
+                        <SelectTrigger data-testid="select-new-owner">
+                          <SelectValue placeholder={t("اختر مشارك...", "Select participant...")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {otherParticipants.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              <div className="flex items-center gap-2">
+                                <AvatarIcon icon={p.avatar} className="h-5 w-5" />
+                                <span>{p.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-orange-50 dark:bg-orange-900/20 p-3 text-sm">
+                      <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="font-medium">{t("تحذير", "Warning")}</span>
+                      </div>
+                      <p className="mt-1 text-orange-600 dark:text-orange-400 text-xs">
+                        {t("سيتم حذف الطلعة وجميع بياناتها نهائياً", "The event and all its data will be permanently deleted")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setLeaveDialogOpen(false)}>
+                    {t("إلغاء", "Cancel")}
+                  </Button>
+                  <Button 
+                    variant="destructive"
+                    onClick={() => leaveEventMutation.mutate(selectedNewOwner || undefined)}
+                    disabled={
+                      leaveEventMutation.isPending || 
+                      (otherParticipants && otherParticipants.length > 0 && !selectedNewOwner)
+                    }
+                    data-testid="button-confirm-leave"
+                  >
+                    {leaveEventMutation.isPending && <Loader2 className={`h-4 w-4 animate-spin ${language === "ar" ? "ml-2" : "mr-2"}`} />}
+                    {otherParticipants && otherParticipants.length > 0 
+                      ? t("نقل الملكية ومغادرة", "Transfer & Leave")
+                      : t("مغادرة وحذف", "Leave & Delete")
+                    }
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
           <Dialog open={calendarDialogOpen} onOpenChange={setCalendarDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon" data-testid="button-add-to-calendar">

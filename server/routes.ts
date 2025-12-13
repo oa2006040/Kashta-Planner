@@ -587,6 +587,78 @@ export async function registerRoutes(
     }
   });
 
+  // Creator leave event (with ownership transfer if needed)
+  app.post("/api/events/:id/leave", isAuthenticated, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.session!.userId!;
+      const { newOwnerParticipantId } = req.body;
+      
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "الطلعة غير موجودة" });
+      }
+      
+      const result = await storage.creatorLeaveEvent(eventId, userId, newOwnerParticipantId);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      
+      // Log activity
+      if (result.eventDeleted) {
+        await storage.createActivityLog({
+          action: "حذف طلعة",
+          details: `تم حذف طلعة "${event.title}" بعد مغادرة المالك`,
+        });
+      } else {
+        await storage.createActivityLog({
+          eventId: event.id,
+          action: "نقل ملكية",
+          details: `تم نقل ملكية طلعة "${event.title}" ومغادرة المالك السابق`,
+        });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error leaving event:", error);
+      res.status(500).json({ error: "Failed to leave event" });
+    }
+  });
+
+  // Get other active participants (for ownership transfer selection)
+  app.get("/api/events/:id/other-participants", isAuthenticated, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.session!.userId!;
+      
+      // Verify user is the creator
+      const isCreator = await storage.isEventCreator(eventId, userId);
+      if (!isCreator) {
+        return res.status(403).json({ error: "ليس لديك صلاحية لهذا الإجراء" });
+      }
+      
+      const participant = await storage.getParticipantByUserId(userId);
+      if (!participant) {
+        return res.status(404).json({ error: "المشارك غير موجود" });
+      }
+      
+      const otherParticipants = await storage.getOtherActiveParticipants(eventId, participant.id);
+      res.json(otherParticipants);
+    } catch (error) {
+      console.error("Error getting other participants:", error);
+      res.status(500).json({ error: "Failed to get participants" });
+    }
+  });
+
   // Enable sharing for an event
   app.post("/api/events/:id/share", isAuthenticated, async (req: any, res) => {
     try {
