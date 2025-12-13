@@ -35,9 +35,11 @@ export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Category = typeof categories.$inferSelect;
 
 // Items table - global shared items database
+// ownerId: null = system item (visible to all), userId = private item (visible to owner + event participants)
 export const items = pgTable("items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   categoryId: varchar("category_id").notNull().references(() => categories.id),
+  ownerId: varchar("owner_id").references(() => users.id), // null = system item, userId = private item
   name: text("name").notNull(),
   description: text("description"),
   isCommon: boolean("is_common").default(true),
@@ -47,6 +49,10 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   category: one(categories, {
     fields: [items.categoryId],
     references: [categories.id],
+  }),
+  owner: one(users, {
+    fields: [items.ownerId],
+    references: [users.id],
   }),
   contributions: many(contributions),
 }));
@@ -343,6 +349,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   phone: varchar("phone"),
   profileImageUrl: varchar("profile_image_url"),
+  isAdmin: boolean("is_admin").default(false), // Admin flag for system-level access
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
