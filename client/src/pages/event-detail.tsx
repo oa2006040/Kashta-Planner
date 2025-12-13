@@ -1290,12 +1290,14 @@ export default function EventDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/events/${event.id}/edit`}>
-            <Button variant="outline" size="icon" data-testid="button-edit-event">
-              <Edit2 className="h-4 w-4" />
-            </Button>
-          </Link>
-          {event.status === 'upcoming' && (
+          {event.isOwner && (
+            <Link href={`/events/${event.id}/edit`}>
+              <Button variant="outline" size="icon" data-testid="button-edit-event">
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
+          {event.isOwner && event.status === 'upcoming' && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="icon" data-testid="button-cancel-event">
@@ -1321,30 +1323,32 @@ export default function EventDetail() {
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="icon" data-testid="button-delete-event">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t("حذف الطلعة", "Delete Event")}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("هل أنت متأكد من حذف هذه الطلعة؟ لا يمكن التراجع عن هذا الإجراء.", "Are you sure you want to delete this event? This action cannot be undone.")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="gap-2">
-                <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deleteMutation.mutate()}
-                  className="bg-destructive text-destructive-foreground"
-                >
-                  {t("حذف", "Delete")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {event.isOwner && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="icon" data-testid="button-delete-event">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("حذف الطلعة", "Delete Event")}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("هل أنت متأكد من حذف هذه الطلعة؟ لا يمكن التراجع عن هذا الإجراء.", "Are you sure you want to delete this event? This action cannot be undone.")}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="gap-2">
+                  <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteMutation.mutate()}
+                    className="bg-destructive text-destructive-foreground"
+                  >
+                    {t("حذف", "Delete")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           {isCreator && (
             <Dialog open={leaveDialogOpen} onOpenChange={(open) => {
               setLeaveDialogOpen(open);
@@ -1817,22 +1821,24 @@ export default function EventDetail() {
         <TabsContent value="participants" className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <h3 className="font-semibold">{t("المشاركين في الطلعة", "Event Participants")}</h3>
-            <div className="flex items-center gap-2">
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                onClick={() => setRoleManagementOpen(true)}
-                data-testid="button-manage-roles"
-              >
-                <Shield className="h-4 w-4" />
-              </Button>
-              <Link href={`/events/${event.id}/participants`}>
-                <Button size="sm" data-testid="button-add-participants">
-                  <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-                  {t("إضافة مشاركين", "Add Participants")}
+            {event.isOwner && (
+              <div className="flex items-center gap-2">
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={() => setRoleManagementOpen(true)}
+                  data-testid="button-manage-roles"
+                >
+                  <Shield className="h-4 w-4" />
                 </Button>
-              </Link>
-            </div>
+                <Link href={`/events/${event.id}/participants`}>
+                  <Button size="sm" data-testid="button-add-participants">
+                    <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                    {t("إضافة مشاركين", "Add Participants")}
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
 
           {event.eventParticipants && event.eventParticipants.length > 0 ? (
@@ -1884,40 +1890,42 @@ export default function EventDetail() {
                           )}
                         </div>
                       </div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="text-muted-foreground"
-                            data-testid={`button-remove-participant-${ep.participantId}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{t("إزالة المشارك", "Remove Participant")}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t(`هل أنت متأكد من إزالة ${ep.participant?.name} من الطلعة؟`, `Are you sure you want to remove ${ep.participant?.name} from this event?`)}
-                              {participantContributions.length > 0 && (
-                                <span className="block mt-2 text-destructive">
-                                  {t(`سيتم حذف ${participantContributions.length} مستلزم مرتبط به أيضاً.`, `${participantContributions.length} linked items will also be deleted.`)}
-                                </span>
-                              )}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => removeParticipantMutation.mutate(ep.participantId)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      {event.isOwner && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="text-muted-foreground"
+                              data-testid={`button-remove-participant-${ep.participantId}`}
                             >
-                              {t("إزالة", "Remove")}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>{t("إزالة المشارك", "Remove Participant")}</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t(`هل أنت متأكد من إزالة ${ep.participant?.name} من الطلعة؟`, `Are you sure you want to remove ${ep.participant?.name} from this event?`)}
+                                {participantContributions.length > 0 && (
+                                  <span className="block mt-2 text-destructive">
+                                    {t(`سيتم حذف ${participantContributions.length} مستلزم مرتبط به أيضاً.`, `${participantContributions.length} linked items will also be deleted.`)}
+                                  </span>
+                                )}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => removeParticipantMutation.mutate(ep.participantId)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {t("إزالة", "Remove")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </CardContent>
                   </Card>
                 );
@@ -1931,12 +1939,14 @@ export default function EventDetail() {
                 <p className="text-sm text-muted-foreground mb-4">
                   {t("أضف المشاركين في هذه الطلعة", "Add participants to this event")}
                 </p>
-                <Link href={`/events/${event.id}/participants`}>
-                  <Button size="sm">
-                    <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-                    {t("إضافة مشاركين", "Add Participants")}
-                  </Button>
-                </Link>
+                {event.isOwner && (
+                  <Link href={`/events/${event.id}/participants`}>
+                    <Button size="sm">
+                      <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                      {t("إضافة مشاركين", "Add Participants")}
+                    </Button>
+                  </Link>
+                )}
               </CardContent>
             </Card>
           )}
