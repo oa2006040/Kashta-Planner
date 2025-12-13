@@ -419,6 +419,17 @@ CREATE TABLE IF NOT EXISTS role_permissions (
     allowed BOOLEAN DEFAULT TRUE
 );
 
+-- Add missing columns to role_permissions
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'role_permissions' AND column_name = 'permission_key') THEN
+        ALTER TABLE role_permissions ADD COLUMN permission_key TEXT NOT NULL DEFAULT '';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'role_permissions' AND column_name = 'allowed') THEN
+        ALTER TABLE role_permissions ADD COLUMN allowed BOOLEAN DEFAULT TRUE;
+    END IF;
+END $$;
+
 -- ==========================================
 -- PARTICIPANT_PERMISSION_OVERRIDES TABLE
 -- ==========================================
