@@ -697,9 +697,50 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Users (for Replit Auth)
+  // Users (for Replit Auth and manual auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: {
+    email: string;
+    passwordHash: string;
+    firstName: string;
+    lastName?: string | null;
+    phone?: string | null;
+  }): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: userData.email,
+        passwordHash: userData.passwordHash,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phone: userData.phone,
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: string, data: Partial<{
+    firstName: string;
+    lastName: string | null;
+    phone: string | null;
+    email: string;
+    passwordHash: string;
+    profileImageUrl: string | null;
+  }>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
     return user;
   }
 

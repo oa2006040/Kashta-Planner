@@ -11,58 +11,15 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupManualAuth, isManualAuthenticated as isAuthenticated } from "./manualAuth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
-  // Auth middleware
-  await setupAuth(app);
-
-  // Public auth status endpoint - returns login/logout URLs and user info if authenticated
-  app.get('/api/auth/status', async (req: any, res) => {
-    const isLoggedIn = req.isAuthenticated() && req.user?.claims?.sub;
-    const baseUrl = `${req.protocol}://${req.hostname}`;
-    
-    if (isLoggedIn) {
-      try {
-        const userId = req.user.claims.sub;
-        const user = await storage.getUser(userId);
-        res.json({
-          authenticated: true,
-          user,
-          logoutUrl: '/api/logout',
-        });
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        res.json({
-          authenticated: true,
-          user: null,
-          logoutUrl: '/api/logout',
-        });
-      }
-    } else {
-      res.json({
-        authenticated: false,
-        user: null,
-        loginUrl: '/api/login',
-      });
-    }
-  });
-
-  // Protected auth route - returns full user info
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Setup manual authentication routes
+  setupManualAuth(app);
 
   // Stats
   app.get("/api/stats", async (req, res) => {

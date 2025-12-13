@@ -68,7 +68,11 @@ export const participants = pgTable("participants", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const participantsRelations = relations(participants, ({ many }) => ({
+export const participantsRelations = relations(participants, ({ one, many }) => ({
+  user: one(users, {
+    fields: [participants.userId],
+    references: [users.id],
+  }),
   contributions: many(contributions),
   eventParticipants: many(eventParticipants),
 }));
@@ -330,20 +334,79 @@ export const insertSettlementClaimSchema = createInsertSchema(settlementClaims).
 export type InsertSettlementClaim = z.infer<typeof insertSettlementClaimSchema>;
 export type SettlementClaim = typeof settlementClaims.$inferSelect;
 
-// User storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// User storage table - supports both Replit Auth and manual auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
+  passwordHash: varchar("password_hash"), // For manual auth (null for Replit Auth users)
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
+  phone: varchar("phone"),
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const usersRelations = relations(users, ({ many }) => ({
+  notifications: many(notifications),
+  participants: many(participants),
+}));
+
+// Insert schema for user registration
+export const insertUserSchema = createInsertSchema(users).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  passwordHash: true, // Handle separately for security
+});
+
+// Registration schema with password validation
+export const registerUserSchema = z.object({
+  email: z.string().email("البريد الإلكتروني غير صالح"),
+  password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
+  confirmPassword: z.string(),
+  firstName: z.string().min(1, "الاسم الأول مطلوب"),
+  lastName: z.string().optional(),
+  phone: z.string().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "كلمات المرور غير متطابقة",
+  path: ["confirmPassword"],
+});
+
+// Login schema
+export const loginUserSchema = z.object({
+  email: z.string().email("البريد الإلكتروني غير صالح"),
+  password: z.string().min(1, "كلمة المرور مطلوبة"),
+});
+
+// Profile update schema
+export const updateProfileSchema = z.object({
+  firstName: z.string().min(1, "الاسم الأول مطلوب").optional(),
+  lastName: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email("البريد الإلكتروني غير صالح").optional(),
+});
+
+// Password change schema
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "كلمة المرور الحالية مطلوبة"),
+  newPassword: z.string().min(6, "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل"),
+  confirmNewPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmNewPassword, {
+  message: "كلمات المرور غير متطابقة",
+  path: ["confirmNewPassword"],
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type RegisterUser = z.infer<typeof registerUserSchema>;
+export type LoginUser = z.infer<typeof loginUserSchema>;
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
+export type ChangePassword = z.infer<typeof changePasswordSchema>;
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Safe user type without password hash for API responses
+export type SafeUser = Omit<User, 'passwordHash'>;
 
 // Extended types for frontend use
 export type EventWithDetails = Event & {

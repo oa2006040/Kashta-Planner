@@ -4,12 +4,11 @@ import { Flame, Users, Package, CalendarDays, ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "@/components/language-toggle";
-import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
 
 export default function Landing() {
   const { language } = useLanguage();
   const isArabic = language === "ar";
-  const { loginUrl } = useAuth();
 
   const features = [
     {
@@ -72,20 +71,22 @@ export default function Landing() {
           <Button 
             size="lg" 
             className="gap-2"
-            onClick={() => window.location.href = loginUrl}
+            asChild
             data-testid="button-login"
           >
-            {isArabic ? (
-              <>
-                <ArrowLeft className="h-4 w-4" />
-                تسجيل الدخول
-              </>
-            ) : (
-              <>
-                Sign In
-                <ArrowLeft className="h-4 w-4 rotate-180" />
-              </>
-            )}
+            <Link href="/login">
+              {isArabic ? (
+                <>
+                  <ArrowLeft className="h-4 w-4" />
+                  تسجيل الدخول
+                </>
+              ) : (
+                <>
+                  Sign In
+                  <ArrowLeft className="h-4 w-4 rotate-180" />
+                </>
+              )}
+            </Link>
           </Button>
         </div>
 

@@ -30,6 +30,8 @@ import Settings from "@/pages/settings";
 import SharedEvent from "@/pages/shared-event";
 import Notifications from "@/pages/notifications";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Register from "@/pages/register";
 import NotFound from "@/pages/not-found";
 
 function MainRouter() {
@@ -123,6 +125,8 @@ function App() {
           <TooltipProvider>
             <Switch>
               <Route path="/share/:token" component={SharedEvent} />
+              <Route path="/login" component={Login} />
+              <Route path="/register" component={Register} />
               <Route>
                 <AuthenticatedRouter />
               </Route>

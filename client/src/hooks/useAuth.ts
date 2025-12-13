@@ -18,7 +18,7 @@ export function useAuth() {
     user: data?.user,
     isLoading,
     isAuthenticated: data?.authenticated ?? false,
-    loginUrl: data?.loginUrl ?? "/api/login",
-    logoutUrl: data?.logoutUrl ?? "/api/logout",
+    loginUrl: data?.loginUrl ?? "/login",
+    logoutUrl: data?.logoutUrl ?? "/api/auth/logout",
   };
 }
