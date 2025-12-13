@@ -76,6 +76,13 @@ export function setupManualAuth(app: Express) {
         return res.status(401).json({ message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
       }
 
+      // Ensure participant exists for legacy users (backfill on login)
+      try {
+        await storage.ensureParticipantForUser(user.id);
+      } catch (backfillError) {
+        console.error("Participant backfill error:", backfillError);
+      }
+
       req.session.userId = user.id;
       
       res.json(excludePassword(user));

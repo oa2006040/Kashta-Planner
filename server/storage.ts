@@ -115,9 +115,10 @@ export interface IStorage {
     totalBudget: number;
   }>;
   
-  // Users (for Replit Auth)
+  // Users (for Replit Auth and manual auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  ensureParticipantForUser(userId: string): Promise<Participant>;
   
   // Settlements
   getEventSettlement(eventId: number): Promise<EventSettlement | null>;
@@ -719,17 +720,65 @@ export class DatabaseStorage implements IStorage {
     lastName?: string | null;
     phone?: string | null;
   }): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values({
+    // Use transaction to ensure user and participant are created atomically
+    return await db.transaction(async (tx) => {
+      const [user] = await tx
+        .insert(users)
+        .values({
+          email: userData.email,
+          passwordHash: userData.passwordHash,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          phone: userData.phone,
+        })
+        .returning();
+      
+      // Auto-create a linked participant for the new user
+      const fullName = userData.lastName 
+        ? `${userData.firstName} ${userData.lastName}` 
+        : userData.firstName;
+      
+      await tx.insert(participants).values({
+        userId: user.id,
+        name: fullName,
         email: userData.email,
-        passwordHash: userData.passwordHash,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
         phone: userData.phone,
-      })
-      .returning();
-    return user;
+        isGuest: false,
+        tripCount: 0,
+      });
+      
+      return user;
+    });
+  }
+  
+  // Ensure a participant exists for a user (for backfill/migration)
+  async ensureParticipantForUser(userId: string): Promise<Participant> {
+    // Check if participant already exists
+    const [existing] = await db.select().from(participants).where(eq(participants.userId, userId));
+    if (existing) {
+      return existing;
+    }
+    
+    // Get user data to create participant
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) {
+      throw new Error(`User ${userId} not found`);
+    }
+    
+    const fullName = user.lastName 
+      ? `${user.firstName} ${user.lastName}` 
+      : user.firstName || '';
+    
+    const [participant] = await db.insert(participants).values({
+      userId: user.id,
+      name: fullName,
+      email: user.email || undefined,
+      phone: user.phone || undefined,
+      isGuest: false,
+      tripCount: 0,
+    }).returning();
+    
+    return participant;
   }
 
   async updateUser(id: string, data: Partial<{
@@ -745,6 +794,25 @@ export class DatabaseStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
+    
+    // Sync the linked participant if profile fields changed
+    if (user && (data.firstName || data.lastName || data.email || data.phone)) {
+      const fullName = user.lastName 
+        ? `${user.firstName} ${user.lastName}` 
+        : user.firstName || '';
+      
+      // Ensure participant exists (backfill for legacy users)
+      await this.ensureParticipantForUser(id);
+      
+      await db.update(participants)
+        .set({
+          name: fullName,
+          email: user.email || undefined,
+          phone: user.phone || undefined,
+        })
+        .where(eq(participants.userId, id));
+    }
+    
     return user;
   }
 
