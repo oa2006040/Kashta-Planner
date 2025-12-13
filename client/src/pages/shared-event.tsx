@@ -966,7 +966,7 @@ function ContributionCard({
                           checked={includeCost} 
                           onCheckedChange={(checked) => setIncludeCost(checked === true)}
                         />
-                        <Label htmlFor="include-cost">{t("إضافة تكلفة", "Add cost")}</Label>
+                        <Label htmlFor="include-cost">{t("إضافة سعر", "Add price")}</Label>
                       </div>
                       {includeCost && (
                         <div className="space-y-2">
@@ -1060,7 +1060,7 @@ function ContributionCard({
                             checked={includeCost} 
                             onCheckedChange={(checked) => setIncludeCost(checked === true)}
                           />
-                          <Label htmlFor="edit-include-cost">{t("إضافة تكلفة", "Add cost")}</Label>
+                          <Label htmlFor="edit-include-cost">{t("إضافة سعر", "Add price")}</Label>
                         </div>
                         {includeCost && (
                           <div className="space-y-2">

@@ -466,7 +466,7 @@ function ContributionItem({
                 data-testid={`checkbox-include-cost-${contribution.id}`}
               />
               <Label htmlFor={`cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
-                {t("إضافة تكلفة", "Add cost")}
+                {t("إضافة سعر", "Add price")}
               </Label>
             </div>
             {includeCost && (
@@ -561,7 +561,7 @@ function ContributionItem({
                 data-testid={`checkbox-edit-include-cost-${contribution.id}`}
               />
               <Label htmlFor={`edit-cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
-                {t("إضافة تكلفة", "Add cost")}
+                {t("إضافة سعر", "Add price")}
               </Label>
             </div>
             {includeCost && (

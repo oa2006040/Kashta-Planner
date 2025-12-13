@@ -884,7 +884,7 @@ export class DatabaseStorage implements IStorage {
       .from(items);
     
     const [budgetResult] = await db
-      .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
+      .select({ total: sql<number>`COALESCE(SUM(cost::numeric * COALESCE(quantity, 1)), 0)::float` })
       .from(contributions);
     
     // Get paid (settled) debts from settlement records
@@ -959,7 +959,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get budget from user's events only
     const [budgetResult] = await db
-      .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
+      .select({ total: sql<number>`COALESCE(SUM(cost::numeric * COALESCE(quantity, 1)), 0)::float` })
       .from(contributions)
       .where(inArray(contributions.eventId, userEventIds));
 
