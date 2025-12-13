@@ -55,13 +55,17 @@ export const insertItemSchema = createInsertSchema(items).omit({ id: true });
 export type InsertItem = z.infer<typeof insertItemSchema>;
 export type Item = typeof items.$inferSelect;
 
-// Participants table
+// Participants table - linked to users for privacy
 export const participants = pgTable("participants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id), // Link to auth user (null for guests)
   name: text("name").notNull(),
+  email: text("email"), // For invitations
   phone: text("phone"),
   avatar: text("avatar"),
+  isGuest: boolean("is_guest").default(false), // True for guest participants
   tripCount: integer("trip_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const participantsRelations = relations(participants, ({ many }) => ({
