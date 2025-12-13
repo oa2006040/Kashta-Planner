@@ -4,10 +4,12 @@ import { Flame, Users, Package, CalendarDays, ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "@/components/language-toggle";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Landing() {
   const { language } = useLanguage();
   const isArabic = language === "ar";
+  const { loginUrl } = useAuth();
 
   const features = [
     {
@@ -70,7 +72,7 @@ export default function Landing() {
           <Button 
             size="lg" 
             className="gap-2"
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => window.location.href = loginUrl}
             data-testid="button-login"
           >
             {isArabic ? (
