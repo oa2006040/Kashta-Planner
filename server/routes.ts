@@ -316,7 +316,7 @@ export async function registerRoutes(
   // Events - with access control (users only see their own events)
   app.get("/api/events", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       // Sync event statuses based on current date before returning
       await storage.syncEventStatuses();
       // Only return events the user has access to
@@ -335,7 +335,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       // Check if user has access to this event
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
@@ -407,7 +407,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -457,7 +457,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -492,7 +492,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -523,7 +523,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -735,7 +735,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -757,7 +757,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -779,7 +779,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -807,7 +807,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -830,7 +830,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -868,7 +868,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -889,7 +889,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -918,7 +918,7 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Contribution not found" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -947,7 +947,7 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Contribution not found" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -970,7 +970,7 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Contribution not found" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -1015,7 +1015,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -1039,7 +1039,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -1310,7 +1310,7 @@ export async function registerRoutes(
   // ========== Notifications ==========
   app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const notifications = await storage.getNotificationsForUser(userId);
       res.json(notifications);
     } catch (error) {
@@ -1321,7 +1321,7 @@ export async function registerRoutes(
 
   app.get("/api/notifications/count", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const count = await storage.getUnreadNotificationCount(userId);
       res.json({ count });
     } catch (error) {
@@ -1362,7 +1362,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
         return res.status(403).json({ error: "Access denied" });
@@ -1383,7 +1383,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid event ID" });
       }
       
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const role = await storage.getUserEventRole(eventId, userId);
       
       if (!role || (role !== "manager" && role !== "co_manager")) {
@@ -1577,7 +1577,7 @@ export async function registerRoutes(
   // Get user's events (events they are part of)
   app.get("/api/my-events", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session!.userId!;
       const events = await storage.getEventsForUser(userId);
       res.json(events);
     } catch (error) {
