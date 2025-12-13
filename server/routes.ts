@@ -2375,6 +2375,235 @@ export async function registerRoutes(
     }
   });
 
+  // Budget Visibility Routes
+  // Update budget visibility setting for an event
+  app.put("/api/events/:id/budget-visibility", isAuthenticated, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.id, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.session!.userId!;
+      const { visibility, participantAccess } = req.body;
+      
+      // Only event owner can change visibility
+      const isOwner = await storage.isEventCreator(eventId, userId);
+      if (!isOwner) {
+        return res.status(403).json({ error: "فقط منشئ الطلعة يمكنه تغيير إعدادات الميزانية" });
+      }
+      
+      // Validate visibility value
+      const validOptions = ['everyone', 'selected', 'hidden'];
+      if (!validOptions.includes(visibility)) {
+        return res.status(400).json({ error: "قيمة غير صالحة للرؤية" });
+      }
+      
+      // Update the event
+      await storage.updateEvent(eventId, { budgetVisibility: visibility });
+      
+      // If "selected", update participant access
+      if (visibility === 'selected' && participantAccess && Array.isArray(participantAccess)) {
+        await storage.updateBudgetAccess(eventId, participantAccess);
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating budget visibility:", error);
+      res.status(500).json({ error: "Failed to update budget visibility" });
+    }
+  });
+
+  // Toggle budget access for a specific participant
+  app.put("/api/event-participants/:id/budget-access", isAuthenticated, async (req: any, res) => {
+    try {
+      const epId = req.params.id;
+      const userId = req.session!.userId!;
+      const { canViewBudget } = req.body;
+      
+      // Get the event participant to find the event
+      const ep = await storage.getEventParticipantById(epId);
+      if (!ep) {
+        return res.status(404).json({ error: "المشارك غير موجود" });
+      }
+      
+      // Only event owner can toggle access
+      const isOwner = await storage.isEventCreator(ep.eventId, userId);
+      if (!isOwner) {
+        return res.status(403).json({ error: "فقط منشئ الطلعة يمكنه تغيير صلاحيات المشاركين" });
+      }
+      
+      const updated = await storage.updateEventParticipantBudgetAccess(epId, canViewBudget);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating budget access:", error);
+      res.status(500).json({ error: "Failed to update budget access" });
+    }
+  });
+
+  // Settlement Claims Routes
+  // Submit a payment claim (debtor marks their own debt as paid)
+  app.post("/api/settlement-claims", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const { eventId, debtorParticipantId, creditorParticipantId, amount, settlementRecordId } = req.body;
+      
+      // Get user's participant
+      const userParticipant = await storage.getParticipantByUserId(userId);
+      if (!userParticipant) {
+        return res.status(400).json({ error: "لم يتم العثور على حساب المشارك" });
+      }
+      
+      // STRICT: User can only claim their OWN debts
+      if (userParticipant.id !== debtorParticipantId) {
+        return res.status(403).json({ error: "هذا المبلغ لا يخصك - يمكنك فقط تأكيد ديونك الخاصة" });
+      }
+      
+      // Create the claim
+      const claim = await storage.createSettlementClaim({
+        eventId,
+        debtorParticipantId,
+        creditorParticipantId,
+        amount,
+        settlementRecordId: settlementRecordId || null,
+        submittedByParticipantId: userParticipant.id,
+        status: 'pending',
+      });
+      
+      // Create notification for creditor
+      const creditor = await storage.getParticipant(creditorParticipantId);
+      if (creditor?.userId) {
+        await storage.createNotification({
+          userId: creditor.userId,
+          type: 'debt_claim',
+          title: 'طلب تأكيد دفع',
+          message: `${userParticipant.name} يدّعي أنه دفع لك ${amount} ر.ق`,
+          payload: { claimId: claim.id, eventId, amount },
+          actionUrl: `/debt/${creditorParticipantId}`,
+        });
+      }
+      
+      res.status(201).json(claim);
+    } catch (error) {
+      console.error("Error creating settlement claim:", error);
+      res.status(500).json({ error: "Failed to create settlement claim" });
+    }
+  });
+
+  // Get claims for current user (as debtor or creditor)
+  app.get("/api/settlement-claims", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const userParticipant = await storage.getParticipantByUserId(userId);
+      
+      if (!userParticipant) {
+        return res.json([]);
+      }
+      
+      const claims = await storage.getClaimsForParticipant(userParticipant.id);
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching settlement claims:", error);
+      res.status(500).json({ error: "Failed to fetch settlement claims" });
+    }
+  });
+
+  // Creditor confirms a payment claim
+  app.post("/api/settlement-claims/:id/confirm", isAuthenticated, async (req: any, res) => {
+    try {
+      const claimId = req.params.id;
+      const userId = req.session!.userId!;
+      
+      // Get the claim
+      const claims = await storage.getClaimsForParticipant('');
+      const claim = claims.find(c => c.id === claimId);
+      if (!claim) {
+        // Try to get directly
+        const allClaims = await storage.getAllSettlementClaims();
+        const directClaim = allClaims.find(c => c.id === claimId);
+        if (!directClaim) {
+          return res.status(404).json({ error: "طلب التأكيد غير موجود" });
+        }
+        
+        // Check if user is the creditor
+        const userParticipant = await storage.getParticipantByUserId(userId);
+        if (!userParticipant || userParticipant.id !== directClaim.creditorParticipantId) {
+          return res.status(403).json({ error: "فقط المستلم يمكنه تأكيد الدفع" });
+        }
+        
+        // Confirm the claim and mark settlement as settled
+        const updated = await storage.respondToSettlementClaim(claimId, 'confirmed');
+        
+        // Mark the actual settlement as settled
+        if (directClaim.settlementRecordId) {
+          await storage.markSettlementAsSettled(directClaim.settlementRecordId);
+        }
+        
+        // Notify debtor
+        const debtor = await storage.getParticipant(directClaim.debtorParticipantId);
+        if (debtor?.userId) {
+          await storage.createNotification({
+            userId: debtor.userId,
+            type: 'debt_confirmed',
+            title: 'تم تأكيد الدفع',
+            message: `تم تأكيد دفعك بمبلغ ${directClaim.amount} ر.ق`,
+            payload: { claimId, eventId: directClaim.eventId },
+            actionUrl: `/debt/${directClaim.debtorParticipantId}`,
+          });
+        }
+        
+        return res.json(updated);
+      }
+      
+      res.json(claim);
+    } catch (error) {
+      console.error("Error confirming settlement claim:", error);
+      res.status(500).json({ error: "Failed to confirm settlement claim" });
+    }
+  });
+
+  // Creditor rejects a payment claim
+  app.post("/api/settlement-claims/:id/reject", isAuthenticated, async (req: any, res) => {
+    try {
+      const claimId = req.params.id;
+      const userId = req.session!.userId!;
+      
+      // Get the claim
+      const allClaims = await storage.getAllSettlementClaims();
+      const claim = allClaims.find(c => c.id === claimId);
+      if (!claim) {
+        return res.status(404).json({ error: "طلب التأكيد غير موجود" });
+      }
+      
+      // Check if user is the creditor
+      const userParticipant = await storage.getParticipantByUserId(userId);
+      if (!userParticipant || userParticipant.id !== claim.creditorParticipantId) {
+        return res.status(403).json({ error: "فقط المستلم يمكنه رفض الطلب" });
+      }
+      
+      // Reject the claim
+      const updated = await storage.respondToSettlementClaim(claimId, 'rejected');
+      
+      // Notify debtor
+      const debtor = await storage.getParticipant(claim.debtorParticipantId);
+      if (debtor?.userId) {
+        await storage.createNotification({
+          userId: debtor.userId,
+          type: 'debt_rejected',
+          title: 'تم رفض طلب الدفع',
+          message: `تم رفض طلب تأكيد الدفع بمبلغ ${claim.amount} ر.ق`,
+          payload: { claimId, eventId: claim.eventId },
+          actionUrl: `/debt/${claim.debtorParticipantId}`,
+        });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error rejecting settlement claim:", error);
+      res.status(500).json({ error: "Failed to reject settlement claim" });
+    }
+  });
+
   // Admin endpoint: Backfill RBAC roles for existing events
   app.post("/api/admin/backfill-roles", isAuthenticated, async (req: any, res) => {
     try {

@@ -193,6 +193,11 @@ export interface IStorage {
   createSettlementClaim(data: InsertSettlementClaim): Promise<SettlementClaim>;
   respondToSettlementClaim(claimId: string, status: 'confirmed' | 'rejected'): Promise<SettlementClaim | undefined>;
   getClaimsForParticipant(participantId: string): Promise<SettlementClaimWithDetails[]>;
+  getAllSettlementClaims(): Promise<SettlementClaim[]>;
+  markSettlementAsSettled(settlementRecordId: string): Promise<void>;
+  
+  // Budget Visibility
+  updateEventParticipantBudgetAccess(epId: string, canViewBudget: boolean): Promise<EventParticipant | undefined>;
   
   // Settlement Activity Logs
   getSettlementActivityLogs(limit?: number): Promise<SettlementActivityLog[]>;
@@ -2321,6 +2326,24 @@ export class DatabaseStorage implements IStorage {
         ? participantsList.find(p => p.id === claim.submittedByParticipantId)
         : undefined,
     }));
+  }
+
+  async getAllSettlementClaims(): Promise<SettlementClaim[]> {
+    return db.select().from(settlementClaims);
+  }
+
+  async markSettlementAsSettled(settlementRecordId: string): Promise<void> {
+    await db.update(settlementRecords)
+      .set({ isSettled: true })
+      .where(eq(settlementRecords.id, settlementRecordId));
+  }
+
+  async updateEventParticipantBudgetAccess(epId: string, canViewBudget: boolean): Promise<EventParticipant | undefined> {
+    const [updated] = await db.update(eventParticipants)
+      .set({ canViewBudget })
+      .where(eq(eventParticipants.id, epId))
+      .returning();
+    return updated;
   }
 
   // ============================================
