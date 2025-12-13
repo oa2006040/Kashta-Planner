@@ -63,24 +63,22 @@ export function AppSidebar() {
       url: "/history",
       icon: History,
     },
-    // Admin-only items below
-    ...(user?.isAdmin ? [
-      {
-        title: t("كشف الحساب", "Statement"),
-        url: "/statement",
-        icon: Receipt,
-      },
-      {
-        title: t("محفظة الديون", "Debt Portfolio"),
-        url: "/debt",
-        icon: Wallet,
-      },
-      {
-        title: t("سجل التسويات", "Settlement Log"),
-        url: "/settlement-log",
-        icon: FileText,
-      },
-    ] : []),
+    // Statement, Debt, Settlement Log - visible to all users (filtered by user on backend)
+    {
+      title: t("كشف الحساب", "Statement"),
+      url: "/statement",
+      icon: Receipt,
+    },
+    {
+      title: t("محفظة الديون", "Debt Portfolio"),
+      url: "/debt",
+      icon: Wallet,
+    },
+    {
+      title: t("سجل التسويات", "Settlement Log"),
+      url: "/settlement-log",
+      icon: FileText,
+    },
   ];
 
   return (
