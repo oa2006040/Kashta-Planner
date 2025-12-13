@@ -15,6 +15,7 @@ import {
   eventRoles,
   rolePermissions,
   participantPermissionOverrides,
+  refreshTokens,
   type Category,
   type InsertCategory,
   type Item,
@@ -54,6 +55,8 @@ import {
   type EventRoleWithPermissions,
   type RolePermission,
   type PermissionKey,
+  type RefreshToken,
+  type InsertRefreshToken,
   DEFAULT_EVENT_ROLES,
 } from "@shared/schema";
 import { db } from "./db";
@@ -204,6 +207,14 @@ export interface IStorage {
   assignRoleToParticipant(eventParticipantId: string, roleId: string): Promise<EventParticipant>;
   getCreatorRole(eventId: number): Promise<EventRoleRecord | undefined>;
   getDefaultRole(eventId: number): Promise<EventRoleRecord | undefined>;
+  
+  // Refresh Tokens
+  createRefreshToken(data: InsertRefreshToken): Promise<RefreshToken>;
+  getRefreshTokenByHash(tokenHash: string): Promise<RefreshToken | undefined>;
+  revokeRefreshToken(tokenId: string): Promise<boolean>;
+  revokeAllUserRefreshTokens(userId: string): Promise<number>;
+  updateRefreshTokenLastUsed(tokenId: string): Promise<boolean>;
+  cleanupExpiredRefreshTokens(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2305,6 +2316,57 @@ export class DatabaseStorage implements IStorage {
     }
     
     return { processed, skipped };
+  }
+  
+  // ============================================
+  // Refresh Token Methods
+  // ============================================
+  
+  async createRefreshToken(data: InsertRefreshToken): Promise<RefreshToken> {
+    const [created] = await db.insert(refreshTokens).values(data).returning();
+    return created;
+  }
+  
+  async getRefreshTokenByHash(tokenHash: string): Promise<RefreshToken | undefined> {
+    const [token] = await db.select().from(refreshTokens)
+      .where(and(
+        eq(refreshTokens.tokenHash, tokenHash),
+        sql`${refreshTokens.revokedAt} IS NULL`,
+        sql`${refreshTokens.expiresAt} > NOW()`
+      ));
+    return token;
+  }
+  
+  async revokeRefreshToken(tokenId: string): Promise<boolean> {
+    const [updated] = await db.update(refreshTokens)
+      .set({ revokedAt: new Date() })
+      .where(eq(refreshTokens.id, tokenId))
+      .returning();
+    return !!updated;
+  }
+  
+  async revokeAllUserRefreshTokens(userId: string): Promise<number> {
+    const result = await db.update(refreshTokens)
+      .set({ revokedAt: new Date() })
+      .where(and(
+        eq(refreshTokens.userId, userId),
+        sql`${refreshTokens.revokedAt} IS NULL`
+      ));
+    return result.rowCount || 0;
+  }
+  
+  async updateRefreshTokenLastUsed(tokenId: string): Promise<boolean> {
+    const [updated] = await db.update(refreshTokens)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(refreshTokens.id, tokenId))
+      .returning();
+    return !!updated;
+  }
+  
+  async cleanupExpiredRefreshTokens(): Promise<number> {
+    const result = await db.delete(refreshTokens)
+      .where(sql`${refreshTokens.expiresAt} < NOW()`);
+    return result.rowCount || 0;
   }
 }
 

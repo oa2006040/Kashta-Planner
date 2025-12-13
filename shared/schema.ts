@@ -472,6 +472,7 @@ export const registerUserSchema = z.object({
 export const loginUserSchema = z.object({
   email: z.string().email("البريد الإلكتروني غير صالح"),
   password: z.string().min(1, "كلمة المرور مطلوبة"),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 // Profile update schema
@@ -502,6 +503,55 @@ export type User = typeof users.$inferSelect;
 
 // Safe user type without password hash for API responses
 export type SafeUser = Omit<User, 'passwordHash'>;
+
+// Refresh tokens for "Remember Me" functionality
+export const refreshTokens = pgTable("refresh_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash").notNull(),
+  deviceName: text("device_name"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  issuedAt: timestamp("issued_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+});
+
+export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [refreshTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertRefreshTokenSchema = createInsertSchema(refreshTokens).omit({ id: true, issuedAt: true });
+export type InsertRefreshToken = z.infer<typeof insertRefreshTokenSchema>;
+export type RefreshToken = typeof refreshTokens.$inferSelect;
+
+// WebAuthn credentials for biometric login
+export const webauthnCredentials = pgTable("webauthn_credentials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  credentialId: text("credential_id").notNull().unique(),
+  publicKey: text("public_key").notNull(),
+  signCount: integer("sign_count").default(0),
+  transports: text("transports"),
+  friendlyName: text("friendly_name"),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const webauthnCredentialsRelations = relations(webauthnCredentials, ({ one }) => ({
+  user: one(users, {
+    fields: [webauthnCredentials.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertWebauthnCredentialSchema = createInsertSchema(webauthnCredentials).omit({ id: true, createdAt: true });
+export type InsertWebauthnCredential = z.infer<typeof insertWebauthnCredentialSchema>;
+export type WebauthnCredential = typeof webauthnCredentials.$inferSelect;
 
 // Item with owner info for display
 export type ItemWithOwner = Item & {
