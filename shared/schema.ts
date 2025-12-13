@@ -88,6 +88,10 @@ export type InsertParticipant = z.infer<typeof insertParticipantSchema>;
 export type Participant = typeof participants.$inferSelect;
 
 // Events table - kashta outings
+// Budget visibility options
+export const BUDGET_VISIBILITY_OPTIONS = ['everyone', 'selected', 'hidden'] as const;
+export type BudgetVisibility = typeof BUDGET_VISIBILITY_OPTIONS[number];
+
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -104,6 +108,7 @@ export const events = pgTable("events", {
   totalBudget: decimal("total_budget", { precision: 10, scale: 2 }).default("0"),
   shareToken: text("share_token").unique(),
   isShareEnabled: boolean("is_share_enabled").default(false),
+  budgetVisibility: text("budget_visibility").default("everyone"), // everyone, selected, hidden
   creatorParticipantId: varchar("creator_participant_id").references(() => participants.id), // Event creator/owner
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -219,6 +224,7 @@ export const eventParticipants = pgTable("event_participants", {
   confirmedAt: timestamp("confirmed_at"),
   canEdit: boolean("can_edit").default(false), // Legacy: Can edit event details and contributions
   canManageParticipants: boolean("can_manage_participants").default(false), // Legacy: Can invite/remove participants
+  canViewBudget: boolean("can_view_budget").default(true), // Used when budgetVisibility is "selected"
 });
 
 export const eventParticipantsRelations = relations(eventParticipants, ({ one, many }) => ({
