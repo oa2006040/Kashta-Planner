@@ -439,8 +439,10 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/events", async (req, res) => {
+  app.post("/api/events", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session!.userId!;
+      
       // Extract requiredItems before validation
       const { requiredItems, ...restBody } = req.body;
       
@@ -451,7 +453,9 @@ export async function registerRoutes(
         endDate: restBody.endDate ? new Date(restBody.endDate) : undefined,
       };
       const data = insertEventSchema.parse(body);
-      const event = await storage.createEvent(data);
+      
+      // Create event with creator as organizer (auto-adds creator as participant)
+      const event = await storage.createEventWithCreator(data, userId);
       
       // Create contributions for required items (without participant assigned)
       if (requiredItems && Array.isArray(requiredItems) && requiredItems.length > 0) {

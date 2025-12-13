@@ -80,6 +80,9 @@ export interface IStorage {
   getEvent(id: number): Promise<Event | undefined>;
   getEventWithDetails(id: number): Promise<EventWithDetails | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
+  createEventWithCreator(event: InsertEvent, creatorUserId: string): Promise<Event>;
+  canUserEditEvent(eventId: number, userId: string): Promise<boolean>;
+  canUserManageParticipants(eventId: number, userId: string): Promise<boolean>;
   updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event | undefined>;
   deleteEvent(id: number): Promise<boolean>;
   getEventByShareToken(token: string): Promise<Event | undefined>;
@@ -383,6 +386,68 @@ export class DatabaseStorage implements IStorage {
   async createEvent(event: InsertEvent): Promise<Event> {
     const [created] = await db.insert(events).values(event).returning();
     return created;
+  }
+
+  async createEventWithCreator(event: InsertEvent, creatorUserId: string): Promise<Event> {
+    // Ensure participant exists for creator
+    const creatorParticipant = await this.ensureParticipantForUser(creatorUserId);
+    
+    // Create event with creator reference
+    const eventData = {
+      ...event,
+      creatorParticipantId: creatorParticipant.id,
+    };
+    const [created] = await db.insert(events).values(eventData).returning();
+    
+    // Add creator as organizer with full permissions
+    await db.insert(eventParticipants).values({
+      eventId: created.id,
+      participantId: creatorParticipant.id,
+      role: 'organizer',
+      status: 'active',
+      confirmedAt: new Date(),
+      canEdit: true,
+      canManageParticipants: true,
+    });
+    
+    // Increment trip count for creator
+    await db.update(participants)
+      .set({ tripCount: sql`${participants.tripCount} + 1` })
+      .where(eq(participants.id, creatorParticipant.id));
+    
+    return created;
+  }
+
+  async canUserEditEvent(eventId: number, userId: string): Promise<boolean> {
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) return false;
+    
+    const [ep] = await db.select()
+      .from(eventParticipants)
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, participant.id),
+        eq(eventParticipants.status, 'active')
+      ));
+    
+    if (!ep) return false;
+    return ep.role === 'organizer' || ep.canEdit === true;
+  }
+
+  async canUserManageParticipants(eventId: number, userId: string): Promise<boolean> {
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) return false;
+    
+    const [ep] = await db.select()
+      .from(eventParticipants)
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, participant.id),
+        eq(eventParticipants.status, 'active')
+      ));
+    
+    if (!ep) return false;
+    return ep.role === 'organizer' || ep.canManageParticipants === true;
   }
 
   async updateEvent(id: number, data: Partial<InsertEvent>): Promise<Event | undefined> {
