@@ -1214,5 +1214,284 @@ export async function registerRoutes(
     }
   });
 
+  // ========== Notifications ==========
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notifications = await storage.getNotificationsForUser(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching notification count:", error);
+      res.status(500).json({ error: "Failed to fetch notification count" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.markNotificationRead(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification read:", error);
+      res.status(500).json({ error: "Failed to mark notification read" });
+    }
+  });
+
+  // ========== Invitations ==========
+  app.get("/api/invitations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user?.email) {
+        return res.json([]);
+      }
+      const invitations = await storage.getInvitationsForUser(user.email);
+      res.json(invitations);
+    } catch (error) {
+      console.error("Error fetching invitations:", error);
+      res.status(500).json({ error: "Failed to fetch invitations" });
+    }
+  });
+
+  app.get("/api/events/:eventId/invitations", isAuthenticated, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const canAccess = await storage.canUserAccessEvent(eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const invitations = await storage.getEventInvitations(eventId);
+      res.json(invitations);
+    } catch (error) {
+      console.error("Error fetching event invitations:", error);
+      res.status(500).json({ error: "Failed to fetch event invitations" });
+    }
+  });
+
+  app.post("/api/events/:eventId/invite", isAuthenticated, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const role = await storage.getUserEventRole(eventId, userId);
+      
+      if (!role || (role !== "manager" && role !== "co_manager")) {
+        return res.status(403).json({ error: "Only managers can invite" });
+      }
+      
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      
+      const participant = await storage.getParticipantByUserId(userId);
+      const token = crypto.randomUUID();
+      
+      const invitation = await storage.createEventInvitation({
+        eventId,
+        email,
+        token,
+        inviterParticipantId: participant?.id || null,
+      });
+      
+      await storage.createActivityLog({
+        eventId,
+        action: "دعوة مشارك",
+        details: `تم دعوة ${email} للطلعة`,
+      });
+      
+      res.status(201).json(invitation);
+    } catch (error) {
+      console.error("Error creating invitation:", error);
+      res.status(500).json({ error: "Failed to create invitation" });
+    }
+  });
+
+  app.post("/api/invitations/:id/respond", isAuthenticated, async (req: any, res) => {
+    try {
+      const { accept } = req.body;
+      if (typeof accept !== "boolean") {
+        return res.status(400).json({ error: "accept field is required" });
+      }
+      
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user?.email) {
+        return res.status(400).json({ error: "User email not found" });
+      }
+      
+      let participant = await storage.getParticipantByUserId(req.user.claims.sub);
+      
+      if (!participant) {
+        participant = await storage.createParticipant({
+          name: user.firstName && user.lastName 
+            ? `${user.firstName} ${user.lastName}` 
+            : user.email.split("@")[0],
+          userId: req.user.claims.sub,
+          email: user.email,
+          isGuest: false,
+        });
+      }
+      
+      const invitation = await storage.respondToInvitation(
+        req.params.id,
+        accept,
+        participant.id
+      );
+      
+      if (!invitation) {
+        return res.status(404).json({ error: "Invitation not found" });
+      }
+      
+      if (accept) {
+        await storage.addParticipantToEvent({
+          eventId: invitation.eventId,
+          participantId: participant.id,
+          status: "confirmed",
+        });
+        
+        await storage.createActivityLog({
+          eventId: invitation.eventId,
+          action: "قبول دعوة",
+          details: `قبل ${participant.name} الدعوة للطلعة`,
+        });
+      }
+      
+      res.json(invitation);
+    } catch (error) {
+      console.error("Error responding to invitation:", error);
+      res.status(500).json({ error: "Failed to respond to invitation" });
+    }
+  });
+
+  // ========== Settlement Claims ==========
+  app.get("/api/settlement-claims", isAuthenticated, async (req: any, res) => {
+    try {
+      const participant = await storage.getParticipantByUserId(req.user.claims.sub);
+      if (!participant) {
+        return res.json([]);
+      }
+      const claims = await storage.getClaimsForParticipant(participant.id);
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching settlement claims:", error);
+      res.status(500).json({ error: "Failed to fetch settlement claims" });
+    }
+  });
+
+  app.post("/api/settlement-claims", isAuthenticated, async (req: any, res) => {
+    try {
+      const participant = await storage.getParticipantByUserId(req.user.claims.sub);
+      if (!participant) {
+        return res.status(400).json({ error: "Participant profile not found" });
+      }
+      
+      const { eventId, debtorId, creditorId, amount } = req.body;
+      if (!eventId || !debtorId || !creditorId || !amount) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      if (participant.id !== debtorId && participant.id !== creditorId) {
+        return res.status(403).json({ error: "Can only create claims for your own debts" });
+      }
+      
+      const claim = await storage.createSettlementClaim({
+        eventId: parseInt(eventId, 10),
+        debtorParticipantId: debtorId,
+        creditorParticipantId: creditorId,
+        amount: amount.toString(),
+        submittedByParticipantId: participant.id,
+      });
+      
+      const otherParticipantId = participant.id === debtorId ? creditorId : debtorId;
+      const otherParticipant = await storage.getParticipant(otherParticipantId);
+      
+      if (otherParticipant?.userId) {
+        await storage.createNotification({
+          userId: otherParticipant.userId,
+          type: "settlement_claim",
+          title: "طلب تسوية",
+          message: `${participant.name} طلب تأكيد تسوية بقيمة ${amount} ر.ق`,
+          payload: { eventId: parseInt(eventId, 10), claimId: claim.id },
+        });
+      }
+      
+      res.status(201).json(claim);
+    } catch (error) {
+      console.error("Error creating settlement claim:", error);
+      res.status(500).json({ error: "Failed to create settlement claim" });
+    }
+  });
+
+  app.patch("/api/settlement-claims/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const participant = await storage.getParticipantByUserId(req.user.claims.sub);
+      if (!participant) {
+        return res.status(400).json({ error: "Participant profile not found" });
+      }
+      
+      const { status } = req.body;
+      if (!status || !["confirmed", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+      
+      const claim = await storage.respondToSettlementClaim(
+        req.params.id,
+        status
+      );
+      
+      if (!claim) {
+        return res.status(404).json({ error: "Claim not found" });
+      }
+      
+      if (claim.submittedByParticipantId) {
+        const initiator = await storage.getParticipant(claim.submittedByParticipantId);
+        if (initiator?.userId) {
+          await storage.createNotification({
+            userId: initiator.userId,
+            type: "settlement_response",
+            title: status === "confirmed" ? "تم تأكيد التسوية" : "تم رفض التسوية",
+            message: `${participant.name} ${status === "confirmed" ? "وافق على" : "رفض"} طلب التسوية`,
+            payload: { eventId: claim.eventId, claimId: claim.id },
+          });
+        }
+      }
+      
+      res.json(claim);
+    } catch (error) {
+      console.error("Error responding to settlement claim:", error);
+      res.status(500).json({ error: "Failed to respond to settlement claim" });
+    }
+  });
+
+  // Get user's events (events they are part of)
+  app.get("/api/my-events", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const events = await storage.getEventsForUser(userId);
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching user events:", error);
+      res.status(500).json({ error: "Failed to fetch user events" });
+    }
+  });
+
   return httpServer;
 }

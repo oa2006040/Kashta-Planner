@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { formatDate, formatCurrency } from "@/lib/constants";
 import { useLanguage } from "@/components/language-provider";
+import { useAuth } from "@/hooks/useAuth";
 import type { Event } from "@shared/schema";
 
 function getStatusBadge(status: string, t: (ar: string, en: string) => string) {
@@ -204,12 +205,13 @@ function EventCardSkeleton({ view }: { view: "grid" | "list" }) {
 
 export default function Events() {
   const { t, language } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const [view, setView] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const { data: events, isLoading } = useQuery<Event[]>({
-    queryKey: ["/api/events"],
+    queryKey: [isAuthenticated ? "/api/my-events" : "/api/events"],
   });
 
   const filteredEvents = events?.filter((event) => {

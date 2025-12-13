@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Home,
   Calendar,
@@ -11,6 +12,7 @@ import {
   Settings,
   Flame,
   Star,
+  Bell,
 } from "lucide-react";
 import {
   Sidebar,
@@ -23,12 +25,21 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarMenuBadge,
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/components/language-provider";
+import { useAuth } from "@/hooks/useAuth";
 
 export function AppSidebar() {
   const [location] = useLocation();
   const { t, language } = useLanguage();
+  const { isAuthenticated } = useAuth();
+  
+  const { data: notificationCount } = useQuery<{ count: number }>({
+    queryKey: ["/api/notifications/count"],
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
 
   const mainNavItems = [
     {
@@ -92,6 +103,30 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === "/notifications"}
+                  tooltip={t("التنبيهات", "Notifications")}
+                >
+                  <Link href="/notifications" data-testid="link-nav-notifications">
+                    <Bell className="h-4 w-4" />
+                    <span>{t("التنبيهات", "Notifications")}</span>
+                  </Link>
+                </SidebarMenuButton>
+                {notificationCount && notificationCount.count > 0 && (
+                  <SidebarMenuBadge data-testid="badge-notification-count">
+                    {notificationCount.count}
+                  </SidebarMenuBadge>
+                )}
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupLabel>{t("القائمة الرئيسية", "Main Menu")}</SidebarGroupLabel>
           <SidebarGroupContent>

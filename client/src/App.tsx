@@ -28,6 +28,7 @@ import DebtDetail from "@/pages/debt-detail";
 import SettlementLog from "@/pages/settlement-log";
 import Settings from "@/pages/settings";
 import SharedEvent from "@/pages/shared-event";
+import Notifications from "@/pages/notifications";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
@@ -51,6 +52,7 @@ function MainRouter() {
       <Route path="/debt/:participantId" component={DebtDetail} />
       <Route path="/settlement-log" component={SettlementLog} />
       <Route path="/settings" component={Settings} />
+      <Route path="/notifications" component={Notifications} />
       <Route component={NotFound} />
     </Switch>
   );

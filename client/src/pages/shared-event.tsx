@@ -68,6 +68,7 @@ import { formatDate, formatHijriDate, formatCurrency, formatNumber } from "@/lib
 import { CategoryIcon } from "@/components/category-icon";
 import { AvatarIcon } from "@/components/avatar-icon";
 import { useLanguage } from "@/components/language-provider";
+import { useAuth } from "@/hooks/useAuth";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { EventWithDetails, Contribution, Participant, Category, Item } from "@shared/schema";
 
@@ -105,6 +106,7 @@ export default function SharedEvent() {
   const token = params?.token;
   const { toast } = useToast();
   const { t, language } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const [addParticipantOpen, setAddParticipantOpen] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string>("");
   const [addItemOpen, setAddItemOpen] = useState(false);
@@ -387,58 +389,60 @@ export default function SharedEvent() {
           <TabsContent value="participants" className="mt-4 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h3 className="font-medium">{t("المشاركين في الطلعة", "Event Participants")}</h3>
-              <Dialog open={addParticipantOpen} onOpenChange={setAddParticipantOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" data-testid="button-add-participant-shared">
-                    <UserPlus className="h-4 w-4" />
-                    <span className="hidden sm:inline">{t("إضافة مشارك", "Add Participant")}</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{t("إضافة مشارك", "Add Participant")}</DialogTitle>
-                    <DialogDescription>
-                      {t("اختر مشاركاً لإضافته للطلعة", "Select a participant to add to the event")}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {availableParticipants.length > 0 ? (
-                      <Select value={selectedParticipantId} onValueChange={setSelectedParticipantId}>
-                        <SelectTrigger data-testid="select-participant-shared">
-                          <SelectValue placeholder={t("اختر مشاركاً", "Select participant")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableParticipants.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              <div className="flex items-center gap-2">
-                                <AvatarIcon icon={p.avatar} className="h-4 w-4" />
-                                {p.name}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        {t("لا يوجد مشاركين متاحين للإضافة", "No participants available to add")}
-                      </p>
-                    )}
-                  </div>
-                  <DialogFooter className="gap-2">
-                    <DialogClose asChild>
-                      <Button variant="outline">{t("إلغاء", "Cancel")}</Button>
-                    </DialogClose>
-                    <Button
-                      onClick={() => selectedParticipantId && addParticipantMutation.mutate(selectedParticipantId)}
-                      disabled={!selectedParticipantId || addParticipantMutation.isPending}
-                      data-testid="button-confirm-add-participant-shared"
-                    >
-                      {addParticipantMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {t("إضافة", "Add")}
+              {isAuthenticated && (
+                <Dialog open={addParticipantOpen} onOpenChange={setAddParticipantOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-participant-shared">
+                      <UserPlus className="h-4 w-4" />
+                      <span className="hidden sm:inline">{t("إضافة مشارك", "Add Participant")}</span>
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{t("إضافة مشارك", "Add Participant")}</DialogTitle>
+                      <DialogDescription>
+                        {t("اختر مشاركاً لإضافته للطلعة", "Select a participant to add to the event")}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {availableParticipants.length > 0 ? (
+                        <Select value={selectedParticipantId} onValueChange={setSelectedParticipantId}>
+                          <SelectTrigger data-testid="select-participant-shared">
+                            <SelectValue placeholder={t("اختر مشاركاً", "Select participant")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableParticipants.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                <div className="flex items-center gap-2">
+                                  <AvatarIcon icon={p.avatar} className="h-4 w-4" />
+                                  {p.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          {t("لا يوجد مشاركين متاحين للإضافة", "No participants available to add")}
+                        </p>
+                      )}
+                    </div>
+                    <DialogFooter className="gap-2">
+                      <DialogClose asChild>
+                        <Button variant="outline">{t("إلغاء", "Cancel")}</Button>
+                      </DialogClose>
+                      <Button
+                        onClick={() => selectedParticipantId && addParticipantMutation.mutate(selectedParticipantId)}
+                        disabled={!selectedParticipantId || addParticipantMutation.isPending}
+                        data-testid="button-confirm-add-participant-shared"
+                      >
+                        {addParticipantMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {t("إضافة", "Add")}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
 
             {participants.length === 0 ? (
@@ -462,33 +466,35 @@ export default function SharedEvent() {
                           )}
                         </div>
                       </div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{t("حذف المشارك", "Remove Participant")}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t(
-                                `هل أنت متأكد من حذف "${participant.name}" من الطلعة؟`,
-                                `Are you sure you want to remove "${participant.name}" from this event?`
-                              )}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter className="gap-2">
-                            <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => removeParticipantMutation.mutate(participant.id)}
-                              className="bg-destructive text-destructive-foreground"
-                            >
-                              {t("حذف", "Remove")}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      {isAuthenticated && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>{t("حذف المشارك", "Remove Participant")}</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t(
+                                  `هل أنت متأكد من حذف "${participant.name}" من الطلعة؟`,
+                                  `Are you sure you want to remove "${participant.name}" from this event?`
+                                )}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter className="gap-2">
+                              <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => removeParticipantMutation.mutate(participant.id)}
+                                className="bg-destructive text-destructive-foreground"
+                              >
+                                {t("حذف", "Remove")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </Card>
                 ))}
@@ -499,19 +505,20 @@ export default function SharedEvent() {
           <TabsContent value="items" className="mt-4 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h3 className="font-medium">{t("المستلزمات والمساهمات", "Items & Contributions")}</h3>
-              <Dialog open={addItemOpen} onOpenChange={(open) => {
-                setAddItemOpen(open);
-                if (!open) {
-                  setSelectedItems(new Set());
-                  setCategoryFilter("all");
-                }
-              }}>
-                <DialogTrigger asChild>
-                  <Button size="sm" data-testid="button-add-item-shared">
-                    <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">{t("إضافة مستلزمات", "Add Items")}</span>
-                  </Button>
-                </DialogTrigger>
+              {isAuthenticated && (
+                <Dialog open={addItemOpen} onOpenChange={(open) => {
+                  setAddItemOpen(open);
+                  if (!open) {
+                    setSelectedItems(new Set());
+                    setCategoryFilter("all");
+                  }
+                }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-item-shared">
+                      <Plus className="h-4 w-4" />
+                      <span className="hidden sm:inline">{t("إضافة مستلزمات", "Add Items")}</span>
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="max-w-lg">
                   <DialogHeader>
                     <DialogTitle>{t("إضافة مستلزمات", "Add Items")}</DialogTitle>
@@ -622,6 +629,7 @@ export default function SharedEvent() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+            )}
             </div>
 
             {contributions.length === 0 ? (
@@ -644,16 +652,16 @@ export default function SharedEvent() {
                         contribution={contribution}
                         category={categories?.find(c => c.id === contribution.item?.categoryId)}
                         participants={participants}
-                        onAssign={(participantId, cost, quantity) => 
+                        onAssign={isAuthenticated ? (participantId, cost, quantity) => 
                           updateContributionMutation.mutate({ 
                             contributionId: contribution.id, 
                             data: { participantId, cost, quantity } 
                           })
-                        }
-                        onDelete={() => deleteContributionMutation.mutate(contribution.id)}
-                        onReceiptUpload={(receiptUrl) => 
+                        : undefined}
+                        onDelete={isAuthenticated ? () => deleteContributionMutation.mutate(contribution.id) : undefined}
+                        onReceiptUpload={isAuthenticated ? (receiptUrl) => 
                           receiptUploadMutation.mutate({ contributionId: contribution.id, receiptUrl })
-                        }
+                        : undefined}
                         isLoading={updateContributionMutation.isPending || deleteContributionMutation.isPending}
                         language={language}
                         t={t}
@@ -672,22 +680,22 @@ export default function SharedEvent() {
                         contribution={contribution}
                         category={categories?.find(c => c.id === contribution.item?.categoryId)}
                         participants={participants}
-                        onAssign={(participantId, cost, quantity) => 
+                        onAssign={isAuthenticated ? (participantId, cost, quantity) => 
                           updateContributionMutation.mutate({ 
                             contributionId: contribution.id, 
                             data: { participantId, cost, quantity } 
                           })
-                        }
-                        onUnassign={() => 
+                        : undefined}
+                        onUnassign={isAuthenticated ? () => 
                           updateContributionMutation.mutate({ 
                             contributionId: contribution.id, 
                             data: { participantId: null, cost: "0" } 
                           })
-                        }
-                        onDelete={() => deleteContributionMutation.mutate(contribution.id)}
-                        onReceiptUpload={(receiptUrl) => 
+                        : undefined}
+                        onDelete={isAuthenticated ? () => deleteContributionMutation.mutate(contribution.id) : undefined}
+                        onReceiptUpload={isAuthenticated ? (receiptUrl) => 
                           receiptUploadMutation.mutate({ contributionId: contribution.id, receiptUrl })
-                        }
+                        : undefined}
                         isLoading={updateContributionMutation.isPending || deleteContributionMutation.isPending}
                         language={language}
                         t={t}
@@ -723,10 +731,10 @@ interface ContributionCardProps {
   contribution: ContributionWithDetails;
   category?: Category;
   participants: Participant[];
-  onAssign: (participantId: string, cost: string, quantity: number) => void;
+  onAssign?: (participantId: string, cost: string, quantity: number) => void;
   onUnassign?: () => void;
-  onDelete: () => void;
-  onReceiptUpload: (receiptUrl: string) => void;
+  onDelete?: () => void;
+  onReceiptUpload?: (receiptUrl: string) => void;
   isLoading: boolean;
   language: "ar" | "en";
   t: (ar: string, en: string) => string;
@@ -766,7 +774,7 @@ function ContributionCard({
         });
         if (res.ok) {
           const { objectPath } = await res.json();
-          onReceiptUpload(objectPath);
+          onReceiptUpload?.(objectPath);
         }
       } catch (error) {
         console.error("Error normalizing receipt path:", error);
@@ -785,7 +793,7 @@ function ContributionCard({
   };
 
   const handleAssign = () => {
-    if (selectedParticipant) {
+    if (selectedParticipant && onAssign) {
       const qty = parseInt(quantity) || 1;
       const unitCost = parseFloat(cost) || 0;
       onAssign(selectedParticipant, includeCost ? unitCost.toFixed(2) : "0", qty);
@@ -806,7 +814,7 @@ function ContributionCard({
   };
 
   const handleSaveEdit = () => {
-    if (selectedParticipant) {
+    if (selectedParticipant && onAssign) {
       const qty = parseInt(quantity) || 1;
       const unitCost = parseFloat(cost) || 0;
       onAssign(selectedParticipant, includeCost ? unitCost.toFixed(2) : "0", qty);
@@ -893,7 +901,7 @@ function ContributionCard({
                 </DialogContent>
               </Dialog>
             )}
-            {hasCost && !hasReceipt && (
+            {hasCost && !hasReceipt && onReceiptUpload && (
               <ObjectUploader
                 onGetUploadParameters={getUploadParameters}
                 onComplete={handleReceiptUpload}
@@ -904,7 +912,7 @@ function ContributionCard({
                 <Receipt className="h-4 w-4 text-muted-foreground" />
               </ObjectUploader>
             )}
-            {!hasParticipant ? (
+            {!hasParticipant && onAssign ? (
               <Dialog open={showAssign} onOpenChange={setShowAssign}>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="sm" data-testid={`button-assign-${contribution.id}`}>
@@ -991,7 +999,7 @@ function ContributionCard({
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            ) : (
+            ) : hasParticipant && onAssign ? (
               <>
                 <Dialog open={showEdit} onOpenChange={setShowEdit}>
                   <DialogTrigger asChild>
@@ -1097,34 +1105,36 @@ function ContributionCard({
                   </Button>
                 )}
               </>
+            ) : null}
+            {onDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("حذف المستلزم", "Remove Item")}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t(
+                        `هل أنت متأكد من حذف "${contribution.item?.name}" من الطلعة؟`,
+                        `Are you sure you want to remove "${contribution.item?.name}" from this event?`
+                      )}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="gap-2">
+                    <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={onDelete}
+                      className="bg-destructive text-destructive-foreground"
+                    >
+                      {t("حذف", "Remove")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{t("حذف المستلزم", "Remove Item")}</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t(
-                      `هل أنت متأكد من حذف "${contribution.item?.name}" من الطلعة؟`,
-                      `Are you sure you want to remove "${contribution.item?.name}" from this event?`
-                    )}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="gap-2">
-                  <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={onDelete}
-                    className="bg-destructive text-destructive-foreground"
-                  >
-                    {t("حذف", "Remove")}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </div>
         </div>
       </CardContent>

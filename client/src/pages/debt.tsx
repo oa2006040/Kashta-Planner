@@ -17,13 +17,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatNumber } from "@/lib/constants";
 import { useLanguage } from "@/components/language-provider";
+import { useAuth } from "@/hooks/useAuth";
 import type { ParticipantDebtSummary } from "@shared/schema";
 
 export default function DebtPage() {
   const { t, language } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const { data: summaries, isLoading, error } = useQuery<ParticipantDebtSummary[]>({
     queryKey: ['/api/debt'],
     refetchInterval: 5000,
+    enabled: isAuthenticated,
   });
 
   if (isLoading) {
