@@ -126,9 +126,11 @@ export const eventParticipants = pgTable("event_participants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   participantId: varchar("participant_id").notNull().references(() => participants.id, { onDelete: "cascade" }),
-  role: text("role").default("member"), // manager, co_manager, member, viewer
+  role: text("role").default("member"), // organizer, co_organizer, member, viewer
   status: text("status").default("active"), // pending, active, declined
   confirmedAt: timestamp("confirmed_at"),
+  canEdit: boolean("can_edit").default(false), // Can edit event details and contributions
+  canManageParticipants: boolean("can_manage_participants").default(false), // Can invite/remove participants
 });
 
 export const eventParticipantsRelations = relations(eventParticipants, ({ one }) => ({

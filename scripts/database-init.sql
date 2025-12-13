@@ -216,6 +216,12 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'confirmed_at') THEN
         ALTER TABLE event_participants ADD COLUMN confirmed_at TIMESTAMP;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'can_edit') THEN
+        ALTER TABLE event_participants ADD COLUMN can_edit BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'can_manage_participants') THEN
+        ALTER TABLE event_participants ADD COLUMN can_manage_participants BOOLEAN DEFAULT FALSE;
+    END IF;
 END $$;
 
 -- ==========================================
