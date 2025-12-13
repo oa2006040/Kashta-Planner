@@ -24,7 +24,7 @@ import {
   type ActivityLog,
   type InsertActivityLog,
   type User,
-  type InsertUser,
+  type UpsertUser,
   type CategoryWithItems,
   type EventWithDetails,
   type SettlementRecord,
@@ -103,10 +103,9 @@ export interface IStorage {
     totalBudget: number;
   }>;
   
-  // Users (kept for compatibility)
+  // Users (for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
   
   // Settlements
   getEventSettlement(eventId: number): Promise<EventSettlement | null>;
@@ -662,20 +661,25 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Users
+  // Users (for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
     return user;
-  }
-
-  async createUser(user: InsertUser): Promise<User> {
-    const [created] = await db.insert(users).values(user).returning();
-    return created;
   }
 
   // Settlement methods

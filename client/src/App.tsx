@@ -9,8 +9,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "@/components/language-toggle";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Flame } from "lucide-react";
+import { Flame, Loader2 } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
 import Events from "@/pages/events";
 import EventForm from "@/pages/event-form";
@@ -27,6 +28,7 @@ import DebtDetail from "@/pages/debt-detail";
 import SettlementLog from "@/pages/settlement-log";
 import Settings from "@/pages/settings";
 import SharedEvent from "@/pages/shared-event";
+import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
 function MainRouter() {
@@ -89,6 +91,28 @@ function MainLayout() {
   );
 }
 
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
+function AuthenticatedRouter() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Landing />;
+  }
+
+  return <MainLayout />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -98,7 +122,7 @@ function App() {
             <Switch>
               <Route path="/share/:token" component={SharedEvent} />
               <Route>
-                <MainLayout />
+                <AuthenticatedRouter />
               </Route>
             </Switch>
             <Toaster />
