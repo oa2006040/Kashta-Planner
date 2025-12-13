@@ -1832,5 +1832,252 @@ export async function registerRoutes(
     }
   });
 
+  // ============ RBAC - Event Roles ============
+
+  // Get all roles for an event (requires edit_roles permission)
+  app.get("/api/events/:eventId/roles", isAuthenticated, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+      const userId = req.session!.userId!;
+      
+      // Check if user has permission to manage roles
+      const hasPermission = await storage.hasPermission(eventId, userId, 'edit_roles');
+      if (!hasPermission) {
+        return res.status(403).json({ error: "Permission denied: Cannot view role management" });
+      }
+      
+      const roles = await storage.getEventRoles(eventId);
+      res.json(roles);
+    } catch (error) {
+      console.error("Error fetching event roles:", error);
+      res.status(500).json({ error: "Failed to fetch event roles" });
+    }
+  });
+
+  // Get a specific role
+  app.get("/api/roles/:roleId", isAuthenticated, async (req: any, res) => {
+    try {
+      const role = await storage.getEventRole(req.params.roleId);
+      if (!role) {
+        return res.status(404).json({ error: "Role not found" });
+      }
+      
+      // Check if user can access the event this role belongs to
+      const userId = req.session!.userId!;
+      const canAccess = await storage.canUserAccessEvent(role.eventId, userId);
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      res.json(role);
+    } catch (error) {
+      console.error("Error fetching role:", error);
+      res.status(500).json({ error: "Failed to fetch role" });
+    }
+  });
+
+  // Create a new role for an event
+  app.post("/api/events/:eventId/roles", isAuthenticated, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+      const userId = req.session!.userId!;
+      
+      // Check if user has permission to manage roles (needs manage_roles permission)
+      const hasPermission = await storage.hasPermission(eventId, userId, 'edit_roles');
+      if (!hasPermission) {
+        return res.status(403).json({ error: "Permission denied: Cannot manage roles" });
+      }
+      
+      const { name, nameAr, description, isDefault, permissions } = req.body;
+      
+      if (!name || !nameAr) {
+        return res.status(400).json({ error: "Name and nameAr are required" });
+      }
+      
+      const role = await storage.createEventRole({
+        eventId,
+        name,
+        nameAr,
+        description,
+        isDefault: isDefault ?? false,
+        isCreatorRole: false, // Only system can create creator roles
+      });
+      
+      // Set permissions if provided
+      if (permissions && Array.isArray(permissions)) {
+        await storage.setRolePermissions(role.id, permissions);
+      }
+      
+      // Fetch full role with permissions
+      const fullRole = await storage.getEventRole(role.id);
+      res.status(201).json(fullRole);
+    } catch (error) {
+      console.error("Error creating role:", error);
+      res.status(500).json({ error: "Failed to create role" });
+    }
+  });
+
+  // Update a role
+  app.patch("/api/roles/:roleId", isAuthenticated, async (req: any, res) => {
+    try {
+      const roleId = req.params.roleId;
+      const userId = req.session!.userId!;
+      
+      // Get the role first
+      const existingRole = await storage.getEventRole(roleId);
+      if (!existingRole) {
+        return res.status(404).json({ error: "Role not found" });
+      }
+      
+      // Check if user has permission to manage roles
+      const hasPermission = await storage.hasPermission(existingRole.eventId, userId, 'edit_roles');
+      if (!hasPermission) {
+        return res.status(403).json({ error: "Permission denied: Cannot manage roles" });
+      }
+      
+      // Cannot modify creator role name/flags
+      if (existingRole.isCreatorRole && (req.body.name || req.body.isCreatorRole !== undefined)) {
+        return res.status(400).json({ error: "Cannot modify creator role properties" });
+      }
+      
+      const { name, nameAr, description, isDefault, permissions } = req.body;
+      
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (nameAr !== undefined) updateData.nameAr = nameAr;
+      if (description !== undefined) updateData.description = description;
+      if (isDefault !== undefined) updateData.isDefault = isDefault;
+      
+      const role = await storage.updateEventRole(roleId, updateData);
+      
+      // Update permissions if provided
+      if (permissions && Array.isArray(permissions)) {
+        await storage.setRolePermissions(roleId, permissions);
+      }
+      
+      // Fetch full role with permissions
+      const fullRole = await storage.getEventRole(roleId);
+      res.json(fullRole);
+    } catch (error) {
+      console.error("Error updating role:", error);
+      res.status(500).json({ error: "Failed to update role" });
+    }
+  });
+
+  // Delete a role
+  app.delete("/api/roles/:roleId", isAuthenticated, async (req: any, res) => {
+    try {
+      const roleId = req.params.roleId;
+      const userId = req.session!.userId!;
+      
+      // Get the role first
+      const existingRole = await storage.getEventRole(roleId);
+      if (!existingRole) {
+        return res.status(404).json({ error: "Role not found" });
+      }
+      
+      // Check if user has permission to manage roles
+      const hasPermission = await storage.hasPermission(existingRole.eventId, userId, 'edit_roles');
+      if (!hasPermission) {
+        return res.status(403).json({ error: "Permission denied: Cannot manage roles" });
+      }
+      
+      // Cannot delete creator role
+      if (existingRole.isCreatorRole) {
+        return res.status(400).json({ error: "Cannot delete the owner role" });
+      }
+      
+      const deleted = await storage.deleteEventRole(roleId);
+      if (!deleted) {
+        return res.status(400).json({ error: "Failed to delete role" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting role:", error);
+      res.status(500).json({ error: "Failed to delete role" });
+    }
+  });
+
+  // Assign a role to a participant
+  app.post("/api/event-participants/:epId/role", isAuthenticated, async (req: any, res) => {
+    try {
+      const epId = req.params.epId;
+      const userId = req.session!.userId!;
+      const { roleId } = req.body;
+      
+      if (!roleId) {
+        return res.status(400).json({ error: "roleId is required" });
+      }
+      
+      // Get role to find eventId
+      const role = await storage.getEventRole(roleId);
+      if (!role) {
+        return res.status(404).json({ error: "Role not found" });
+      }
+      
+      // Get the event participant to verify it belongs to the same event
+      const eventParticipants = await storage.getEventParticipants(role.eventId);
+      const targetEp = eventParticipants.find(ep => ep.id === epId);
+      if (!targetEp) {
+        return res.status(400).json({ error: "Event participant not found in this event" });
+      }
+      
+      // Check if user has permission to assign roles
+      const hasPermission = await storage.hasPermission(role.eventId, userId, 'edit_roles');
+      if (!hasPermission) {
+        return res.status(403).json({ error: "Permission denied: Cannot assign roles" });
+      }
+      
+      const updated = await storage.assignRoleToParticipant(epId, roleId);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error assigning role:", error);
+      res.status(500).json({ error: "Failed to assign role" });
+    }
+  });
+
+  // Get effective permissions for a user in an event
+  app.get("/api/events/:eventId/my-permissions", isAuthenticated, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+      const userId = req.session!.userId!;
+      
+      const permissions = await storage.getEffectivePermissions(eventId, userId);
+      res.json({ permissions });
+    } catch (error) {
+      console.error("Error fetching permissions:", error);
+      res.status(500).json({ error: "Failed to fetch permissions" });
+    }
+  });
+
+  // Admin endpoint: Backfill RBAC roles for existing events
+  app.post("/api/admin/backfill-roles", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const result = await storage.backfillRolesForExistingEvents();
+      
+      await storage.createActivityLog({
+        action: "ترقية النظام",
+        details: `تم إضافة أدوار RBAC لـ ${result.processed} طلعة (تخطي ${result.skipped} طلعات موجودة)`,
+      });
+      
+      res.json({
+        success: true,
+        message: `Backfilled roles for ${result.processed} events, skipped ${result.skipped} events`,
+        ...result,
+      });
+    } catch (error) {
+      console.error("Error backfilling roles:", error);
+      res.status(500).json({ error: "Failed to backfill roles" });
+    }
+  });
+
   return httpServer;
 }

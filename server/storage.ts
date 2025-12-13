@@ -12,6 +12,9 @@ import {
   eventInvitations,
   notifications,
   settlementClaims,
+  eventRoles,
+  rolePermissions,
+  participantPermissionOverrides,
   type Category,
   type InsertCategory,
   type Item,
@@ -46,6 +49,12 @@ import {
   type InsertSettlementClaim,
   type SettlementClaimWithDetails,
   type EventRole,
+  type EventRoleRecord,
+  type InsertEventRole,
+  type EventRoleWithPermissions,
+  type RolePermission,
+  type PermissionKey,
+  DEFAULT_EVENT_ROLES,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, or } from "drizzle-orm";
@@ -173,6 +182,28 @@ export interface IStorage {
   getDebtSummaries(): Promise<ParticipantDebtSummary[]>;
   getDebtSummaryForParticipant(participantId: string): Promise<ParticipantDebtSummary | null>;
   getDebtPortfolio(participantId: string): Promise<ParticipantDebtPortfolio | null>;
+  
+  // RBAC - Event Roles
+  getEventRoles(eventId: number): Promise<EventRoleWithPermissions[]>;
+  getEventRole(roleId: string): Promise<EventRoleWithPermissions | undefined>;
+  createEventRole(data: InsertEventRole): Promise<EventRoleRecord>;
+  updateEventRole(roleId: string, data: Partial<InsertEventRole>): Promise<EventRoleRecord | undefined>;
+  deleteEventRole(roleId: string): Promise<boolean>;
+  createDefaultEventRoles(eventId: number): Promise<EventRoleRecord[]>;
+  
+  // RBAC - Permission Management
+  setRolePermissions(roleId: string, permissions: PermissionKey[]): Promise<void>;
+  getRolePermissions(roleId: string): Promise<PermissionKey[]>;
+  
+  // RBAC - Permission Checking
+  getParticipantRoleForEvent(eventId: number, participantId: string): Promise<EventRoleRecord | null>;
+  hasPermission(eventId: number, userId: string, permission: PermissionKey): Promise<boolean>;
+  getEffectivePermissions(eventId: number, userId: string): Promise<PermissionKey[]>;
+  
+  // RBAC - Role Assignment
+  assignRoleToParticipant(eventParticipantId: string, roleId: string): Promise<EventParticipant>;
+  getCreatorRole(eventId: number): Promise<EventRoleRecord | undefined>;
+  getDefaultRole(eventId: number): Promise<EventRoleRecord | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -399,8 +430,14 @@ export class DatabaseStorage implements IStorage {
     };
     const [created] = await db.insert(events).values(eventData).returning();
     
+    // Create default RBAC roles for this event
+    await this.createDefaultEventRoles(created.id);
+    
+    // Get the Owner/Creator role
+    const creatorRole = await this.getCreatorRole(created.id);
+    
     // Add creator as organizer with full permissions
-    await db.insert(eventParticipants).values({
+    const [creatorEp] = await db.insert(eventParticipants).values({
       eventId: created.id,
       participantId: creatorParticipant.id,
       role: 'organizer',
@@ -408,7 +445,12 @@ export class DatabaseStorage implements IStorage {
       confirmedAt: new Date(),
       canEdit: true,
       canManageParticipants: true,
-    });
+    }).returning();
+    
+    // Assign the Owner role to the creator
+    if (creatorRole) {
+      await this.assignRoleToParticipant(creatorEp.id, creatorRole.id);
+    }
     
     // Increment trip count for creator
     await db.update(participants)
@@ -1969,6 +2011,300 @@ export class DatabaseStorage implements IStorage {
         ? participantsList.find(p => p.id === claim.submittedByParticipantId)
         : undefined,
     }));
+  }
+
+  // ============================================
+  // RBAC - Event Roles
+  // ============================================
+  
+  async getEventRoles(eventId: number): Promise<EventRoleWithPermissions[]> {
+    const roles = await db.select().from(eventRoles)
+      .where(eq(eventRoles.eventId, eventId))
+      .orderBy(eventRoles.sortOrder);
+    
+    if (roles.length === 0) return [];
+    
+    const roleIds = roles.map(r => r.id);
+    const permissions = await db.select().from(rolePermissions)
+      .where(inArray(rolePermissions.roleId, roleIds));
+    
+    return roles.map(role => ({
+      ...role,
+      permissions: permissions.filter(p => p.roleId === role.id),
+    }));
+  }
+
+  async getEventRole(roleId: string): Promise<EventRoleWithPermissions | undefined> {
+    const [role] = await db.select().from(eventRoles).where(eq(eventRoles.id, roleId));
+    if (!role) return undefined;
+    
+    const permissions = await db.select().from(rolePermissions)
+      .where(eq(rolePermissions.roleId, roleId));
+    
+    return { ...role, permissions };
+  }
+
+  async createEventRole(data: InsertEventRole): Promise<EventRoleRecord> {
+    const [created] = await db.insert(eventRoles).values(data).returning();
+    return created;
+  }
+
+  async updateEventRole(roleId: string, data: Partial<InsertEventRole>): Promise<EventRoleRecord | undefined> {
+    const [updated] = await db.update(eventRoles)
+      .set(data)
+      .where(eq(eventRoles.id, roleId))
+      .returning();
+    return updated;
+  }
+
+  async deleteEventRole(roleId: string): Promise<boolean> {
+    // Check if it's a creator role - cannot delete
+    const [role] = await db.select().from(eventRoles).where(eq(eventRoles.id, roleId));
+    if (!role || role.isCreatorRole) return false;
+    
+    // Get default role for this event to reassign participants
+    const defaultRole = await this.getDefaultRole(role.eventId);
+    
+    // Reassign participants to default role if exists
+    if (defaultRole && defaultRole.id !== roleId) {
+      await db.update(eventParticipants)
+        .set({ roleId: defaultRole.id })
+        .where(eq(eventParticipants.roleId, roleId));
+    } else {
+      // Clear role assignment
+      await db.update(eventParticipants)
+        .set({ roleId: null })
+        .where(eq(eventParticipants.roleId, roleId));
+    }
+    
+    // Delete the role (permissions cascade automatically)
+    await db.delete(eventRoles).where(eq(eventRoles.id, roleId));
+    return true;
+  }
+
+  async createDefaultEventRoles(eventId: number): Promise<EventRoleRecord[]> {
+    const createdRoles: EventRoleRecord[] = [];
+    
+    for (const roleConfig of DEFAULT_EVENT_ROLES) {
+      // Create the role
+      const [role] = await db.insert(eventRoles).values({
+        eventId,
+        name: roleConfig.name,
+        nameAr: roleConfig.nameAr,
+        description: roleConfig.description,
+        isCreatorRole: roleConfig.isCreatorRole,
+        isDefault: roleConfig.isDefault,
+        sortOrder: roleConfig.sortOrder,
+      }).returning();
+      
+      createdRoles.push(role);
+      
+      // Create permissions for this role
+      if (roleConfig.permissions.length > 0) {
+        await db.insert(rolePermissions).values(
+          roleConfig.permissions.map(permKey => ({
+            roleId: role.id,
+            permissionKey: permKey,
+            allowed: true,
+          }))
+        );
+      }
+    }
+    
+    return createdRoles;
+  }
+
+  // ============================================
+  // RBAC - Permission Management
+  // ============================================
+  
+  async setRolePermissions(roleId: string, permissions: PermissionKey[]): Promise<void> {
+    // Delete existing permissions
+    await db.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));
+    
+    // Insert new permissions
+    if (permissions.length > 0) {
+      await db.insert(rolePermissions).values(
+        permissions.map(permKey => ({
+          roleId,
+          permissionKey: permKey,
+          allowed: true,
+        }))
+      );
+    }
+  }
+
+  async getRolePermissions(roleId: string): Promise<PermissionKey[]> {
+    const perms = await db.select().from(rolePermissions)
+      .where(and(
+        eq(rolePermissions.roleId, roleId),
+        eq(rolePermissions.allowed, true)
+      ));
+    return perms.map(p => p.permissionKey as PermissionKey);
+  }
+
+  // ============================================
+  // RBAC - Permission Checking
+  // ============================================
+  
+  async getParticipantRoleForEvent(eventId: number, participantId: string): Promise<EventRoleRecord | null> {
+    const [ep] = await db.select().from(eventParticipants)
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, participantId)
+      ));
+    
+    if (!ep || !ep.roleId) return null;
+    
+    const [role] = await db.select().from(eventRoles).where(eq(eventRoles.id, ep.roleId));
+    return role || null;
+  }
+
+  async hasPermission(eventId: number, userId: string, permission: PermissionKey): Promise<boolean> {
+    const effectivePerms = await this.getEffectivePermissions(eventId, userId);
+    return effectivePerms.includes(permission);
+  }
+
+  async getEffectivePermissions(eventId: number, userId: string): Promise<PermissionKey[]> {
+    // Get participant for this user
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) return [];
+    
+    // Get event participant record
+    const [ep] = await db.select().from(eventParticipants)
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, participant.id),
+        eq(eventParticipants.status, 'active')
+      ));
+    
+    if (!ep) return [];
+    
+    // Get role permissions
+    let rolePerms: PermissionKey[] = [];
+    if (ep.roleId) {
+      rolePerms = await this.getRolePermissions(ep.roleId);
+    } else {
+      // Legacy fallback: derive permissions from old canEdit/canManageParticipants flags
+      // This ensures backward compatibility for events without RBAC roles
+      if (ep.role === 'organizer') {
+        // Organizers get all permissions
+        rolePerms = ['invite_participants', 'remove_participants', 'edit_roles', 'assign_item', 'unassign_item', 'edit_event', 'delete_event'];
+      } else {
+        // Regular participants get basic permissions
+        rolePerms = ['assign_item', 'unassign_item'];
+        if (ep.canEdit) {
+          rolePerms.push('edit_event');
+        }
+        if (ep.canManageParticipants) {
+          rolePerms.push('invite_participants', 'remove_participants');
+        }
+      }
+    }
+    
+    // Get per-participant overrides
+    const overrides = await db.select().from(participantPermissionOverrides)
+      .where(eq(participantPermissionOverrides.eventParticipantId, ep.id));
+    
+    // Apply overrides
+    const effectivePerms = new Set<PermissionKey>(rolePerms);
+    for (const override of overrides) {
+      const permKey = override.permissionKey as PermissionKey;
+      if (override.allowed) {
+        effectivePerms.add(permKey);
+      } else {
+        effectivePerms.delete(permKey);
+      }
+    }
+    
+    return Array.from(effectivePerms);
+  }
+
+  // ============================================
+  // RBAC - Role Assignment
+  // ============================================
+  
+  async assignRoleToParticipant(eventParticipantId: string, roleId: string): Promise<EventParticipant> {
+    const [updated] = await db.update(eventParticipants)
+      .set({ roleId })
+      .where(eq(eventParticipants.id, eventParticipantId))
+      .returning();
+    return updated;
+  }
+
+  async getCreatorRole(eventId: number): Promise<EventRoleRecord | undefined> {
+    const [role] = await db.select().from(eventRoles)
+      .where(and(
+        eq(eventRoles.eventId, eventId),
+        eq(eventRoles.isCreatorRole, true)
+      ));
+    return role;
+  }
+
+  async getDefaultRole(eventId: number): Promise<EventRoleRecord | undefined> {
+    const [role] = await db.select().from(eventRoles)
+      .where(and(
+        eq(eventRoles.eventId, eventId),
+        eq(eventRoles.isDefault, true)
+      ));
+    return role;
+  }
+
+  // ============================================
+  // RBAC - Migration / Backfill
+  // ============================================
+  
+  async backfillRolesForExistingEvents(): Promise<{ processed: number; skipped: number }> {
+    // Get all events
+    const allEvents = await db.select().from(events);
+    
+    let processed = 0;
+    let skipped = 0;
+    
+    for (const event of allEvents) {
+      // Check if event already has roles
+      const existingRoles = await this.getEventRoles(event.id);
+      if (existingRoles.length > 0) {
+        skipped++;
+        continue;
+      }
+      
+      // Create default roles for this event
+      await this.createDefaultEventRoles(event.id);
+      
+      // Get the newly created roles
+      const creatorRole = await this.getCreatorRole(event.id);
+      const defaultRole = await this.getDefaultRole(event.id);
+      
+      // Assign roles to existing participants based on legacy role/permissions
+      const eps = await db.select().from(eventParticipants)
+        .where(eq(eventParticipants.eventId, event.id));
+      
+      for (const ep of eps) {
+        let roleToAssign: EventRoleRecord | undefined;
+        
+        // Determine role based on legacy fields
+        if (ep.participantId === event.creatorParticipantId || ep.role === 'organizer') {
+          // Assign Owner role to creator or organizer
+          roleToAssign = creatorRole;
+        } else if (ep.canEdit || ep.canManageParticipants) {
+          // Participants with legacy permissions get Admin role
+          const roles = await this.getEventRoles(event.id);
+          roleToAssign = roles.find(r => r.name === 'Admin');
+        } else {
+          // Regular participants get default (Contributor) role
+          roleToAssign = defaultRole;
+        }
+        
+        if (roleToAssign) {
+          await this.assignRoleToParticipant(ep.id, roleToAssign.id);
+        }
+      }
+      
+      processed++;
+    }
+    
+    return { processed, skipped };
   }
 }
 

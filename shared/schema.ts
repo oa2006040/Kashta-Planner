@@ -121,19 +121,100 @@ export const insertEventSchema = createInsertSchema(events).omit({ id: true, cre
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type Event = typeof events.$inferSelect;
 
+// ============================================
+// RBAC (Role-Based Access Control) System
+// ============================================
+
+// Permission keys for granular access control
+export const PERMISSION_KEYS = [
+  'invite_participants',
+  'remove_participants',
+  'edit_roles',
+  'assign_item',
+  'unassign_item',
+  'edit_event',
+  'delete_event'
+] as const;
+export type PermissionKey = typeof PERMISSION_KEYS[number];
+
+// Event Roles table - customizable roles per event
+export const eventRoles = pgTable("event_roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // English name
+  nameAr: text("name_ar").notNull(), // Arabic name
+  description: text("description"),
+  isCreatorRole: boolean("is_creator_role").default(false), // Only one per event, cannot be deleted
+  isDefault: boolean("is_default").default(false), // Default role for new participants
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const eventRolesRelations = relations(eventRoles, ({ one, many }) => ({
+  event: one(events, {
+    fields: [eventRoles.eventId],
+    references: [events.id],
+  }),
+  permissions: many(rolePermissions),
+  eventParticipants: many(eventParticipants),
+}));
+
+export const insertEventRoleSchema = createInsertSchema(eventRoles).omit({ id: true, createdAt: true });
+export type InsertEventRole = z.infer<typeof insertEventRoleSchema>;
+export type EventRoleRecord = typeof eventRoles.$inferSelect;
+
+// Role Permissions table - which permissions each role has
+export const rolePermissions = pgTable("role_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roleId: varchar("role_id").notNull().references(() => eventRoles.id, { onDelete: "cascade" }),
+  permissionKey: text("permission_key").notNull(), // One of PERMISSION_KEYS
+  allowed: boolean("allowed").default(true),
+});
+
+export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+  role: one(eventRoles, {
+    fields: [rolePermissions.roleId],
+    references: [eventRoles.id],
+  }),
+}));
+
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({ id: true });
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+export type RolePermission = typeof rolePermissions.$inferSelect;
+
+// Per-participant permission overrides (optional granular control)
+export const participantPermissionOverrides = pgTable("participant_permission_overrides", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventParticipantId: varchar("event_participant_id").notNull().references(() => eventParticipants.id, { onDelete: "cascade" }),
+  permissionKey: text("permission_key").notNull(),
+  allowed: boolean("allowed").notNull(),
+});
+
+export const participantPermissionOverridesRelations = relations(participantPermissionOverrides, ({ one }) => ({
+  eventParticipant: one(eventParticipants, {
+    fields: [participantPermissionOverrides.eventParticipantId],
+    references: [eventParticipants.id],
+  }),
+}));
+
+export const insertParticipantPermissionOverrideSchema = createInsertSchema(participantPermissionOverrides).omit({ id: true });
+export type InsertParticipantPermissionOverride = z.infer<typeof insertParticipantPermissionOverrideSchema>;
+export type ParticipantPermissionOverride = typeof participantPermissionOverrides.$inferSelect;
+
 // Event Participants junction table
 export const eventParticipants = pgTable("event_participants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   participantId: varchar("participant_id").notNull().references(() => participants.id, { onDelete: "cascade" }),
-  role: text("role").default("member"), // organizer, co_organizer, member, viewer
+  roleId: varchar("role_id").references(() => eventRoles.id), // New RBAC role reference
+  role: text("role").default("member"), // Legacy: organizer, co_organizer, member, viewer
   status: text("status").default("active"), // pending, active, declined
   confirmedAt: timestamp("confirmed_at"),
-  canEdit: boolean("can_edit").default(false), // Can edit event details and contributions
-  canManageParticipants: boolean("can_manage_participants").default(false), // Can invite/remove participants
+  canEdit: boolean("can_edit").default(false), // Legacy: Can edit event details and contributions
+  canManageParticipants: boolean("can_manage_participants").default(false), // Legacy: Can invite/remove participants
 });
 
-export const eventParticipantsRelations = relations(eventParticipants, ({ one }) => ({
+export const eventParticipantsRelations = relations(eventParticipants, ({ one, many }) => ({
   event: one(events, {
     fields: [eventParticipants.eventId],
     references: [events.id],
@@ -142,6 +223,11 @@ export const eventParticipantsRelations = relations(eventParticipants, ({ one })
     fields: [eventParticipants.participantId],
     references: [participants.id],
   }),
+  eventRole: one(eventRoles, {
+    fields: [eventParticipants.roleId],
+    references: [eventRoles.id],
+  }),
+  permissionOverrides: many(participantPermissionOverrides),
 }));
 
 export const insertEventParticipantSchema = createInsertSchema(eventParticipants).omit({ id: true });
@@ -522,7 +608,7 @@ export type SettlementClaimWithDetails = SettlementClaim & {
   submittedBy?: Participant;
 };
 
-// Role permissions type
+// Legacy role permissions type (kept for backward compatibility)
 export type EventRole = 'manager' | 'co_manager' | 'member' | 'viewer';
 
 export const EVENT_ROLE_PERMISSIONS = {
@@ -563,3 +649,75 @@ export const EVENT_ROLE_PERMISSIONS = {
     canAssignSelf: false,
   },
 } as const;
+
+// ============================================
+// New RBAC Default Roles Configuration
+// ============================================
+
+// Default roles to create for each new event
+export const DEFAULT_EVENT_ROLES: Array<{
+  name: string;
+  nameAr: string;
+  description: string;
+  isCreatorRole: boolean;
+  isDefault: boolean;
+  sortOrder: number;
+  permissions: PermissionKey[];
+}> = [
+  {
+    name: 'Owner',
+    nameAr: 'المنظم الرئيسي',
+    description: 'Event creator with full control',
+    isCreatorRole: true,
+    isDefault: false,
+    sortOrder: 0,
+    permissions: ['invite_participants', 'remove_participants', 'edit_roles', 'assign_item', 'unassign_item', 'edit_event', 'delete_event'],
+  },
+  {
+    name: 'Admin',
+    nameAr: 'مشرف',
+    description: 'Can manage participants and items',
+    isCreatorRole: false,
+    isDefault: false,
+    sortOrder: 1,
+    permissions: ['invite_participants', 'remove_participants', 'edit_roles', 'assign_item', 'unassign_item', 'edit_event'],
+  },
+  {
+    name: 'Coordinator',
+    nameAr: 'منسق',
+    description: 'Can invite and manage item assignments',
+    isCreatorRole: false,
+    isDefault: false,
+    sortOrder: 2,
+    permissions: ['invite_participants', 'assign_item', 'unassign_item'],
+  },
+  {
+    name: 'Contributor',
+    nameAr: 'مساهم',
+    description: 'Can assign items to themselves',
+    isCreatorRole: false,
+    isDefault: true,
+    sortOrder: 3,
+    permissions: ['assign_item'],
+  },
+  {
+    name: 'Viewer',
+    nameAr: 'مشاهد',
+    description: 'Read-only access',
+    isCreatorRole: false,
+    isDefault: false,
+    sortOrder: 4,
+    permissions: [],
+  },
+];
+
+// Extended type for role with permissions
+export type EventRoleWithPermissions = EventRoleRecord & {
+  permissions: RolePermission[];
+};
+
+// Extended type for event participant with role details
+export type EventParticipantWithRole = EventParticipant & {
+  participant: Participant;
+  eventRole?: EventRoleRecord | null;
+};

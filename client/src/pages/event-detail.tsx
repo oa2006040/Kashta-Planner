@@ -35,7 +35,9 @@ import {
   Share2,
   Copy,
   Link as LinkIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Shield,
+  Settings
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,7 +81,28 @@ import { CategoryIcon } from "@/components/category-icon";
 import { AvatarIcon } from "@/components/avatar-icon";
 import { useLanguage } from "@/components/language-provider";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import type { EventWithDetails, Contribution, Participant, Category, EventSettlement } from "@shared/schema";
+import type { EventWithDetails, Contribution, Participant, Category, EventSettlement, EventRoleRecord, PermissionKey } from "@shared/schema";
+
+// Permission keys for display in role management UI
+const PERMISSION_KEYS: PermissionKey[] = [
+  'invite_participants',
+  'remove_participants', 
+  'edit_roles',
+  'assign_item',
+  'unassign_item',
+  'edit_event',
+  'delete_event'
+];
+
+const PERMISSION_LABELS: Record<PermissionKey, { ar: string; en: string }> = {
+  invite_participants: { ar: "دعوة مشاركين", en: "Invite participants" },
+  remove_participants: { ar: "إزالة مشاركين", en: "Remove participants" },
+  edit_roles: { ar: "إدارة الأدوار", en: "Manage roles" },
+  assign_item: { ar: "تعيين المستلزمات", en: "Assign items" },
+  unassign_item: { ar: "إلغاء تعيين المستلزمات", en: "Unassign items" },
+  edit_event: { ar: "تعديل الطلعة", en: "Edit event" },
+  delete_event: { ar: "حذف الطلعة", en: "Delete event" },
+};
 
 function getStatusBadge(status: string, t: (ar: string, en: string) => string) {
   switch (status) {
@@ -605,6 +628,112 @@ export default function EventDetail() {
   const [selectedCreditorForShare, setSelectedCreditorForShare] = useState<string>("");
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const debtCardRef = useRef<HTMLDivElement>(null);
+  const [roleManagementOpen, setRoleManagementOpen] = useState(false);
+
+  // Fetch event roles
+  type EventRoleWithPermissions = EventRoleRecord & { permissions: string[] };
+  const { data: eventRoles, isLoading: rolesLoading } = useQuery<EventRoleWithPermissions[]>({
+    queryKey: ["/api/events", params?.id, "roles"],
+    enabled: !!params?.id && roleManagementOpen,
+  });
+
+  // Role CRUD state
+  const [editingRole, setEditingRole] = useState<EventRoleWithPermissions | null>(null);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleNameAr, setNewRoleNameAr] = useState("");
+  const [newRoleDescription, setNewRoleDescription] = useState("");
+  const [newRolePermissions, setNewRolePermissions] = useState<PermissionKey[]>([]);
+  const [showCreateRole, setShowCreateRole] = useState(false);
+
+  // Assign role to participant mutation
+  const assignRoleMutation = useMutation({
+    mutationFn: async ({ epId, roleId }: { epId: string; roleId: string }) => {
+      return apiRequest("POST", `/api/event-participants/${epId}/role`, { roleId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+      toast({
+        title: t("تم التحديث", "Updated"),
+        description: t("تم تعيين الدور بنجاح", "Role assigned successfully"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تعيين الدور", "Error assigning role"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create role mutation
+  const createRoleMutation = useMutation({
+    mutationFn: async (data: { name: string; nameAr: string; description: string; permissions: PermissionKey[] }) => {
+      return apiRequest("POST", `/api/events/${params?.id}/roles`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id, "roles"] });
+      setShowCreateRole(false);
+      setNewRoleName("");
+      setNewRoleNameAr("");
+      setNewRoleDescription("");
+      setNewRolePermissions([]);
+      toast({
+        title: t("تم الإنشاء", "Created"),
+        description: t("تم إنشاء الدور بنجاح", "Role created successfully"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء إنشاء الدور", "Error creating role"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update role mutation
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ roleId, data }: { roleId: string; data: { name?: string; nameAr?: string; description?: string; permissions?: PermissionKey[] } }) => {
+      return apiRequest("PATCH", `/api/roles/${roleId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id, "roles"] });
+      setEditingRole(null);
+      toast({
+        title: t("تم التحديث", "Updated"),
+        description: t("تم تحديث الدور بنجاح", "Role updated successfully"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تحديث الدور", "Error updating role"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete role mutation
+  const deleteRoleMutation = useMutation({
+    mutationFn: async (roleId: string) => {
+      return apiRequest("DELETE", `/api/roles/${roleId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id, "roles"] });
+      toast({
+        title: t("تم الحذف", "Deleted"),
+        description: t("تم حذف الدور بنجاح", "Role deleted successfully"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء حذف الدور", "Error deleting role"),
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleShareDebtCard = async (action: 'share' | 'download') => {
     if (!debtCardRef.current || !event) return;
@@ -1543,12 +1672,22 @@ export default function EventDetail() {
         <TabsContent value="participants" className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <h3 className="font-semibold">{t("المشاركين في الطلعة", "Event Participants")}</h3>
-            <Link href={`/events/${event.id}/participants`}>
-              <Button size="sm" data-testid="button-add-participants">
-                <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-                {t("إضافة مشاركين", "Add Participants")}
+            <div className="flex items-center gap-2">
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                onClick={() => setRoleManagementOpen(true)}
+                data-testid="button-manage-roles"
+              >
+                <Shield className="h-4 w-4" />
               </Button>
-            </Link>
+              <Link href={`/events/${event.id}/participants`}>
+                <Button size="sm" data-testid="button-add-participants">
+                  <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                  {t("إضافة مشاركين", "Add Participants")}
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {event.eventParticipants && event.eventParticipants.length > 0 ? (
@@ -1561,6 +1700,24 @@ export default function EventDetail() {
                   (sum, c) => sum + (parseFloat(c.cost || "0") * (c.quantity || 1)), 0
                 );
                 
+                const getRoleBadge = () => {
+                  if (ep.role === 'organizer') {
+                    return (
+                      <Badge variant="default" className="text-xs" data-testid={`badge-role-${ep.id}`}>
+                        {t("المنظم", "Organizer")}
+                      </Badge>
+                    );
+                  }
+                  if (ep.role === 'co_organizer') {
+                    return (
+                      <Badge variant="secondary" className="text-xs" data-testid={`badge-role-${ep.id}`}>
+                        {t("مشرف", "Co-organizer")}
+                      </Badge>
+                    );
+                  }
+                  return null;
+                };
+
                 return (
                   <Card key={ep.id} className="hover-elevate">
                     <CardContent className="p-4 flex items-center gap-4">
@@ -1568,7 +1725,10 @@ export default function EventDetail() {
                         <AvatarIcon icon={ep.participant?.avatar} className="h-6 w-6" />
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium break-words">{ep.participant?.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium break-words">{ep.participant?.name}</p>
+                          {getRoleBadge()}
+                        </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                           <span>{formatNumber(participantContributions.length, language)} {t("مستلزم", "items")}</span>
                           {participantTotal > 0 && (
@@ -2009,6 +2169,345 @@ export default function EventDetail() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Role Management Dialog */}
+      <Dialog open={roleManagementOpen} onOpenChange={(open) => {
+        setRoleManagementOpen(open);
+        if (!open) {
+          setEditingRole(null);
+          setShowCreateRole(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              {t("إدارة الأدوار", "Manage Roles")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("إنشاء وتعديل الأدوار وتعيينها للمشاركين", "Create, edit roles and assign them to participants")}
+            </DialogDescription>
+          </DialogHeader>
+
+          {rolesLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : (
+            <Tabs defaultValue="roles" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="roles" data-testid="tab-roles">{t("الأدوار", "Roles")}</TabsTrigger>
+                <TabsTrigger value="assign" data-testid="tab-assign">{t("التعيين", "Assign")}</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="roles" className="space-y-4 mt-4">
+                {/* Create New Role */}
+                {!showCreateRole && !editingRole && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowCreateRole(true)}
+                    className="w-full"
+                    data-testid="button-create-role"
+                  >
+                    <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                    {t("إنشاء دور جديد", "Create New Role")}
+                  </Button>
+                )}
+
+                {/* Create Role Form */}
+                {showCreateRole && (
+                  <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                    <h4 className="font-medium">{t("دور جديد", "New Role")}</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("الاسم بالإنجليزية", "English Name")}</Label>
+                        <Input
+                          value={newRoleName}
+                          onChange={(e) => setNewRoleName(e.target.value)}
+                          placeholder="Coordinator"
+                          data-testid="input-role-name"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("الاسم بالعربية", "Arabic Name")}</Label>
+                        <Input
+                          value={newRoleNameAr}
+                          onChange={(e) => setNewRoleNameAr(e.target.value)}
+                          placeholder="منسق"
+                          data-testid="input-role-name-ar"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("الوصف", "Description")}</Label>
+                      <Input
+                        value={newRoleDescription}
+                        onChange={(e) => setNewRoleDescription(e.target.value)}
+                        placeholder={t("وصف الدور", "Role description")}
+                        data-testid="input-role-description"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">{t("الصلاحيات", "Permissions")}</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {PERMISSION_KEYS.map((perm) => (
+                          <div key={perm} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`new-perm-${perm}`}
+                              checked={newRolePermissions.includes(perm)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setNewRolePermissions([...newRolePermissions, perm]);
+                                } else {
+                                  setNewRolePermissions(newRolePermissions.filter(p => p !== perm));
+                                }
+                              }}
+                              data-testid={`checkbox-new-perm-${perm}`}
+                            />
+                            <Label htmlFor={`new-perm-${perm}`} className="text-xs cursor-pointer">
+                              {language === "ar" ? PERMISSION_LABELS[perm].ar : PERMISSION_LABELS[perm].en}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => {
+                          setShowCreateRole(false);
+                          setNewRoleName("");
+                          setNewRoleNameAr("");
+                          setNewRoleDescription("");
+                          setNewRolePermissions([]);
+                        }}
+                      >
+                        {t("إلغاء", "Cancel")}
+                      </Button>
+                      <Button 
+                        onClick={() => createRoleMutation.mutate({
+                          name: newRoleName,
+                          nameAr: newRoleNameAr,
+                          description: newRoleDescription,
+                          permissions: newRolePermissions,
+                        })}
+                        disabled={!newRoleName || !newRoleNameAr || createRoleMutation.isPending}
+                        data-testid="button-save-new-role"
+                      >
+                        {createRoleMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          t("حفظ", "Save")
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Edit Role Form */}
+                {editingRole && (
+                  <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                    <h4 className="font-medium">{t("تعديل الدور", "Edit Role")}: {language === "ar" ? editingRole.nameAr : editingRole.name}</h4>
+                    {!editingRole.isCreatorRole && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t("الاسم بالإنجليزية", "English Name")}</Label>
+                          <Input
+                            value={editingRole.name}
+                            onChange={(e) => setEditingRole({...editingRole, name: e.target.value})}
+                            data-testid="input-edit-role-name"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t("الاسم بالعربية", "Arabic Name")}</Label>
+                          <Input
+                            value={editingRole.nameAr}
+                            onChange={(e) => setEditingRole({...editingRole, nameAr: e.target.value})}
+                            data-testid="input-edit-role-name-ar"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("الوصف", "Description")}</Label>
+                      <Input
+                        value={editingRole.description || ""}
+                        onChange={(e) => setEditingRole({...editingRole, description: e.target.value})}
+                        data-testid="input-edit-role-description"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">{t("الصلاحيات", "Permissions")}</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {PERMISSION_KEYS.map((perm) => (
+                          <div key={perm} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`edit-perm-${perm}`}
+                              checked={(editingRole.permissions || []).includes(perm)}
+                              onCheckedChange={(checked) => {
+                                const currentPerms = editingRole.permissions || [];
+                                if (checked) {
+                                  setEditingRole({...editingRole, permissions: [...currentPerms, perm]});
+                                } else {
+                                  setEditingRole({...editingRole, permissions: currentPerms.filter(p => p !== perm)});
+                                }
+                              }}
+                              data-testid={`checkbox-edit-perm-${perm}`}
+                            />
+                            <Label htmlFor={`edit-perm-${perm}`} className="text-xs cursor-pointer">
+                              {language === "ar" ? PERMISSION_LABELS[perm].ar : PERMISSION_LABELS[perm].en}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="ghost" onClick={() => setEditingRole(null)}>
+                        {t("إلغاء", "Cancel")}
+                      </Button>
+                      <Button 
+                        onClick={() => updateRoleMutation.mutate({
+                          roleId: editingRole.id,
+                          data: {
+                            name: editingRole.name,
+                            nameAr: editingRole.nameAr,
+                            description: editingRole.description || undefined,
+                            permissions: editingRole.permissions as PermissionKey[],
+                          }
+                        })}
+                        disabled={updateRoleMutation.isPending}
+                        data-testid="button-save-edit-role"
+                      >
+                        {updateRoleMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          t("حفظ", "Save")
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Role List */}
+                {!showCreateRole && !editingRole && (
+                  <div className="space-y-2">
+                    {eventRoles?.map((role) => (
+                      <div 
+                        key={role.id} 
+                        className="flex items-start gap-3 p-3 rounded-lg border hover-elevate cursor-pointer"
+                        onClick={() => setEditingRole({...role})}
+                        data-testid={`role-item-${role.id}`}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={role.isCreatorRole ? "default" : "secondary"}>
+                              {language === "ar" ? role.nameAr : role.name}
+                            </Badge>
+                            {role.isDefault && (
+                              <Badge variant="outline" className="text-xs">
+                                {t("افتراضي", "Default")}
+                              </Badge>
+                            )}
+                            {role.isCreatorRole && (
+                              <Badge variant="outline" className="text-xs">
+                                {t("المالك", "Owner")}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{role.description}</p>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {(role.permissions || []).map((perm) => (
+                              <Badge key={perm} variant="outline" className="text-xs">
+                                {language === "ar" ? PERMISSION_LABELS[perm as PermissionKey]?.ar : PERMISSION_LABELS[perm as PermissionKey]?.en}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        {!role.isCreatorRole && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="text-muted-foreground"
+                                onClick={(e) => e.stopPropagation()}
+                                data-testid={`button-delete-role-${role.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>{t("حذف الدور", "Delete Role")}</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {t(`هل تريد حذف الدور "${language === "ar" ? role.nameAr : role.name}"؟`, `Delete the role "${language === "ar" ? role.nameAr : role.name}"?`)}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>{t("إلغاء", "Cancel")}</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteRoleMutation.mutate(role.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  {t("حذف", "Delete")}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="assign" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  {event.eventParticipants?.map((ep) => (
+                    <div 
+                      key={ep.id} 
+                      className="flex items-center gap-3 p-3 rounded-lg border"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                        <AvatarIcon icon={ep.participant?.avatar} className="h-4 w-4" />
+                      </div>
+                      <span className="flex-1 font-medium text-sm">{ep.participant?.name}</span>
+                      <Select
+                        value={ep.roleId || ""}
+                        onValueChange={(roleId) => {
+                          if (roleId) {
+                            assignRoleMutation.mutate({ epId: ep.id, roleId });
+                          }
+                        }}
+                        disabled={assignRoleMutation.isPending}
+                      >
+                        <SelectTrigger className="w-36" data-testid={`select-role-${ep.id}`}>
+                          <SelectValue placeholder={t("اختر دور", "Select role")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {eventRoles?.map((role) => (
+                            <SelectItem key={role.id} value={role.id}>
+                              {language === "ar" ? role.nameAr : role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRoleManagementOpen(false)}>
+              {t("إغلاق", "Close")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
