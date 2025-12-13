@@ -378,8 +378,11 @@ CREATE TABLE IF NOT EXISTS event_roles (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
     event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
+    name_ar TEXT,
     description TEXT,
-    is_system_role BOOLEAN DEFAULT FALSE,
+    is_creator_role BOOLEAN DEFAULT FALSE,
+    is_default BOOLEAN DEFAULT FALSE,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -389,8 +392,8 @@ CREATE TABLE IF NOT EXISTS event_roles (
 CREATE TABLE IF NOT EXISTS role_permissions (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
     role_id VARCHAR NOT NULL REFERENCES event_roles(id) ON DELETE CASCADE,
-    permission TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    permission_key TEXT NOT NULL,
+    allowed BOOLEAN DEFAULT TRUE
 );
 
 -- ==========================================
@@ -399,9 +402,8 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 CREATE TABLE IF NOT EXISTS participant_permission_overrides (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
     event_participant_id VARCHAR NOT NULL REFERENCES event_participants(id) ON DELETE CASCADE,
-    permission TEXT NOT NULL,
-    is_granted BOOLEAN NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    permission_key TEXT NOT NULL,
+    allowed BOOLEAN NOT NULL
 );
 
 -- ==========================================
