@@ -9,6 +9,9 @@ import {
   users,
   settlementRecords,
   settlementActivityLog,
+  eventInvitations,
+  notifications,
+  settlementClaims,
   type Category,
   type InsertCategory,
   type Item,
@@ -34,9 +37,18 @@ import {
   type ParticipantDebtSummary,
   type ParticipantDebtPortfolio,
   type SettlementActivityLog,
+  type EventInvitation,
+  type InsertEventInvitation,
+  type EventInvitationWithDetails,
+  type Notification,
+  type InsertNotification,
+  type SettlementClaim,
+  type InsertSettlementClaim,
+  type SettlementClaimWithDetails,
+  type EventRole,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, or } from "drizzle-orm";
 
 export interface IStorage {
   // Categories
@@ -123,6 +135,30 @@ export interface IStorage {
   
   // Participant protection (deletion)
   canDeleteParticipant(participantId: string): Promise<{ canDelete: boolean; reason?: string }>;
+  
+  // Privacy-Aware Event Queries
+  getEventsForUser(userId: string): Promise<Event[]>;
+  getParticipantByUserId(userId: string): Promise<Participant | undefined>;
+  getUserEventRole(eventId: number, userId: string): Promise<EventRole | null>;
+  canUserAccessEvent(eventId: number, userId: string): Promise<boolean>;
+  
+  // Invitations
+  createEventInvitation(data: InsertEventInvitation): Promise<EventInvitation>;
+  getInvitationsForUser(email: string): Promise<EventInvitationWithDetails[]>;
+  getEventInvitations(eventId: number): Promise<EventInvitation[]>;
+  respondToInvitation(invitationId: string, accept: boolean, participantId?: string): Promise<EventInvitation | undefined>;
+  getInvitationByToken(token: string): Promise<EventInvitationWithDetails | undefined>;
+  
+  // Notifications
+  createNotification(data: InsertNotification): Promise<Notification>;
+  getNotificationsForUser(userId: string): Promise<Notification[]>;
+  markNotificationRead(notificationId: string): Promise<boolean>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  
+  // Settlement Claims
+  createSettlementClaim(data: InsertSettlementClaim): Promise<SettlementClaim>;
+  respondToSettlementClaim(claimId: string, status: 'confirmed' | 'rejected'): Promise<SettlementClaim | undefined>;
+  getClaimsForParticipant(participantId: string): Promise<SettlementClaimWithDetails[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1318,6 +1354,198 @@ export class DatabaseStorage implements IStorage {
           .where(eq(events.id, event.id));
       }
     }
+  }
+
+  // Privacy-Aware Event Queries
+  async getEventsForUser(userId: string): Promise<Event[]> {
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) return [];
+    
+    const userEventParticipants = await db.select()
+      .from(eventParticipants)
+      .where(and(
+        eq(eventParticipants.participantId, participant.id),
+        eq(eventParticipants.status, 'active')
+      ));
+    
+    if (userEventParticipants.length === 0) return [];
+    
+    const eventIds = userEventParticipants.map(ep => ep.eventId);
+    return db.select().from(events)
+      .where(inArray(events.id, eventIds))
+      .orderBy(desc(events.date));
+  }
+
+  async getParticipantByUserId(userId: string): Promise<Participant | undefined> {
+    const [participant] = await db.select()
+      .from(participants)
+      .where(eq(participants.userId, userId));
+    return participant;
+  }
+
+  async getUserEventRole(eventId: number, userId: string): Promise<EventRole | null> {
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) return null;
+    
+    const [ep] = await db.select()
+      .from(eventParticipants)
+      .where(and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, participant.id),
+        eq(eventParticipants.status, 'active')
+      ));
+    
+    return ep ? (ep.role as EventRole) : null;
+  }
+
+  async canUserAccessEvent(eventId: number, userId: string): Promise<boolean> {
+    const role = await this.getUserEventRole(eventId, userId);
+    return role !== null;
+  }
+
+  // Invitations
+  async createEventInvitation(data: InsertEventInvitation): Promise<EventInvitation> {
+    const [created] = await db.insert(eventInvitations).values(data).returning();
+    return created;
+  }
+
+  async getInvitationsForUser(email: string): Promise<EventInvitationWithDetails[]> {
+    const invitationsList = await db.select()
+      .from(eventInvitations)
+      .where(and(
+        eq(eventInvitations.email, email),
+        eq(eventInvitations.status, 'pending')
+      ));
+    
+    if (invitationsList.length === 0) return [];
+    
+    const eventIds = Array.from(new Set(invitationsList.map(i => i.eventId)));
+    const eventsList = await db.select().from(events).where(inArray(events.id, eventIds));
+    
+    const inviterIds = invitationsList
+      .map(i => i.inviterParticipantId)
+      .filter((id): id is string => id !== null);
+    const inviters = inviterIds.length > 0
+      ? await db.select().from(participants).where(inArray(participants.id, inviterIds))
+      : [];
+    
+    return invitationsList.map(inv => ({
+      ...inv,
+      event: eventsList.find(e => e.id === inv.eventId)!,
+      inviter: inv.inviterParticipantId 
+        ? inviters.find(p => p.id === inv.inviterParticipantId)
+        : undefined,
+    }));
+  }
+
+  async getEventInvitations(eventId: number): Promise<EventInvitation[]> {
+    return db.select()
+      .from(eventInvitations)
+      .where(eq(eventInvitations.eventId, eventId));
+  }
+
+  async respondToInvitation(invitationId: string, accept: boolean, participantId?: string): Promise<EventInvitation | undefined> {
+    const [updated] = await db.update(eventInvitations)
+      .set({ 
+        status: accept ? 'accepted' : 'declined',
+        invitedParticipantId: participantId,
+      })
+      .where(eq(eventInvitations.id, invitationId))
+      .returning();
+    return updated;
+  }
+
+  async getInvitationByToken(token: string): Promise<EventInvitationWithDetails | undefined> {
+    const [invitation] = await db.select()
+      .from(eventInvitations)
+      .where(eq(eventInvitations.token, token));
+    
+    if (!invitation) return undefined;
+    
+    const [event] = await db.select().from(events).where(eq(events.id, invitation.eventId));
+    const inviter = invitation.inviterParticipantId
+      ? (await db.select().from(participants).where(eq(participants.id, invitation.inviterParticipantId)))[0]
+      : undefined;
+    
+    return { ...invitation, event, inviter };
+  }
+
+  // Notifications
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(data).returning();
+    return created;
+  }
+
+  async getNotificationsForUser(userId: string): Promise<Notification[]> {
+    return db.select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async markNotificationRead(notificationId: string): Promise<boolean> {
+    const result = await db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, notificationId));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const [result] = await db.select({ count: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
+    return result?.count || 0;
+  }
+
+  // Settlement Claims
+  async createSettlementClaim(data: InsertSettlementClaim): Promise<SettlementClaim> {
+    const [created] = await db.insert(settlementClaims).values(data).returning();
+    return created;
+  }
+
+  async respondToSettlementClaim(claimId: string, status: 'confirmed' | 'rejected'): Promise<SettlementClaim | undefined> {
+    const [updated] = await db.update(settlementClaims)
+      .set({ 
+        status,
+        respondedAt: new Date(),
+      })
+      .where(eq(settlementClaims.id, claimId))
+      .returning();
+    return updated;
+  }
+
+  async getClaimsForParticipant(participantId: string): Promise<SettlementClaimWithDetails[]> {
+    const claimsList = await db.select()
+      .from(settlementClaims)
+      .where(or(
+        eq(settlementClaims.debtorParticipantId, participantId),
+        eq(settlementClaims.creditorParticipantId, participantId)
+      ));
+    
+    if (claimsList.length === 0) return [];
+    
+    const eventIds = Array.from(new Set(claimsList.map(c => c.eventId)));
+    const eventsList = await db.select().from(events).where(inArray(events.id, eventIds));
+    
+    const participantIds = Array.from(new Set([
+      ...claimsList.map(c => c.debtorParticipantId),
+      ...claimsList.map(c => c.creditorParticipantId),
+      ...claimsList.map(c => c.submittedByParticipantId).filter((id): id is string => id !== null),
+    ]));
+    const participantsList = await db.select().from(participants).where(inArray(participants.id, participantIds));
+    
+    return claimsList.map(claim => ({
+      ...claim,
+      event: eventsList.find(e => e.id === claim.eventId)!,
+      debtor: participantsList.find(p => p.id === claim.debtorParticipantId)!,
+      creditor: participantsList.find(p => p.id === claim.creditorParticipantId)!,
+      submittedBy: claim.submittedByParticipantId
+        ? participantsList.find(p => p.id === claim.submittedByParticipantId)
+        : undefined,
+    }));
   }
 }
 
