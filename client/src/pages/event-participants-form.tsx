@@ -28,7 +28,8 @@ export default function EventParticipantsForm() {
 
   const inviteMutation = useMutation({
     mutationFn: async (inviteEmail: string) => {
-      return apiRequest("POST", `/api/events/${eventId}/invite`, { email: inviteEmail });
+      const res = await apiRequest("POST", `/api/events/${eventId}/invite`, { email: inviteEmail });
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events", eventId] });
@@ -59,15 +60,23 @@ export default function EventParticipantsForm() {
     }
 
     try {
-      await inviteMutation.mutateAsync(email);
+      const response = await inviteMutation.mutateAsync(email);
+      const successMessage = response?.message || t(`تم إرسال الدعوة إلى ${email}`, `Invitation sent to ${email}`);
       toast({
         title: t("تم بنجاح", "Success"),
-        description: t(`تم إرسال الدعوة إلى ${email}`, `Invitation sent to ${email}`),
+        description: successMessage,
       });
       setEmail("");
       navigate(`/events/${eventId}`);
     } catch (error: any) {
-      const message = error?.message || t("حدث خطأ أثناء إرسال الدعوة", "An error occurred while sending the invitation");
+      let message = t("حدث خطأ أثناء إرسال الدعوة", "An error occurred while sending the invitation");
+      
+      if (error?.message) {
+        message = error.message;
+      } else if (error?.error) {
+        message = error.error;
+      }
+      
       toast({
         title: t("خطأ", "Error"),
         description: message,

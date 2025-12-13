@@ -1565,30 +1565,85 @@ export async function registerRoutes(
     try {
       const eventId = parseInt(req.params.eventId, 10);
       if (isNaN(eventId)) {
-        return res.status(400).json({ error: "Invalid event ID" });
+        return res.status(400).json({ error: "معرف الفعالية غير صالح", errorCode: "INVALID_EVENT_ID" });
       }
       
       const userId = req.session!.userId!;
-      const role = await storage.getUserEventRole(eventId, userId);
+      const user = await storage.getUser(userId);
+      const isAdmin = user?.isAdmin === true;
       
-      if (!role || (role !== "manager" && role !== "co_manager")) {
-        return res.status(403).json({ error: "Only managers can invite" });
+      const canManage = await storage.canUserManageParticipants(eventId, userId);
+      if (!canManage && !isAdmin) {
+        return res.status(403).json({ error: "ليس لديك صلاحية دعوة المشاركين", errorCode: "PERMISSION_DENIED" });
       }
       
       const { email } = req.body;
       if (!email) {
-        return res.status(400).json({ error: "Email is required" });
+        return res.status(400).json({ error: "البريد الإلكتروني مطلوب", errorCode: "EMAIL_REQUIRED" });
       }
       
-      const participant = await storage.getParticipantByUserId(userId);
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "صيغة البريد الإلكتروني غير صالحة", errorCode: "INVALID_EMAIL_FORMAT" });
+      }
+      
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "الفعالية غير موجودة", errorCode: "EVENT_NOT_FOUND" });
+      }
+      
+      const existingInvitations = await storage.getEventInvitations(eventId);
+      const pendingInvite = existingInvitations.find(
+        inv => inv.email.toLowerCase() === email.toLowerCase() && inv.status === 'pending'
+      );
+      if (pendingInvite) {
+        return res.status(409).json({ error: "تم دعوة هذا البريد الإلكتروني مسبقاً ولم يرد بعد", errorCode: "ALREADY_INVITED" });
+      }
+      
+      const eventParticipantsList = await storage.getEventParticipants(eventId);
+      const allParticipants = await storage.getParticipants();
+      const participantInEvent = eventParticipantsList.find(ep => {
+        const participant = allParticipants.find(p => p.id === ep.participantId);
+        return participant?.email?.toLowerCase() === email.toLowerCase();
+      });
+      if (participantInEvent) {
+        return res.status(409).json({ error: "هذا المستخدم مشارك في الفعالية بالفعل", errorCode: "ALREADY_PARTICIPANT" });
+      }
+      
+      const existingUser = await storage.getUserByEmail(email);
+      let invitedParticipantId: string | null = null;
+      
+      if (existingUser) {
+        const existingParticipant = await storage.getParticipantByUserId(existingUser.id);
+        if (existingParticipant) {
+          invitedParticipantId = existingParticipant.id;
+        }
+      }
+      
+      const inviter = await storage.getParticipantByUserId(userId);
       const token = crypto.randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
       
       const invitation = await storage.createEventInvitation({
         eventId,
-        email,
+        email: email.toLowerCase(),
         token,
-        inviterParticipantId: participant?.id || null,
+        inviterParticipantId: inviter?.id || null,
+        invitedParticipantId,
+        expiresAt,
       });
+      
+      if (existingUser) {
+        await storage.createNotification({
+          userId: existingUser.id,
+          type: 'event_invite',
+          title: 'دعوة للانضمام لفعالية',
+          message: `تمت دعوتك للانضمام إلى "${event.title}"`,
+          payload: { eventId, invitationId: invitation.id },
+          actionUrl: `/invitations`,
+        });
+      }
       
       await storage.createActivityLog({
         eventId,
@@ -1596,10 +1651,16 @@ export async function registerRoutes(
         details: `تم دعوة ${email} للطلعة`,
       });
       
-      res.status(201).json(invitation);
+      res.status(201).json({ 
+        ...invitation, 
+        message: existingUser 
+          ? "تم إرسال الدعوة بنجاح. سيتلقى المستخدم إشعاراً" 
+          : "تم إنشاء الدعوة بنجاح. سيتمكن المستخدم من الانضمام بعد التسجيل",
+        userExists: !!existingUser 
+      });
     } catch (error) {
       console.error("Error creating invitation:", error);
-      res.status(500).json({ error: "Failed to create invitation" });
+      res.status(500).json({ error: "حدث خطأ أثناء إنشاء الدعوة", errorCode: "INTERNAL_ERROR" });
     }
   });
 
