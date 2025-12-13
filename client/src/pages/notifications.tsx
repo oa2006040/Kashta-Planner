@@ -304,10 +304,13 @@ export default function Notifications() {
               </h2>
               {readNotifications.map((notification) => {
                 const actionUrl = getActionUrl(notification);
+                const isEventInvite = notification.type === 'event_invite' && notification.payload?.eventParticipantId;
+                const isPending = loadingNotificationIds.has(notification.id);
+                
                 const content = (
                   <Card
                     key={notification.id}
-                    className="opacity-70 hover-elevate cursor-pointer"
+                    className="opacity-70"
                     data-testid={`notification-read-${notification.id}`}
                   >
                     <CardContent className="p-4">
@@ -328,17 +331,56 @@ export default function Notifications() {
                           <p className="text-xs text-muted-foreground mt-2">
                             {formatDate(notification.createdAt!)}
                           </p>
+                          {isEventInvite && (
+                            <div className="flex gap-2 mt-3 flex-wrap">
+                              <Button
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  acceptInviteMutation.mutate(notification.id);
+                                }}
+                                disabled={isPending}
+                                data-testid={`button-accept-invite-${notification.id}`}
+                              >
+                                <Check className="h-4 w-4 ml-1" />
+                                {t("قبول", "Accept")}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  declineInviteMutation.mutate(notification.id);
+                                }}
+                                disabled={isPending}
+                                data-testid={`button-decline-invite-${notification.id}`}
+                              >
+                                <X className="h-4 w-4 ml-1" />
+                                {t("رفض", "Decline")}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 );
                 
+                if (isEventInvite) {
+                  return <div key={notification.id}>{content}</div>;
+                }
+                
                 return actionUrl ? (
                   <Link key={notification.id} href={actionUrl}>
-                    {content}
+                    <div className="hover-elevate cursor-pointer">{content}</div>
                   </Link>
-                ) : content;
+                ) : (
+                  <div key={notification.id} className="hover-elevate cursor-pointer">
+                    {content}
+                  </div>
+                );
               })}
             </div>
           )}
