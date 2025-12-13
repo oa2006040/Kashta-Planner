@@ -55,7 +55,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatNumber } from "@/lib/constants";
 import { CategoryIcon, AVAILABLE_ICON_NAMES } from "@/components/category-icon";
 import { useLanguage } from "@/components/language-provider";
-import type { Category, Item, CategoryWithItems } from "@shared/schema";
+import type { Category, Item, CategoryWithItems, User } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
 const ICON_ARABIC_NAMES: Record<string, string> = {
   coffee: "قهوة",
@@ -322,7 +323,8 @@ function ItemCard({
   categories,
   onDelete,
   onMove,
-  onEdit
+  onEdit,
+  user
 }: { 
   item: Item; 
   category?: Category;
@@ -330,8 +332,14 @@ function ItemCard({
   onDelete: (id: string) => void;
   onMove: (itemId: string, newCategoryId: string) => void;
   onEdit: (itemId: string, data: { name?: string; description?: string | null; isCommon?: boolean | null }) => void;
+  user?: User | null;
 }) {
   const { t, language } = useLanguage();
+  
+  const isSystemItem = item.ownerId === null;
+  const isOwnItem = item.ownerId === user?.id;
+  const isAdmin = user?.isAdmin ?? false;
+  const canEdit = isAdmin || isOwnItem || (isSystemItem && isAdmin);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
@@ -370,25 +378,26 @@ function ItemCard({
           {t("شائع", "Common")}
         </Badge>
       )}
-      <div className="flex items-center gap-1 shrink-0">
-        <Dialog open={editDialogOpen} onOpenChange={(open) => {
-          setEditDialogOpen(open);
-          if (open) {
-            setEditName(item.name);
-            setEditDescription(item.description || "");
-            setEditIsCommon(item.isCommon ?? false);
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
-              data-testid={`button-edit-item-${item.id}`}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
+      {canEdit && (
+        <div className="flex items-center gap-1 shrink-0">
+          <Dialog open={editDialogOpen} onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (open) {
+              setEditName(item.name);
+              setEditDescription(item.description || "");
+              setEditIsCommon(item.isCommon ?? false);
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
+                data-testid={`button-edit-item-${item.id}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{t("تعديل المستلزم", "Edit Item")}</DialogTitle>
@@ -530,6 +539,7 @@ function ItemCard({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+      )}
     </div>
   );
 }
@@ -542,7 +552,8 @@ function CategorySection({
   onDeleteItem,
   onMoveItem,
   onEditItem,
-  onEditCategory
+  onEditCategory,
+  user
 }: { 
   category: Category; 
   items: Item[]; 
@@ -552,6 +563,7 @@ function CategorySection({
   onMoveItem: (itemId: string, newCategoryId: string) => void;
   onEditItem: (itemId: string, data: { name?: string; description?: string | null; isCommon?: boolean | null }) => void;
   onEditCategory: (id: string, data: { name?: string; nameAr?: string; icon?: string; color?: string }) => void;
+  user?: User | null;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -773,6 +785,7 @@ function CategorySection({
               onDelete={onDeleteItem}
               onMove={onMoveItem}
               onEdit={onEditItem}
+              user={user}
             />
           ))}
         </CardContent>
@@ -1119,6 +1132,7 @@ export default function Items() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const { toast } = useToast();
   const { t, language } = useLanguage();
+  const { user } = useAuth();
 
   const { data: categoriesWithItems, isLoading } = useQuery<CategoryWithItems[]>({
     queryKey: ["/api/categories?withItems=true"],
@@ -1345,6 +1359,7 @@ export default function Items() {
               onMoveItem={(itemId, newCategoryId) => moveItemMutation.mutate({ itemId, newCategoryId })}
               onEditItem={(itemId, data) => editItemMutation.mutate({ itemId, data })}
               onEditCategory={(categoryId, data) => editCategoryMutation.mutate({ categoryId, data })}
+              user={user}
             />
           ))}
         </div>
