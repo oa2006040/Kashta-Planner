@@ -54,8 +54,8 @@ export function AppSidebar() {
       icon: Calendar,
     },
     {
-      title: t("المشاركين", "Participants"),
-      url: "/participants",
+      title: t("المستخدمين", "Users"),
+      url: "/users",
       icon: Users,
     },
     {

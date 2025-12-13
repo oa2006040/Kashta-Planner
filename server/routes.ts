@@ -21,6 +21,27 @@ export async function registerRoutes(
   // Setup manual authentication routes
   setupManualAuth(app);
 
+  // Users (read-only list for authenticated users)
+  app.get("/api/users", isAuthenticated, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Return safe user data (no passwords)
+      const safeUsers = users.map(u => ({
+        id: u.id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        phone: u.phone,
+        profileImageUrl: u.profileImageUrl,
+        createdAt: u.createdAt,
+      }));
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
   // Stats
   app.get("/api/stats", async (req, res) => {
     try {

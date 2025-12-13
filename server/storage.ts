@@ -698,6 +698,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Users (for Replit Auth and manual auth)
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(users.firstName);
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
