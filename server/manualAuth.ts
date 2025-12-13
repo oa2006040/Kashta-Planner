@@ -58,7 +58,12 @@ export function setupManualAuth(app: Express) {
         return res.status(400).json({ message: error.errors[0].message, errors: error.errors });
       }
       console.error("Registration error:", error);
-      res.status(500).json({ message: "حدث خطأ أثناء التسجيل" });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ 
+        message: "حدث خطأ أثناء التسجيل", 
+        error: process.env.NODE_ENV === 'production' ? errorMessage : undefined,
+        debug: errorMessage
+      });
     }
   });
 
