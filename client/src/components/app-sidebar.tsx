@@ -14,6 +14,7 @@ import {
   Star,
   Bell,
   UserCog,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
@@ -34,7 +35,7 @@ import { useAuth } from "@/hooks/useAuth";
 export function AppSidebar() {
   const [location] = useLocation();
   const { t, language } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, handleLogout, isLoggingOut } = useAuth();
   
   const { data: notificationCount } = useQuery<{ count: number }>({
     queryKey: ["/api/notifications/count"],
@@ -186,6 +187,24 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {isAuthenticated && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={t("تسجيل الخروج", "Logout")}
+                  >
+                    <button 
+                      type="button" 
+                      onClick={handleLogout} 
+                      disabled={isLoggingOut}
+                      data-testid="button-logout"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>{isLoggingOut ? t("جاري الخروج...", "Logging out...") : t("تسجيل الخروج", "Logout")}</span>
+                    </button>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
