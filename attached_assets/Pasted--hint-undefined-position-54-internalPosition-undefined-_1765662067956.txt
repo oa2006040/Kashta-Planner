@@ -1,0 +1,79 @@
+}
+  hint: undefined,
+  position: '54',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+Error creating event: error: column "name_ar" of relation "event_roles" does not exist
+  schema: undefined,
+    at /app/dist/index.cjs:70:13326
+  table: undefined,
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  column: undefined,
+    at async /app/dist/index.cjs:76:111936
+  dataType: undefined,
+    at async Rm.createDefaultEventRoles (/app/dist/index.cjs:76:142870)
+  constraint: undefined,
+  file: 'parse_target.c',
+    at async Rm.createEventWithCreator (/app/dist/index.cjs:76:118158)
+  line: '1065',
+    at async /app/dist/index.cjs:76:165946 {
+  routine: 'checkInsertTargets'
+  length: 131,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+9:40:33 PM [express] POST /api/events 500 in 7ms :: {"error":"Failed to create event"}
+Error creating event: error: column "name_ar" of relation "event_roles" does not exist
+    at /app/dist/index.cjs:70:13326
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:76:111936
+    at async Rm.createDefaultEventRoles (/app/dist/index.cjs:76:142870)
+    at async Rm.createEventWithCreator (/app/dist/index.cjs:76:118158)
+    at async /app/dist/index.cjs:76:165946 {
+  length: 131,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '54',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1065',
+  routine: 'checkInsertTargets'
+}
+9:40:34 PM [express] POST /api/events 500 in 7ms :: {"error":"Failed to create event"}
+Error creating event: error: column "name_ar" of relation "event_roles" does not exist
+    at /app/dist/index.cjs:70:13326
+  length: 131,
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:76:111936
+  severity: 'ERROR',
+  code: '42703',
+    at async Rm.createDefaultEventRoles (/app/dist/index.cjs:76:142870)
+  detail: undefined,
+    at async Rm.createEventWithCreator (/app/dist/index.cjs:76:118158)
+  column: undefined,
+  hint: undefined,
+    at async /app/dist/index.cjs:76:165946 {
+  dataType: undefined,
+  position: '54',
+  constraint: undefined,
+  internalPosition: undefined,
+  file: 'parse_target.c',
+  internalQuery: undefined,
+  line: '1065',
+  where: undefined,
+  routine: 'checkInsertTargets'
+  schema: undefined,
+}
+  table: undefined,
+9:40:35 PM [express] POST /api/events 500 in 36ms :: {"error":"Failed to create event"}
+9:40:36 PM [express] GET /api/auth/status 304 in 10ms :: {"authenticated":true,"user":{"id":"46e17eea-b710-4a0a-a5f5-57358ec6af35","email":"osamamotea@gmail.com","firstName":"اسامه","lastName":"السميطي","phone":"+974700055974","profileImageUrl":null,"isAdmin":true,"createdAt":"2025-12-13T17:09:09.307Z","updatedAt":"2025-12-13T21:27:12.558Z"},"logoutUrl":"/api/auth/logout"}

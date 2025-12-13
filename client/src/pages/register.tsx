@@ -11,10 +11,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { registerUserSchema, type RegisterUser } from "@shared/schema";
+import { useLanguage } from "@/components/language-provider";
+import { LanguageToggle } from "@/components/language-toggle";
 
 export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { tr } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -38,15 +41,15 @@ export default function Register() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
       toast({
-        title: "تم إنشاء الحساب بنجاح",
-        description: "مرحباً بك في كشتة!",
+        title: tr("auth.registerSuccess"),
+        description: tr("auth.registerSuccessDesc"),
       });
       setLocation("/");
     },
     onError: (error: Error) => {
       toast({
-        title: "فشل إنشاء الحساب",
-        description: error.message || "حدث خطأ أثناء إنشاء الحساب",
+        title: tr("auth.registerError"),
+        description: error.message || tr("auth.registerErrorDesc"),
         variant: "destructive",
       });
     },
@@ -60,15 +63,18 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
+          <div className="flex items-center justify-end">
+            <LanguageToggle />
+          </div>
           <div className="flex justify-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <Flame className="h-8 w-8" />
             </div>
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">إنشاء حساب جديد</CardTitle>
+            <CardTitle className="text-2xl font-bold">{tr("auth.registerTitle")}</CardTitle>
             <CardDescription className="mt-2">
-              أدخل بياناتك لإنشاء حساب جديد
+              {tr("auth.registerSubtitle")}
             </CardDescription>
           </div>
         </CardHeader>
@@ -81,10 +87,10 @@ export default function Register() {
                   name="firstName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>الاسم الأول</FormLabel>
+                      <FormLabel>{tr("auth.firstName")}</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="محمد"
+                          placeholder={tr("auth.firstNamePlaceholder")}
                           data-testid="input-first-name"
                           {...field}
                         />
@@ -99,10 +105,10 @@ export default function Register() {
                   name="lastName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>اسم العائلة</FormLabel>
+                      <FormLabel>{tr("auth.lastName")}</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="العلي"
+                          placeholder={tr("auth.lastNamePlaceholder")}
                           data-testid="input-last-name"
                           {...field}
                         />
@@ -118,11 +124,11 @@ export default function Register() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>البريد الإلكتروني</FormLabel>
+                    <FormLabel>{tr("auth.email")}</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="example@email.com"
+                        placeholder={tr("auth.emailPlaceholder")}
                         className="text-start"
                         dir="ltr"
                         data-testid="input-email"
@@ -139,11 +145,11 @@ export default function Register() {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>رقم الهاتف (اختياري)</FormLabel>
+                    <FormLabel>{tr("auth.phoneOptional")}</FormLabel>
                     <FormControl>
                       <Input
                         type="tel"
-                        placeholder="+974 XXXX XXXX"
+                        placeholder={tr("auth.phonePlaceholder")}
                         className="text-start"
                         dir="ltr"
                         data-testid="input-phone"
@@ -160,12 +166,12 @@ export default function Register() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>كلمة المرور</FormLabel>
+                    <FormLabel>{tr("auth.password")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showPassword ? "text" : "password"}
-                          placeholder="••••••••"
+                          placeholder={tr("auth.passwordPlaceholder")}
                           className="text-start pe-10"
                           dir="ltr"
                           data-testid="input-password"
@@ -197,12 +203,12 @@ export default function Register() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>تأكيد كلمة المرور</FormLabel>
+                    <FormLabel>{tr("auth.confirmPassword")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showConfirmPassword ? "text" : "password"}
-                          placeholder="••••••••"
+                          placeholder={tr("auth.passwordPlaceholder")}
                           className="text-start pe-10"
                           dir="ltr"
                           data-testid="input-confirm-password"
@@ -238,19 +244,19 @@ export default function Register() {
                 {registerMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin me-2" />
-                    جاري إنشاء الحساب...
+                    {tr("auth.creatingAccount")}
                   </>
                 ) : (
-                  "إنشاء حساب"
+                  tr("auth.createAccount")
                 )}
               </Button>
             </form>
           </Form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            لديك حساب بالفعل؟{" "}
+            {tr("auth.haveAccount")}{" "}
             <Link href="/login" className="text-primary hover:underline" data-testid="link-login">
-              تسجيل الدخول
+              {tr("auth.login")}
             </Link>
           </div>
         </CardContent>

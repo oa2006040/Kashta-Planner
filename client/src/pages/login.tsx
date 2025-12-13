@@ -12,10 +12,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { loginUserSchema, type LoginUser } from "@shared/schema";
+import { useLanguage } from "@/components/language-provider";
+import { LanguageToggle } from "@/components/language-toggle";
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { tr } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginUser>({
@@ -35,15 +38,15 @@ export default function Login() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
       toast({
-        title: "تم تسجيل الدخول بنجاح",
-        description: "مرحباً بك في كشتة!",
+        title: tr("auth.loginSuccess"),
+        description: tr("auth.loginSuccessDesc"),
       });
       setLocation("/");
     },
     onError: (error: Error) => {
       toast({
-        title: "فشل تسجيل الدخول",
-        description: error.message || "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+        title: tr("auth.loginError"),
+        description: error.message || tr("auth.loginErrorDesc"),
         variant: "destructive",
       });
     },
@@ -57,15 +60,18 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
+          <div className="flex items-center justify-end">
+            <LanguageToggle />
+          </div>
           <div className="flex justify-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <Flame className="h-8 w-8" />
             </div>
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">تسجيل الدخول</CardTitle>
+            <CardTitle className="text-2xl font-bold">{tr("auth.loginTitle")}</CardTitle>
             <CardDescription className="mt-2">
-              أدخل بياناتك للدخول إلى حسابك
+              {tr("auth.loginSubtitle")}
             </CardDescription>
           </div>
         </CardHeader>
@@ -77,11 +83,11 @@ export default function Login() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>البريد الإلكتروني</FormLabel>
+                    <FormLabel>{tr("auth.email")}</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="example@email.com"
+                        placeholder={tr("auth.emailPlaceholder")}
                         className="text-start"
                         dir="ltr"
                         data-testid="input-email"
@@ -98,12 +104,12 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>كلمة المرور</FormLabel>
+                    <FormLabel>{tr("auth.password")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showPassword ? "text" : "password"}
-                          placeholder="••••••••"
+                          placeholder={tr("auth.passwordPlaceholder")}
                           className="text-start pe-10"
                           dir="ltr"
                           data-testid="input-password"
@@ -143,7 +149,7 @@ export default function Login() {
                       />
                     </FormControl>
                     <FormLabel className="text-sm font-normal cursor-pointer !mt-0">
-                      تذكرني
+                      {tr("auth.rememberMe")}
                     </FormLabel>
                   </FormItem>
                 )}
@@ -158,19 +164,19 @@ export default function Login() {
                 {loginMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin me-2" />
-                    جاري تسجيل الدخول...
+                    {tr("auth.loggingIn")}
                   </>
                 ) : (
-                  "تسجيل الدخول"
+                  tr("auth.login")
                 )}
               </Button>
             </form>
           </Form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            ليس لديك حساب؟{" "}
+            {tr("auth.noAccount")}{" "}
             <Link href="/register" className="text-primary hover:underline" data-testid="link-register">
-              إنشاء حساب جديد
+              {tr("auth.createNewAccount")}
             </Link>
           </div>
         </CardContent>
