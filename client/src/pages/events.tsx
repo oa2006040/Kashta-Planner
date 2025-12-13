@@ -12,7 +12,9 @@ import {
   ChevronLeft,
   LayoutGrid,
   List,
-  Navigation
+  Navigation,
+  User,
+  Mail
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,7 @@ import {
 import { formatDate, formatCurrency } from "@/lib/constants";
 import { useLanguage } from "@/components/language-provider";
 import { useAuth } from "@/hooks/useAuth";
-import type { Event } from "@shared/schema";
+import type { Event, EventWithCreatorInfo } from "@shared/schema";
 
 function getStatusBadge(status: string, t: (ar: string, en: string) => string) {
   switch (status) {
@@ -46,7 +48,7 @@ function getStatusBadge(status: string, t: (ar: string, en: string) => string) {
   }
 }
 
-function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
+function EventCard({ event, view, isAdmin }: { event: EventWithCreatorInfo; view: "grid" | "list"; isAdmin?: boolean }) {
   const { t, language } = useLanguage();
   const statusBadge = getStatusBadge(event.status || 'upcoming', t);
   const eventDate = new Date(event.date);
@@ -101,6 +103,23 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
                     {formatDate(eventDate, language)}
                   </span>
                 </div>
+
+                {isAdmin && event.creator && (
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t border-muted/50 mt-1" data-testid={`creator-info-${event.id}`}>
+                    {event.creator.username && (
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {event.creator.username}
+                      </span>
+                    )}
+                    {event.creator.email && (
+                      <span className="flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        {event.creator.email}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
@@ -165,6 +184,23 @@ function EventCard({ event, view }: { event: Event; view: "grid" | "list" }) {
                 <span className="text-sm font-medium">{formatCurrency(event.totalBudget, language)}</span>
               </div>
             )}
+
+            {isAdmin && event.creator && (
+              <div className="flex flex-col gap-1 text-xs text-muted-foreground pt-2 border-t" data-testid={`creator-info-grid-${event.id}`}>
+                {event.creator.username && (
+                  <span className="flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    {event.creator.username}
+                  </span>
+                )}
+                {event.creator.email && (
+                  <span className="flex items-center gap-1 truncate">
+                    <Mail className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{event.creator.email}</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -205,13 +241,14 @@ function EventCardSkeleton({ view }: { view: "grid" | "list" }) {
 
 export default function Events() {
   const { t, language } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
   const [view, setView] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data: events, isLoading } = useQuery<Event[]>({
-    queryKey: [isAuthenticated ? "/api/my-events" : "/api/events"],
+  const { data: events, isLoading } = useQuery<EventWithCreatorInfo[]>({
+    queryKey: [isAdmin ? "/api/events" : (isAuthenticated ? "/api/my-events" : "/api/events")],
   });
 
   const filteredEvents = events?.filter((event) => {
@@ -294,7 +331,7 @@ export default function Events() {
       ) : filteredEvents && filteredEvents.length > 0 ? (
         <div className={view === "grid" ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3" : "space-y-3"}>
           {filteredEvents.map((event) => (
-            <EventCard key={event.id} event={event} view={view} />
+            <EventCard key={event.id} event={event} view={view} isAdmin={isAdmin} />
           ))}
         </div>
       ) : (

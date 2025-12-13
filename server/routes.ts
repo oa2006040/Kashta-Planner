@@ -396,8 +396,8 @@ export async function registerRoutes(
       // Check if user is admin
       const user = await storage.getUser(userId);
       if (user?.isAdmin) {
-        // Admins see all events
-        const events = await storage.getEvents();
+        // Admins see all events with creator info
+        const events = await storage.getEventsWithCreatorInfo();
         return res.json(events);
       }
       

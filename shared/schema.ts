@@ -121,6 +121,13 @@ export const insertEventSchema = createInsertSchema(events).omit({ id: true, cre
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type Event = typeof events.$inferSelect;
 
+export type EventWithCreatorInfo = Event & {
+  creator?: {
+    username: string | null;
+    email: string | null;
+  } | null;
+};
+
 // ============================================
 // RBAC (Role-Based Access Control) System
 // ============================================

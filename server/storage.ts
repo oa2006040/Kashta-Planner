@@ -57,6 +57,7 @@ import {
   type PermissionKey,
   type RefreshToken,
   type InsertRefreshToken,
+  type EventWithCreatorInfo,
   DEFAULT_EVENT_ROLES,
 } from "@shared/schema";
 import { db } from "./db";
@@ -375,6 +376,55 @@ export class DatabaseStorage implements IStorage {
   // Events
   async getEvents(): Promise<Event[]> {
     return db.select().from(events).orderBy(desc(events.date));
+  }
+
+  async getEventsWithCreatorInfo(): Promise<EventWithCreatorInfo[]> {
+    const allEvents = await db.select().from(events).orderBy(desc(events.date));
+    
+    // Get all creator participant IDs
+    const creatorParticipantIds = allEvents
+      .map(e => e.creatorParticipantId)
+      .filter((id): id is string => !!id);
+    
+    if (creatorParticipantIds.length === 0) {
+      return allEvents.map(e => ({ ...e, creator: null }));
+    }
+    
+    // Get participants for creators
+    const creatorParticipants = await db.select()
+      .from(participants)
+      .where(inArray(participants.id, creatorParticipantIds));
+    
+    // Get user IDs from participants
+    const userIds = creatorParticipants
+      .map(p => p.userId)
+      .filter((id): id is string => !!id);
+    
+    // Get users for email and name
+    const creatorUsers = userIds.length > 0
+      ? await db.select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(inArray(users.id, userIds))
+      : [];
+    
+    // Map events with creator info
+    return allEvents.map(event => {
+      const participant = creatorParticipants.find(p => p.id === event.creatorParticipantId);
+      const user = participant?.userId ? creatorUsers.find(u => u.id === participant.userId) : null;
+      
+      return {
+        ...event,
+        creator: user ? {
+          username: user.firstName && user.lastName 
+            ? `${user.firstName} ${user.lastName}` 
+            : (user.firstName || user.lastName || null),
+          email: user.email,
+        } : (participant ? {
+          username: participant.name,
+          email: participant.email,
+        } : null),
+      };
+    });
   }
 
   async getEvent(id: number): Promise<Event | undefined> {
