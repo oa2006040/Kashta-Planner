@@ -885,6 +885,34 @@ export async function registerRoutes(
   });
 
   // Event Participants
+  // Get only active members of a specific event (for item/role assignment)
+  app.get("/api/events/:eventId/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId, 10);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const userId = req.session!.userId!;
+      
+      // Check if user can access this event
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) {
+        const canAccess = await storage.canUserAccessEvent(eventId, userId);
+        if (!canAccess) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+      
+      // Return only active participants for this specific event
+      const members = await storage.getActiveEventMembers(eventId);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching event members:", error);
+      res.status(500).json({ error: "Failed to fetch event members" });
+    }
+  });
+
   app.post("/api/events/:eventId/participants", isAuthenticated, async (req: any, res) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);

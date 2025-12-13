@@ -611,8 +611,10 @@ export default function EventDetail() {
     queryKey: ["/api/categories"],
   });
 
+  // Only fetch active members of THIS event for assignment dropdowns (not all site participants)
   const { data: participants } = useQuery<Participant[]>({
-    queryKey: ["/api/participants"],
+    queryKey: ["/api/events", params?.id, "members"],
+    enabled: !!params?.id,
   });
 
   const { data: settlement } = useQuery<EventSettlement>({
@@ -1015,7 +1017,7 @@ export default function EventDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/participants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id, "members"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
         title: t("تم إلغاء التعيين", "Unassigned"),
@@ -1047,7 +1049,7 @@ export default function EventDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/participants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id, "members"] });
       toast({
         title: t("تم التعيين", "Assigned"),
         description: t("تم تعيين المشارك للمستلزم بنجاح", "Participant assigned to item successfully"),

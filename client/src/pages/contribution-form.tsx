@@ -47,8 +47,10 @@ export default function ContributionForm() {
     queryKey: ["/api/categories?withItems=true"],
   });
 
+  // Only fetch active members of THIS event (not all site participants)
   const { data: participants } = useQuery<Participant[]>({
-    queryKey: ["/api/participants"],
+    queryKey: ["/api/events", eventId, "members"],
+    enabled: !!eventId,
   });
 
   const addContributionMutation = useMutation({

@@ -104,6 +104,7 @@ export interface IStorage {
   
   // Event Participants
   getEventParticipants(eventId: number): Promise<EventParticipant[]>;
+  getActiveEventMembers(eventId: number): Promise<Participant[]>;
   addParticipantToEvent(data: InsertEventParticipant): Promise<EventParticipant>;
   removeParticipantFromEvent(eventId: number, participantId: string): Promise<boolean>;
   removeParticipantFromEventWithCascade(eventId: number, participantId: string): Promise<boolean>;
@@ -558,6 +559,31 @@ export class DatabaseStorage implements IStorage {
   // Event Participants
   async getEventParticipants(eventId: number): Promise<EventParticipant[]> {
     return db.select().from(eventParticipants).where(eq(eventParticipants.eventId, eventId));
+  }
+  
+  async getActiveEventMembers(eventId: number): Promise<Participant[]> {
+    // Get only active participants for this specific event
+    const activeEventParticipants = await db.select()
+      .from(eventParticipants)
+      .where(
+        and(
+          eq(eventParticipants.eventId, eventId),
+          eq(eventParticipants.status, 'active')
+        )
+      );
+    
+    if (activeEventParticipants.length === 0) {
+      return [];
+    }
+    
+    const participantIds = activeEventParticipants.map(ep => ep.participantId);
+    
+    // Get the actual participant details
+    const memberParticipants = await db.select()
+      .from(participants)
+      .where(inArray(participants.id, participantIds));
+    
+    return memberParticipants;
   }
 
   async addParticipantToEvent(data: InsertEventParticipant): Promise<EventParticipant> {
