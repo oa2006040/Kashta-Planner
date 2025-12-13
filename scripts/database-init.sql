@@ -135,8 +135,23 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'participants' AND column_name = 'user_id') THEN
         ALTER TABLE participants ADD COLUMN user_id VARCHAR REFERENCES users(id);
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'participants' AND column_name = 'email') THEN
+        ALTER TABLE participants ADD COLUMN email TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'participants' AND column_name = 'phone') THEN
+        ALTER TABLE participants ADD COLUMN phone TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'participants' AND column_name = 'avatar') THEN
+        ALTER TABLE participants ADD COLUMN avatar TEXT;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'participants' AND column_name = 'is_guest') THEN
         ALTER TABLE participants ADD COLUMN is_guest BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'participants' AND column_name = 'trip_count') THEN
+        ALTER TABLE participants ADD COLUMN trip_count INTEGER DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'participants' AND column_name = 'created_at') THEN
+        ALTER TABLE participants ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
     END IF;
 END $$;
 
