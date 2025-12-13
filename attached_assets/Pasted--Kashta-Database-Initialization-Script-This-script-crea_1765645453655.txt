@@ -19,7 +19,6 @@ CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions(expire);
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
     email VARCHAR UNIQUE,
-    username VARCHAR UNIQUE,
     password_hash VARCHAR,
     first_name VARCHAR,
     last_name VARCHAR,
@@ -29,26 +28,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
-
--- Fix legacy columns in users table
-DO $$ 
-BEGIN
-    -- Handle legacy 'password' column (rename to password_hash or drop NOT NULL)
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password') THEN
-        -- If password_hash doesn't exist, rename password to password_hash
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password_hash') THEN
-            ALTER TABLE users RENAME COLUMN password TO password_hash;
-        ELSE
-            -- Both exist, drop NOT NULL on legacy password column
-            ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
-        END IF;
-    END IF;
-    
-    -- Handle legacy 'username' column (drop NOT NULL constraint)
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'username') THEN
-        ALTER TABLE users ALTER COLUMN username DROP NOT NULL;
-    END IF;
-END $$;
 
 -- Add missing columns to users
 DO $$ 
