@@ -419,12 +419,21 @@ CREATE TABLE IF NOT EXISTS role_permissions (
     allowed BOOLEAN DEFAULT TRUE
 );
 
--- Add missing columns to role_permissions
+-- Fix role_permissions: rename old 'permission' column to 'permission_key' if needed
 DO $$ 
 BEGIN
+    -- If old 'permission' column exists but 'permission_key' doesn't, rename it
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'role_permissions' AND column_name = 'permission') 
+       AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'role_permissions' AND column_name = 'permission_key') THEN
+        ALTER TABLE role_permissions RENAME COLUMN permission TO permission_key;
+    END IF;
+    
+    -- Add permission_key if it still doesn't exist
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'role_permissions' AND column_name = 'permission_key') THEN
         ALTER TABLE role_permissions ADD COLUMN permission_key TEXT NOT NULL DEFAULT '';
     END IF;
+    
+    -- Add allowed column if missing
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'role_permissions' AND column_name = 'allowed') THEN
         ALTER TABLE role_permissions ADD COLUMN allowed BOOLEAN DEFAULT TRUE;
     END IF;
