@@ -365,13 +365,22 @@ export async function registerRoutes(
     }
   });
 
-  // Events - with access control (users only see their own events)
+  // Events - with access control (users only see their own events, admins see all)
   app.get("/api/events", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session!.userId!;
       // Sync event statuses based on current date before returning
       await storage.syncEventStatuses();
-      // Only return events the user has access to
+      
+      // Check if user is admin
+      const user = await storage.getUser(userId);
+      if (user?.isAdmin) {
+        // Admins see all events
+        const events = await storage.getEvents();
+        return res.json(events);
+      }
+      
+      // Regular users only see events they're participating in
       const events = await storage.getEventsForUser(userId);
       res.json(events);
     } catch (error) {
@@ -388,10 +397,15 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      // Check if user has access to this event
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+      
+      // Check if user is admin - admins can access all events
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) {
+        // Regular users - check if they have access to this event
+        const canAccess = await storage.canUserAccessEvent(eventId, userId);
+        if (!canAccess) {
+          return res.status(403).json({ error: "Access denied" });
+        }
       }
       
       // Sync event statuses before returning single event
