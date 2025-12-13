@@ -119,7 +119,7 @@ export function AppSidebar() {
                     className="bg-destructive text-destructive-foreground"
                     data-testid="badge-notification-count"
                   >
-                    {notificationCount.count}
+                    {notificationCount.count > 9 ? "9+" : notificationCount.count}
                   </SidebarMenuBadge>
                 )}
               </SidebarMenuItem>
