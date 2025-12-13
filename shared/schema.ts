@@ -775,6 +775,57 @@ export type EventRoleWithPermissions = EventRoleRecord & {
   permissions: RolePermission[];
 };
 
+// Role templates for quick role creation
+export const ROLE_TEMPLATES: Array<{
+  id: string;
+  name: string;
+  nameAr: string;
+  description: string;
+  descriptionAr: string;
+  permissions: PermissionKey[];
+}> = [
+  {
+    id: 'co_admin',
+    name: 'Co-Admin',
+    nameAr: 'مشرف مشارك',
+    description: 'Full management access except deleting the event',
+    descriptionAr: 'صلاحيات كاملة ما عدا حذف الطلعة',
+    permissions: ['invite_participants', 'remove_participants', 'edit_roles', 'assign_item', 'unassign_item', 'edit_event'],
+  },
+  {
+    id: 'moderator',
+    name: 'Moderator',
+    nameAr: 'مشرف',
+    description: 'Can manage participants and assign items',
+    descriptionAr: 'يمكنه إدارة المشاركين وتعيين المستلزمات',
+    permissions: ['invite_participants', 'remove_participants', 'assign_item', 'unassign_item'],
+  },
+  {
+    id: 'coordinator',
+    name: 'Coordinator',
+    nameAr: 'منسق',
+    description: 'Can invite participants and manage items',
+    descriptionAr: 'يمكنه دعوة المشاركين وإدارة المستلزمات',
+    permissions: ['invite_participants', 'assign_item', 'unassign_item'],
+  },
+  {
+    id: 'member',
+    name: 'Member',
+    nameAr: 'عضو',
+    description: 'Can assign items to themselves',
+    descriptionAr: 'يمكنه تعيين المستلزمات لنفسه',
+    permissions: ['assign_item'],
+  },
+  {
+    id: 'viewer',
+    name: 'Viewer',
+    nameAr: 'مشاهد',
+    description: 'Read-only access',
+    descriptionAr: 'صلاحية العرض فقط',
+    permissions: [],
+  },
+];
+
 // Extended type for event participant with role details
 export type EventParticipantWithRole = EventParticipant & {
   participant: Participant;

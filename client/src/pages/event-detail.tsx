@@ -84,6 +84,7 @@ import { useLanguage } from "@/components/language-provider";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useAuth } from "@/hooks/useAuth";
 import type { EventWithDetails, Contribution, Participant, Category, EventSettlement, EventRoleRecord, PermissionKey } from "@shared/schema";
+import { ROLE_TEMPLATES } from "@shared/schema";
 
 // Permission keys for display in role management UI
 const PERMISSION_KEYS: PermissionKey[] = [
@@ -1484,7 +1485,7 @@ export default function EventDetail() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          {isOwner && (
+          {event.isOwner && (
           <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
             <DialogTrigger asChild>
               <Button 
@@ -2379,9 +2380,36 @@ export default function EventDetail() {
 
                 {/* Create Role Form */}
                 {showCreateRole && (
-                  <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
                     <h4 className="font-medium">{t("دور جديد", "New Role")}</h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    
+                    {/* Role Templates */}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">{t("اختر قالب جاهز", "Choose a template")}</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {ROLE_TEMPLATES.map((template) => (
+                          <Button
+                            key={template.id}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setNewRoleName(template.name);
+                              setNewRoleNameAr(template.nameAr);
+                              setNewRoleDescription(language === "ar" ? template.descriptionAr : template.description);
+                              setNewRolePermissions([...template.permissions]);
+                            }}
+                            data-testid={`button-template-${template.id}`}
+                            className="text-xs"
+                          >
+                            {language === "ar" ? template.nameAr : template.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-3 space-y-3">
+                      <Label className="text-xs text-muted-foreground">{t("أو أنشئ دور مخصص", "Or create custom role")}</Label>
+                      <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">{t("الاسم بالإنجليزية", "English Name")}</Label>
                         <Input
@@ -2433,6 +2461,7 @@ export default function EventDetail() {
                           </div>
                         ))}
                       </div>
+                    </div>
                     </div>
                     <div className="flex gap-2 justify-end">
                       <Button 
