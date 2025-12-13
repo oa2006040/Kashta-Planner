@@ -32,14 +32,32 @@ CREATE TABLE IF NOT EXISTS users (
 -- Add missing columns to users
 DO $$ 
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'email') THEN
+        ALTER TABLE users ADD COLUMN email VARCHAR UNIQUE;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password_hash') THEN
         ALTER TABLE users ADD COLUMN password_hash VARCHAR;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'first_name') THEN
+        ALTER TABLE users ADD COLUMN first_name VARCHAR;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'last_name') THEN
+        ALTER TABLE users ADD COLUMN last_name VARCHAR;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'phone') THEN
         ALTER TABLE users ADD COLUMN phone VARCHAR;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'profile_image_url') THEN
+        ALTER TABLE users ADD COLUMN profile_image_url VARCHAR;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'is_admin') THEN
         ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'created_at') THEN
+        ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'updated_at') THEN
+        ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
     END IF;
 END $$;
 
