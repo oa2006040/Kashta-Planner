@@ -9,6 +9,14 @@ import { seedDatabase } from "./seed";
 const app = express();
 const httpServer = createServer(app);
 
+// Validate required environment variables
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  console.error("FATAL: SESSION_SECRET environment variable is not set!");
+  console.error("Please set SESSION_SECRET in your environment variables.");
+  process.exit(1);
+}
+
 // Session configuration
 const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
 const pgStore = connectPg(session);
@@ -21,7 +29,7 @@ const sessionStore = new pgStore({
 
 app.set("trust proxy", 1);
 app.use(session({
-  secret: process.env.SESSION_SECRET!,
+  secret: sessionSecret,
   store: sessionStore,
   resave: false,
   saveUninitialized: false,

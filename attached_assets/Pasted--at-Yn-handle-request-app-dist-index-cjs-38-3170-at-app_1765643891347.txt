@@ -1,0 +1,121 @@
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+Error: secret option required for sessions
+Error: secret option required for sessions
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+Error: secret option required for sessions
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+Error: secret option required for sessions
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+Error: secret option required for sessions
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+Error: secret option required for sessions
+    at /app/dist/index.cjs:38:7951
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+Error: secret option required for sessions
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+Error: secret option required for sessions
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+Error: secret option required for sessions
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+Error: secret option required for sessions
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+Error: secret option required for sessions
+    at /app/dist/index.cjs:69:1414
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+    at /app/dist/index.cjs:38:7951
+    at /app/dist/index.cjs:38:7951
+    at rn.process_params (/app/dist/index.cjs:38:8474)
+    at b (/app/dist/index.cjs:38:7877)
+    at /app/dist/index.cjs:38:11145
+    at Yn.handle_request (/app/dist/index.cjs:38:3170)
+    at _ (/app/dist/index.cjs:38:8358)
+Stopping Container
