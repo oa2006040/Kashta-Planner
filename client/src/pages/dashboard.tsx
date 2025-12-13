@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -344,83 +344,91 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+      <div className={`grid gap-2 sm:gap-4 ${user?.isAdmin ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-3"}`}>
         {statsLoading ? (
           <>
             <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
-            <StatCardSkeleton />
+            {user?.isAdmin && <StatCardSkeleton />}
           </>
         ) : (
           <>
-            {/* Total Events with breakdown */}
-            <Card className="relative overflow-visible">
-              <CardContent className="p-3 sm:p-6">
-                <div className="flex items-start justify-between gap-2 sm:gap-4">
-                  <div className="space-y-1 sm:space-y-2 min-w-0">
-                    <p className="text-xs sm:text-sm text-muted-foreground">{t("إجمالي الطلعات", "Total Events")}</p>
-                    <p className="text-2xl sm:text-3xl font-bold">{formatNumber(stats?.totalEvents || 0, language)}</p>
-                    <div className="flex flex-wrap gap-1 sm:gap-2 text-[10px] sm:text-xs">
-                      <span className="text-green-600 dark:text-green-400">{stats?.ongoingEvents || 0} {t("جارية", "Ongoing")}</span>
-                      <span className="text-blue-600 dark:text-blue-400">{stats?.upcomingEvents || 0} {t("قادمة", "Upcoming")}</span>
-                      <span className="text-gray-500">{stats?.completedEvents || 0} {t("منتهية", "Completed")}</span>
-                      {(stats?.cancelledEvents || 0) > 0 && (
-                        <span className="text-red-500">{stats?.cancelledEvents} {t("ملغاة", "Cancelled")}</span>
-                      )}
+            {/* Total Events with breakdown - clickable to events page */}
+            <Link href="/events">
+              <Card className="relative overflow-visible hover-elevate cursor-pointer" data-testid="card-stat-total-events">
+                <CardContent className="p-3 sm:p-6">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4">
+                    <div className="space-y-1 sm:space-y-2 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground">{t("إجمالي الطلعات", "Total Events")}</p>
+                      <p className="text-2xl sm:text-3xl font-bold">{formatNumber(stats?.totalEvents || 0, language)}</p>
+                      <div className="flex flex-wrap gap-1 sm:gap-2 text-[10px] sm:text-xs">
+                        <span className="text-green-600 dark:text-green-400">{stats?.ongoingEvents || 0} {t("جارية", "Ongoing")}</span>
+                        <span className="text-blue-600 dark:text-blue-400">{stats?.upcomingEvents || 0} {t("قادمة", "Upcoming")}</span>
+                        <span className="text-gray-500">{stats?.completedEvents || 0} {t("منتهية", "Completed")}</span>
+                        {(stats?.cancelledEvents || 0) > 0 && (
+                          <span className="text-red-500">{stats?.cancelledEvents} {t("ملغاة", "Cancelled")}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-primary/10 shrink-0">
+                      <Calendar className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                     </div>
                   </div>
-                  <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-primary/10 shrink-0">
-                    <Calendar className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
             
-            {/* Total Budget */}
-            <Card className="relative overflow-visible">
-              <CardContent className="p-3 sm:p-6">
-                <div className="flex items-start justify-between gap-2 sm:gap-4">
-                  <div className="space-y-1 sm:space-y-2 min-w-0">
-                    <p className="text-xs sm:text-sm text-muted-foreground">{t("إجمالي المدفوعات", "Total Payments")}</p>
-                    <p className="text-2xl sm:text-3xl font-bold">{formatCurrency(stats?.totalBudget || 0, language)}</p>
+            {/* Total Budget - only visible to admins */}
+            {user?.isAdmin && (
+              <Card className="relative overflow-visible" data-testid="card-stat-total-payments">
+                <CardContent className="p-3 sm:p-6">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4">
+                    <div className="space-y-1 sm:space-y-2 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground">{t("إجمالي المدفوعات", "Total Payments")}</p>
+                      <p className="text-2xl sm:text-3xl font-bold">{formatCurrency(stats?.totalBudget || 0, language)}</p>
+                    </div>
+                    <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-primary/10 shrink-0">
+                      <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
+                    </div>
                   </div>
-                  <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-primary/10 shrink-0">
-                    <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
             
-            {/* Paid Debts */}
-            <Card className="relative overflow-visible">
-              <CardContent className="p-3 sm:p-6">
-                <div className="flex items-start justify-between gap-2 sm:gap-4">
-                  <div className="space-y-1 sm:space-y-2 min-w-0">
-                    <p className="text-xs sm:text-sm text-muted-foreground">{t("الديون المدفوعة", "Paid Debts")}</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(stats?.paidAmount || 0, language)}</p>
+            {/* Paid Debts - clickable to account debt wallet */}
+            <Link href="/account?section=paid">
+              <Card className="relative overflow-visible hover-elevate cursor-pointer" data-testid="card-stat-paid-debts">
+                <CardContent className="p-3 sm:p-6">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4">
+                    <div className="space-y-1 sm:space-y-2 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground">{t("الديون المدفوعة", "Paid Debts")}</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(stats?.paidAmount || 0, language)}</p>
+                    </div>
+                    <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-green-100 dark:bg-green-900/30 shrink-0">
+                      <CheckCircle2 className="h-4 w-4 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
+                    </div>
                   </div>
-                  <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-green-100 dark:bg-green-900/30 shrink-0">
-                    <CheckCircle2 className="h-4 w-4 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
             
-            {/* Unpaid Debts */}
-            <Card className="relative overflow-visible">
-              <CardContent className="p-3 sm:p-6">
-                <div className="flex items-start justify-between gap-2 sm:gap-4">
-                  <div className="space-y-1 sm:space-y-2 min-w-0">
-                    <p className="text-xs sm:text-sm text-muted-foreground">{t("الديون غير المدفوعة", "Unpaid Debts")}</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(stats?.unpaidAmount || 0, language)}</p>
+            {/* Unpaid Debts - clickable to account debt wallet */}
+            <Link href="/account?section=remaining">
+              <Card className="relative overflow-visible hover-elevate cursor-pointer" data-testid="card-stat-remaining-debts">
+                <CardContent className="p-3 sm:p-6">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4">
+                    <div className="space-y-1 sm:space-y-2 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground">{t("الديون غير المدفوعة", "Unpaid Debts")}</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(stats?.unpaidAmount || 0, language)}</p>
+                    </div>
+                    <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
+                      <Clock className="h-4 w-4 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
+                    </div>
                   </div>
-                  <div className="flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-lg sm:rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
-                    <Clock className="h-4 w-4 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           </>
         )}
       </div>
