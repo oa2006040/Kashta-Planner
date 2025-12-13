@@ -2,22 +2,26 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Loader2, Eye, EyeOff, User, Lock } from "lucide-react";
+import { useLocation, Link } from "wouter";
+import { Loader2, Eye, EyeOff, User, Lock, Clock, Check, X, Wallet, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { updateProfileSchema, changePasswordSchema, type UpdateProfile, type ChangePassword, type SafeUser } from "@shared/schema";
+import { updateProfileSchema, changePasswordSchema, type UpdateProfile, type ChangePassword, type SafeUser, type SettlementClaimWithDetails } from "@shared/schema";
+import { formatCurrency } from "@/lib/constants";
+import { useLanguage } from "@/components/language-provider";
 
 export default function Account() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { t, language } = useLanguage();
 
   const { data: user, isLoading: userLoading } = useQuery<SafeUser>({
     queryKey: ["/api/auth/user"],
@@ -48,6 +52,10 @@ export default function Account() {
         <h1 className="text-2xl font-bold">إعدادات الحساب</h1>
         <p className="text-muted-foreground">إدارة معلومات حسابك الشخصي</p>
       </div>
+
+      <PaymentClaimsSection />
+
+      <Separator />
 
       <ProfileForm user={user} />
       
@@ -388,6 +396,208 @@ function PasswordForm() {
             </Button>
           </form>
         </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PaymentClaimsSection() {
+  const { toast } = useToast();
+  const { t, language } = useLanguage();
+  
+  const { data: claims, isLoading } = useQuery<SettlementClaimWithDetails[]>({
+    queryKey: ["/api/settlement-claims"],
+    refetchInterval: 10000,
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: async (claimId: string) => {
+      const response = await apiRequest("POST", `/api/settlement-claims/${claimId}/confirm`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settlement-claims"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/debt"] });
+      toast({
+        title: t("تم التأكيد", "Confirmed"),
+        description: t("تم تأكيد استلام الدفع بنجاح", "Payment receipt confirmed successfully"),
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("فشل التأكيد", "Confirmation Failed"),
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (claimId: string) => {
+      const response = await apiRequest("POST", `/api/settlement-claims/${claimId}/reject`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settlement-claims"] });
+      toast({
+        title: t("تم الرفض", "Rejected"),
+        description: t("تم رفض طلب تأكيد الدفع", "Payment confirmation request rejected"),
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("فشل الرفض", "Rejection Failed"),
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const pendingClaims = claims?.filter(c => c.status === 'pending') || [];
+  const respondedClaims = claims?.filter(c => c.status !== 'pending') || [];
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">{t("طلبات تأكيد الدفع", "Payment Confirmation Requests")}</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!claims || claims.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">{t("طلبات تأكيد الدفع", "Payment Confirmation Requests")}</CardTitle>
+          </div>
+          <CardDescription>{t("عرض وإدارة طلبات تأكيد المدفوعات", "View and manage payment confirmation requests")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground py-4">
+            {t("لا توجد طلبات تأكيد دفع حالياً", "No payment confirmation requests currently")}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Wallet className="h-5 w-5 text-muted-foreground" />
+          <CardTitle className="text-lg">{t("طلبات تأكيد الدفع", "Payment Confirmation Requests")}</CardTitle>
+        </div>
+        <CardDescription>{t("عرض وإدارة طلبات تأكيد المدفوعات", "View and manage payment confirmation requests")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {pendingClaims.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              {t("في انتظار ردك", "Awaiting Your Response")}
+              <Badge variant="secondary">{pendingClaims.length}</Badge>
+            </h4>
+            {pendingClaims.map((claim) => (
+              <div
+                key={claim.id}
+                className="border rounded-md p-4 space-y-3"
+                data-testid={`claim-pending-${claim.id}`}
+              >
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="space-y-1">
+                    <p className="font-medium">
+                      {claim.debtor?.name || t("مشارك", "Participant")} {t("يدّعي أنه دفع لك", "claims they paid you")}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <Link href={`/events/${claim.eventId}`}>
+                        <span className="hover:underline cursor-pointer">{claim.event?.title}</span>
+                      </Link>
+                    </div>
+                  </div>
+                  <span className="text-xl font-bold text-primary">
+                    {formatCurrency(parseFloat(claim.amount), language)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={() => confirmMutation.mutate(claim.id)}
+                    disabled={confirmMutation.isPending || rejectMutation.isPending}
+                    data-testid={`button-confirm-${claim.id}`}
+                  >
+                    {confirmMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 me-1" />
+                        {t("تأكيد الاستلام", "Confirm Receipt")}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => rejectMutation.mutate(claim.id)}
+                    disabled={confirmMutation.isPending || rejectMutation.isPending}
+                    data-testid={`button-reject-${claim.id}`}
+                  >
+                    {rejectMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 me-1" />
+                        {t("رفض", "Reject")}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {respondedClaims.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-medium text-sm text-muted-foreground">
+              {t("الطلبات السابقة", "Previous Requests")}
+            </h4>
+            {respondedClaims.slice(0, 5).map((claim) => (
+              <div
+                key={claim.id}
+                className="border rounded-md p-3 flex items-center justify-between gap-4 flex-wrap"
+                data-testid={`claim-responded-${claim.id}`}
+              >
+                <div className="space-y-1">
+                  <p className="text-sm">
+                    {claim.debtor?.name} - {claim.event?.title}
+                  </p>
+                  <Badge variant={claim.status === 'confirmed' ? 'default' : 'destructive'}>
+                    {claim.status === 'confirmed' 
+                      ? t("تم التأكيد", "Confirmed")
+                      : t("مرفوض", "Rejected")}
+                  </Badge>
+                </div>
+                <span className="font-medium">
+                  {formatCurrency(parseFloat(claim.amount), language)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

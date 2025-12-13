@@ -47,6 +47,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -83,8 +84,8 @@ import { AvatarIcon } from "@/components/avatar-icon";
 import { useLanguage } from "@/components/language-provider";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useAuth } from "@/hooks/useAuth";
-import type { EventWithDetails, Contribution, Participant, Category, EventSettlement, EventRoleRecord, PermissionKey } from "@shared/schema";
-import { ROLE_TEMPLATES } from "@shared/schema";
+import type { EventWithDetails, Contribution, Participant, Category, EventSettlement, EventRoleRecord, PermissionKey, BudgetVisibility } from "@shared/schema";
+import { ROLE_TEMPLATES, BUDGET_VISIBILITY_OPTIONS } from "@shared/schema";
 
 // Permission keys for display in role management UI
 const PERMISSION_KEYS: PermissionKey[] = [
@@ -642,6 +643,7 @@ export default function EventDetail() {
   const [roleManagementOpen, setRoleManagementOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [selectedNewOwner, setSelectedNewOwner] = useState<string>("");
+  const [budgetSettingsOpen, setBudgetSettingsOpen] = useState(false);
   
   // Get current user for creator check
   const { user } = useAuth();
@@ -758,6 +760,44 @@ export default function EventDetail() {
       toast({
         title: t("خطأ", "Error"),
         description: t("حدث خطأ أثناء حذف الدور", "Error deleting role"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Budget visibility mutation
+  const updateBudgetVisibilityMutation = useMutation({
+    mutationFn: async (budgetVisibility: BudgetVisibility) => {
+      return apiRequest("PUT", `/api/events/${params?.id}/budget-visibility`, { budgetVisibility });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+      toast({
+        title: t("تم التحديث", "Updated"),
+        description: t("تم تحديث إعدادات الميزانية", "Budget settings updated"),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تحديث الإعدادات", "Error updating settings"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Participant budget access mutation
+  const updateParticipantBudgetAccessMutation = useMutation({
+    mutationFn: async ({ epId, canViewBudget }: { epId: string; canViewBudget: boolean }) => {
+      return apiRequest("PUT", `/api/event-participants/${epId}/budget-access`, { canViewBudget });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events", params?.id] });
+    },
+    onError: () => {
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء تحديث صلاحية المشارك", "Error updating participant access"),
         variant: "destructive",
       });
     },
@@ -1570,6 +1610,83 @@ export default function EventDetail() {
                     {t("تفعيل المشاركة", "Enable Sharing")}
                   </Button>
                 )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          )}
+          {event.isOwner && (
+          <Dialog open={budgetSettingsOpen} onOpenChange={setBudgetSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon" data-testid="button-budget-settings">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t("إعدادات الميزانية", "Budget Settings")}</DialogTitle>
+                <DialogDescription>
+                  {t("تحكم في من يمكنه رؤية تفاصيل التكاليف والديون", "Control who can see cost details and debts")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>{t("رؤية الميزانية", "Budget Visibility")}</Label>
+                  <Select 
+                    value={event.budgetVisibility || "everyone"} 
+                    onValueChange={(value: BudgetVisibility) => updateBudgetVisibilityMutation.mutate(value)}
+                  >
+                    <SelectTrigger data-testid="select-budget-visibility">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="everyone">
+                        {t("الجميع", "Everyone")}
+                      </SelectItem>
+                      <SelectItem value="selected">
+                        {t("مشاركين محددين", "Selected Participants")}
+                      </SelectItem>
+                      <SelectItem value="hidden">
+                        {t("المنظم فقط", "Organizer Only")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {event.budgetVisibility === "everyone" && t("جميع المشاركين يمكنهم رؤية التكاليف", "All participants can see costs")}
+                    {event.budgetVisibility === "selected" && t("فقط المشاركين المحددين أدناه يمكنهم رؤية التكاليف", "Only selected participants below can see costs")}
+                    {event.budgetVisibility === "hidden" && t("أنت فقط يمكنك رؤية التكاليف", "Only you can see costs")}
+                  </p>
+                </div>
+
+                {event.budgetVisibility === "selected" && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <Label>{t("صلاحية المشاركين", "Participant Access")}</Label>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {event.eventParticipants?.map((ep) => (
+                        <div 
+                          key={ep.id} 
+                          className="flex items-center justify-between gap-3 p-2 rounded-md bg-muted/50"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <AvatarIcon icon={ep.participant.avatar} className="h-6 w-6 shrink-0" />
+                            <span className="text-sm truncate">{ep.participant.name}</span>
+                          </div>
+                          <Switch
+                            checked={ep.canViewBudget ?? true}
+                            onCheckedChange={(checked) => 
+                              updateParticipantBudgetAccessMutation.mutate({ epId: ep.id, canViewBudget: checked })
+                            }
+                            data-testid={`switch-budget-access-${ep.participant.id}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setBudgetSettingsOpen(false)}>
+                  {t("إغلاق", "Close")}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
