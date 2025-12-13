@@ -114,7 +114,7 @@ export function AppSidebar() {
                       <Bell className="h-4 w-4" />
                       {notificationCount && notificationCount.count > 0 && (
                         <span 
-                          className="absolute -top-1.5 -end-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground"
+                          className="absolute -top-1.5 -end-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground group-data-[collapsible=icon]:flex hidden"
                           data-testid="badge-notification-icon"
                         >
                           {notificationCount.count > 9 ? "9+" : notificationCount.count}
