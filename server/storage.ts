@@ -161,6 +161,15 @@ export interface IStorage {
   createSettlementClaim(data: InsertSettlementClaim): Promise<SettlementClaim>;
   respondToSettlementClaim(claimId: string, status: 'confirmed' | 'rejected'): Promise<SettlementClaim | undefined>;
   getClaimsForParticipant(participantId: string): Promise<SettlementClaimWithDetails[]>;
+  
+  // Settlement Activity Logs
+  getSettlementActivityLogs(limit?: number): Promise<SettlementActivityLog[]>;
+  getSettlementActivityLogsForUser(userId: string, limit?: number): Promise<SettlementActivityLog[]>;
+  
+  // Debt Portfolio
+  getDebtSummaries(): Promise<ParticipantDebtSummary[]>;
+  getDebtSummaryForParticipant(participantId: string): Promise<ParticipantDebtSummary | null>;
+  getDebtPortfolio(participantId: string): Promise<ParticipantDebtPortfolio | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1243,6 +1252,32 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
   
+  async getSettlementActivityLogsForUser(userId: string, limit: number = 100): Promise<SettlementActivityLog[]> {
+    // Get user's participant
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) {
+      return [];
+    }
+    
+    // Get events the user participates in
+    const userEventParticipants = await db.select()
+      .from(eventParticipants)
+      .where(eq(eventParticipants.participantId, participant.id));
+    
+    const userEventIds = userEventParticipants.map(ep => ep.eventId);
+    
+    if (userEventIds.length === 0) {
+      return [];
+    }
+    
+    // Get logs only for user's events
+    return await db.select()
+      .from(settlementActivityLog)
+      .where(inArray(settlementActivityLog.eventId, userEventIds))
+      .orderBy(desc(settlementActivityLog.createdAt))
+      .limit(limit);
+  }
+  
   // Event protection (cancellation/deletion)
   
   async canCancelEvent(eventId: number): Promise<{ canCancel: boolean; reason?: string }> {
@@ -1396,6 +1431,63 @@ export class DatabaseStorage implements IStorage {
     
     // Sort by absolute net position (highest debt/credit first)
     return summaries.sort((a, b) => Math.abs(b.netPosition) - Math.abs(a.netPosition));
+  }
+  
+  async getDebtSummaryForParticipant(participantId: string): Promise<ParticipantDebtSummary | null> {
+    // Get participant
+    const [participant] = await db.select().from(participants).where(eq(participants.id, participantId));
+    if (!participant) return null;
+    
+    // Get settlement records for this participant only (unsettled)
+    const debtorRecords = await db.select()
+      .from(settlementRecords)
+      .where(and(
+        eq(settlementRecords.debtorId, participantId),
+        eq(settlementRecords.isSettled, false)
+      ));
+    
+    const creditorRecords = await db.select()
+      .from(settlementRecords)
+      .where(and(
+        eq(settlementRecords.creditorId, participantId),
+        eq(settlementRecords.isSettled, false)
+      ));
+    
+    // Get contributions for this participant only
+    const participantContributions = await db.select()
+      .from(contributions)
+      .where(eq(contributions.participantId, participantId));
+    
+    // Get event participation count
+    const eventParticipantCount = await db.select()
+      .from(eventParticipants)
+      .where(eq(eventParticipants.participantId, participantId));
+    
+    // Calculate totals (quantity × unit price)
+    const totalPaid = participantContributions.reduce((sum, c) => {
+      const unitCost = parseFloat(c.cost || "0");
+      const quantity = c.quantity || 1;
+      return sum + (unitCost * quantity);
+    }, 0);
+    
+    const totalOwed = debtorRecords.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+    const totalOwedToYou = creditorRecords.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+    const netPosition = totalOwedToYou - totalOwed;
+    const eventCount = eventParticipantCount.length;
+    
+    let role: 'creditor' | 'debtor' | 'settled' = 'settled';
+    if (netPosition > 0.01) role = 'creditor';
+    else if (netPosition < -0.01) role = 'debtor';
+    
+    return {
+      participant,
+      totalPaid,
+      totalOwed,
+      totalOwedToYou,
+      netPosition,
+      role,
+      eventCount,
+    };
   }
   
   async getDebtPortfolio(participantId: string): Promise<ParticipantDebtPortfolio | undefined> {

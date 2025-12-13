@@ -1157,20 +1157,48 @@ export async function registerRoutes(
     }
   });
 
-  // Debt Portfolio Routes
-  app.get("/api/debt", async (req, res) => {
+  // Debt Portfolio Routes - admins see all, users see only their own
+  app.get("/api/debt", isAuthenticated, async (req: any, res) => {
     try {
-      const summaries = await storage.getDebtSummaries();
-      res.json(summaries);
+      const userId = req.session!.userId!;
+      const user = await storage.getUser(userId);
+      
+      if (user?.isAdmin) {
+        // Admins see all debt summaries
+        const summaries = await storage.getDebtSummaries();
+        return res.json(summaries);
+      }
+      
+      // Regular users: find their participant and show only their debt
+      const participant = await storage.getParticipantByUserId(userId);
+      if (!participant) {
+        return res.json([]); // No participant linked, no debts
+      }
+      
+      // Get only this user's debt summary using scoped query (no privacy leak)
+      const userSummary = await storage.getDebtSummaryForParticipant(participant.id);
+      res.json(userSummary ? [userSummary] : []);
     } catch (error) {
       console.error("Error fetching debt summaries:", error);
       res.status(500).json({ error: "Failed to fetch debt summaries" });
     }
   });
 
-  app.get("/api/debt/:participantId", async (req, res) => {
+  app.get("/api/debt/:participantId", isAuthenticated, async (req: any, res) => {
     try {
-      const portfolio = await storage.getDebtPortfolio(req.params.participantId);
+      const userId = req.session!.userId!;
+      const user = await storage.getUser(userId);
+      const { participantId } = req.params;
+      
+      // Check access: admins can access any, users can only access their own
+      if (!user?.isAdmin) {
+        const userParticipant = await storage.getParticipantByUserId(userId);
+        if (!userParticipant || userParticipant.id !== participantId) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+      
+      const portfolio = await storage.getDebtPortfolio(participantId);
       if (!portfolio) {
         return res.status(404).json({ error: "Participant not found" });
       }
@@ -1181,11 +1209,21 @@ export async function registerRoutes(
     }
   });
 
-  // Settlement Activity Log - immutable audit trail
-  app.get("/api/settlement-activity-log", async (req, res) => {
+  // Settlement Activity Log - admins see all, users see only their events
+  app.get("/api/settlement-activity-log", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session!.userId!;
+      const user = await storage.getUser(userId);
       const limit = parseInt(req.query.limit as string) || 100;
-      const logs = await storage.getSettlementActivityLogs(limit);
+      
+      if (user?.isAdmin) {
+        // Admins see all logs
+        const logs = await storage.getSettlementActivityLogs(limit);
+        return res.json(logs);
+      }
+      
+      // Regular users: filter logs by their events
+      const logs = await storage.getSettlementActivityLogsForUser(userId, limit);
       res.json(logs);
     } catch (error) {
       console.error("Error fetching settlement activity logs:", error);
