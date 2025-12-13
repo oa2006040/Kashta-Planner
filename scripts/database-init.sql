@@ -338,6 +338,70 @@ CREATE TABLE IF NOT EXISTS settlement_claims (
 );
 
 -- ==========================================
+-- REFRESH_TOKENS TABLE (for "Remember Me" feature)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR NOT NULL,
+    device_name TEXT,
+    user_agent TEXT,
+    ip_address TEXT,
+    issued_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP NOT NULL,
+    last_used_at TIMESTAMP,
+    revoked_at TIMESTAMP
+);
+
+-- ==========================================
+-- WEBAUTHN_CREDENTIALS TABLE (for biometric login)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS webauthn_credentials (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    credential_id TEXT NOT NULL UNIQUE,
+    public_key TEXT NOT NULL,
+    sign_count INTEGER DEFAULT 0,
+    transports TEXT,
+    friendly_name TEXT,
+    last_used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ==========================================
+-- EVENT_ROLES TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS event_roles (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    is_system_role BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ==========================================
+-- ROLE_PERMISSIONS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    role_id VARCHAR NOT NULL REFERENCES event_roles(id) ON DELETE CASCADE,
+    permission TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ==========================================
+-- PARTICIPANT_PERMISSION_OVERRIDES TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS participant_permission_overrides (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    event_participant_id VARCHAR NOT NULL REFERENCES event_participants(id) ON DELETE CASCADE,
+    permission TEXT NOT NULL,
+    is_granted BOOLEAN NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ==========================================
 -- USEFUL INDEXES
 -- ==========================================
 CREATE INDEX IF NOT EXISTS idx_items_category_id ON items(category_id);
@@ -350,6 +414,11 @@ CREATE INDEX IF NOT EXISTS idx_contributions_participant_id ON contributions(par
 CREATE INDEX IF NOT EXISTS idx_settlement_records_event_id ON settlement_records(event_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_webauthn_credentials_user_id ON webauthn_credentials(user_id);
+CREATE INDEX IF NOT EXISTS idx_event_roles_event_id ON event_roles(event_id);
+CREATE INDEX IF NOT EXISTS idx_role_permissions_role_id ON role_permissions(role_id);
 
 -- ==========================================
 -- SEED DEFAULT CATEGORIES (if empty)
