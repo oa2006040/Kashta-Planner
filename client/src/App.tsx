@@ -20,7 +20,6 @@ import ContributionForm from "@/pages/contribution-form";
 import EventParticipantsForm from "@/pages/event-participants-form";
 import Participants from "@/pages/participants";
 import ParticipantForm from "@/pages/participant-form";
-import UsersPage from "@/pages/users";
 import Items from "@/pages/items";
 import History from "@/pages/history";
 import Statement from "@/pages/statement";
@@ -46,7 +45,6 @@ function MainRouter() {
       <Route path="/events/:id/edit" component={EventForm} />
       <Route path="/events/:id/items" component={ContributionForm} />
       <Route path="/events/:id/participants" component={EventParticipantsForm} />
-      <Route path="/users" component={UsersPage} />
       <Route path="/participants" component={Participants} />
       <Route path="/participants/new" component={ParticipantForm} />
       <Route path="/participants/:id/edit" component={ParticipantForm} />
