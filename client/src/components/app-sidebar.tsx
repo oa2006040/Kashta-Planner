@@ -110,13 +110,23 @@ export function AppSidebar() {
                   tooltip={t("التنبيهات", "Notifications")}
                 >
                   <Link href="/notifications" data-testid="link-nav-notifications">
-                    <Bell className="h-4 w-4" />
+                    <div className="relative">
+                      <Bell className="h-4 w-4" />
+                      {notificationCount && notificationCount.count > 0 && (
+                        <span 
+                          className="absolute -top-1.5 -end-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground"
+                          data-testid="badge-notification-icon"
+                        >
+                          {notificationCount.count > 9 ? "9+" : notificationCount.count}
+                        </span>
+                      )}
+                    </div>
                     <span>{t("التنبيهات", "Notifications")}</span>
                   </Link>
                 </SidebarMenuButton>
                 {notificationCount && notificationCount.count > 0 && (
                   <SidebarMenuBadge 
-                    className="bg-destructive text-destructive-foreground"
+                    className="bg-destructive text-destructive-foreground group-data-[collapsible=icon]:hidden"
                     data-testid="badge-notification-count"
                   >
                     {notificationCount.count > 9 ? "9+" : notificationCount.count}
