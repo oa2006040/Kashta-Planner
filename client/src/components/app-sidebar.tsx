@@ -115,7 +115,10 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
                 {notificationCount && notificationCount.count > 0 && (
-                  <SidebarMenuBadge data-testid="badge-notification-count">
+                  <SidebarMenuBadge 
+                    className="bg-destructive text-destructive-foreground"
+                    data-testid="badge-notification-count"
+                  >
                     {notificationCount.count}
                   </SidebarMenuBadge>
                 )}
