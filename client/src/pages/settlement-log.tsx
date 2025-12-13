@@ -221,9 +221,14 @@ export default function SettlementLogPage() {
           ) : (
             <div className="p-12 text-center">
               <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-medium mb-2">{t("لا توجد عمليات مسجلة", "No operations recorded")}</p>
-              <p className="text-muted-foreground">
-                {t("عند تسجيل أو إلغاء عمليات الدفع، ستظهر هنا", "When payments are recorded or cancelled, they will appear here")}
+              <p className="text-lg font-medium mb-2" data-testid="text-empty-state-title">
+                {t("لا توجد سجلات تسوية لفعالياتك", "No settlement records for your events")}
+              </p>
+              <p className="text-muted-foreground" data-testid="text-empty-state-description">
+                {t(
+                  "ستظهر سجلات التسوية هنا عندما يتم تسجيل أو إلغاء مدفوعات في الفعاليات التي تشارك فيها",
+                  "Settlement records will appear here when payments are recorded or cancelled in events you participate in"
+                )}
               </p>
             </div>
           )}
