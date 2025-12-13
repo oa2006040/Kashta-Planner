@@ -496,9 +496,15 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+      
+      // Check if user is admin - admins can edit all events
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) {
+        // Regular users need edit permission
+        const canEdit = await storage.canUserEditEvent(eventId, userId);
+        if (!canEdit) {
+          return res.status(403).json({ error: "Access denied - you don't have permission to edit this event" });
+        }
       }
       
       // Check if trying to cancel - prevent if event has settlements
@@ -546,9 +552,15 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+      
+      // Check if user is admin - admins can delete all events
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) {
+        // Regular users need edit permission to delete
+        const canEdit = await storage.canUserEditEvent(eventId, userId);
+        if (!canEdit) {
+          return res.status(403).json({ error: "Access denied - you don't have permission to delete this event" });
+        }
       }
       
       // Check if event can be deleted (no non-zero cost contributions)
@@ -581,9 +593,14 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+      
+      // Check if user is admin or has edit permission
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) {
+        const canEdit = await storage.canUserEditEvent(eventId, userId);
+        if (!canEdit) {
+          return res.status(403).json({ error: "Access denied - only event organizers can enable sharing" });
+        }
       }
       
       const result = await storage.enableEventSharing(eventId);
@@ -612,9 +629,14 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+      
+      // Check if user is admin or has edit permission
+      const user = await storage.getUser(userId);
+      if (!user?.isAdmin) {
+        const canEdit = await storage.canUserEditEvent(eventId, userId);
+        if (!canEdit) {
+          return res.status(403).json({ error: "Access denied - only event organizers can disable sharing" });
+        }
       }
       
       await storage.disableEventSharing(eventId);
