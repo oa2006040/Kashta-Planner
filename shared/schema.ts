@@ -569,6 +569,8 @@ export type ItemWithOwner = Item & {
 export type EventWithDetails = Event & {
   contributions: (Contribution & { item: ItemWithOwner; participant: Participant | null })[];
   eventParticipants: (EventParticipant & { participant: Participant })[];
+  isOwner?: boolean;
+  currentUserParticipantId?: string | null;
 };
 
 export type CategoryWithItems = Category & {

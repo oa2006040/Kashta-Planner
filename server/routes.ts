@@ -435,7 +435,16 @@ export async function registerRoutes(
       if (!event) {
         return res.status(404).json({ error: "Event not found" });
       }
-      res.json(event);
+      
+      // Add isOwner flag to help frontend show/hide actions
+      const isOwner = await storage.isEventCreator(eventId, userId);
+      const userParticipant = await storage.getParticipantByUserId(userId);
+      
+      res.json({ 
+        ...event, 
+        isOwner,
+        currentUserParticipantId: userParticipant?.id || null
+      });
     } catch (error) {
       console.error("Error fetching event:", error);
       res.status(500).json({ error: "Failed to fetch event" });
@@ -1118,9 +1127,11 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
+      
+      // Only event owner can add supplies
+      const isOwner = await storage.isEventCreator(eventId, userId);
+      if (!isOwner) {
+        return res.status(403).json({ error: "فقط منشئ الطلعة يمكنه إضافة المستلزمات" });
       }
       
       const data = insertContributionSchema.parse({
@@ -1152,8 +1163,55 @@ export async function registerRoutes(
         return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
+      // Get user's participant ID
+      const userParticipant = await storage.getParticipantByUserId(userId);
+      const isOwner = await storage.isEventCreator(existing.eventId, userId);
+      
       const data = insertContributionSchema.partial().parse(req.body);
-      const contribution = await storage.updateContribution(req.params.id, data);
+      
+      // Permission checks for non-owners
+      let allowedData = data;
+      if (!isOwner) {
+        // Non-owners can ONLY modify: participantId, cost, quantity, receiptUrl
+        // Filter out disallowed fields
+        const allowedFields = ['participantId', 'cost', 'quantity', 'receiptUrl'];
+        const disallowedFields = Object.keys(data).filter(k => !allowedFields.includes(k));
+        if (disallowedFields.length > 0) {
+          return res.status(403).json({ error: "ليس لديك صلاحية تعديل هذه الحقول" });
+        }
+        
+        // Non-owners can ONLY:
+        // 1. Assign themselves to an unassigned contribution (with cost/quantity)
+        // 2. Update their own assigned contribution (cost/quantity)
+        // 3. Unassign themselves
+        
+        const isSelfAssigned = existing.participantId === userParticipant?.id;
+        const isTargetingSelf = data.participantId === userParticipant?.id;
+        const isUnassigning = data.participantId === null;
+        const isContributionUnassigned = existing.participantId === null;
+        
+        // Case: Trying to modify someone else's contribution
+        if (!isContributionUnassigned && !isSelfAssigned) {
+          return res.status(403).json({ error: "لا يمكنك تعديل مستلزمات الآخرين" });
+        }
+        
+        // Case: Trying to assign to someone other than self
+        if (data.participantId !== undefined && !isTargetingSelf && !isUnassigning) {
+          return res.status(403).json({ error: "يمكنك فقط تعيين نفسك للمستلزمات" });
+        }
+        
+        // Case: Unassigning - must be self-unassignment
+        if (isUnassigning && !isSelfAssigned) {
+          return res.status(403).json({ error: "يمكنك فقط إلغاء تعيين نفسك" });
+        }
+        
+        // Case: Modifying unassigned contribution without assigning self
+        if (isContributionUnassigned && !isTargetingSelf && data.participantId === undefined) {
+          return res.status(403).json({ error: "يجب تعيين نفسك أولاً لتعديل المستلزم" });
+        }
+      }
+      
+      const contribution = await storage.updateContribution(req.params.id, allowedData);
       if (!contribution) {
         return res.status(404).json({ error: "Contribution not found" });
       }
@@ -1181,6 +1239,15 @@ export async function registerRoutes(
         return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
+      // Check permissions: owner can unassign anyone, regular users can only unassign themselves
+      const isOwner = await storage.isEventCreator(existing.eventId, userId);
+      if (!isOwner) {
+        const userParticipant = await storage.getParticipantByUserId(userId);
+        if (existing.participantId !== userParticipant?.id) {
+          return res.status(403).json({ error: "يمكنك فقط إلغاء تعيين نفسك" });
+        }
+      }
+      
       // Unassign contribution (reset to pending) and prune participant if no other contributions
       const result = await storage.unassignContribution(req.params.id);
       res.json({ unassigned: result.unassigned, participantPruned: result.participantPruned });
@@ -1199,9 +1266,11 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
+      
+      // Only event owner can delete supplies
+      const isOwner = await storage.isEventCreator(existing.eventId, userId);
+      if (!isOwner) {
+        return res.status(403).json({ error: "فقط منشئ الطلعة يمكنه حذف المستلزمات" });
       }
       
       // Use cascade delete to auto-remove participant if no contributions remain
@@ -1302,9 +1371,11 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const canAccess = await storage.canUserAccessEvent(eventId, userId);
-      if (!canAccess) {
-        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
+      
+      // Only event owner can toggle settlement status on behalf of others
+      const isOwner = await storage.isEventCreator(eventId, userId);
+      if (!isOwner) {
+        return res.status(403).json({ error: "فقط منشئ الطلعة يمكنه إدارة التسويات" });
       }
       
       const { debtorId, creditorId } = req.params;

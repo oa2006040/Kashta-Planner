@@ -144,6 +144,8 @@ interface ContributionItemProps {
   onUnassign: (contributionId: string) => void;
   onReceiptUpload: (contributionId: string, receiptUrl: string) => void;
   isAssigning: boolean;
+  isOwner: boolean;
+  currentUserParticipantId: string | null;
 }
 
 function ContributionItem({ 
@@ -155,7 +157,9 @@ function ContributionItem({
   onDelete,
   onUnassign,
   onReceiptUpload,
-  isAssigning 
+  isAssigning,
+  isOwner,
+  currentUserParticipantId
 }: ContributionItemProps) {
   const { t, language } = useLanguage();
   const [showAssign, setShowAssign] = useState(false);
@@ -335,7 +339,7 @@ function ContributionItem({
               <Receipt className="h-4 w-4 text-muted-foreground" />
             </ObjectUploader>
           )}
-          {!hasParticipant && (
+          {!hasParticipant && (isOwner || currentUserParticipantId) && (
             <Button
               size="sm"
               variant="outline"
@@ -346,7 +350,7 @@ function ContributionItem({
               {t("تعيين", "Assign")}
             </Button>
           )}
-          {hasParticipant && !showEdit && (
+          {hasParticipant && !showEdit && (isOwner || contribution.participantId === currentUserParticipantId) && (
             <Button
               size="icon"
               variant="ghost"
@@ -357,6 +361,7 @@ function ContributionItem({
               <Edit2 className="h-4 w-4" />
             </Button>
           )}
+          {(isOwner || (hasParticipant && contribution.participantId === currentUserParticipantId)) && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button 
@@ -400,6 +405,7 @@ function ContributionItem({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          )}
       </div>
       
       {showAssign && !hasParticipant && (
@@ -410,7 +416,7 @@ function ContributionItem({
                 <SelectValue placeholder={t("اختر المشارك", "Select participant")} />
               </SelectTrigger>
               <SelectContent>
-                {participants.map((p) => (
+                {(isOwner ? participants : participants.filter(p => p.id === currentUserParticipantId)).map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     <div className="flex items-center gap-2">
                       <AvatarIcon icon={p.avatar} className="h-4 w-4" />
@@ -510,7 +516,7 @@ function ContributionItem({
                 <SelectValue placeholder={t("اختر المشارك", "Select participant")} />
               </SelectTrigger>
               <SelectContent>
-                {participants.map((p) => (
+                {(isOwner ? participants : participants.filter(p => p.id === currentUserParticipantId)).map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     <div className="flex items-center gap-2">
                       <AvatarIcon icon={p.avatar} className="h-4 w-4" />
@@ -1709,12 +1715,14 @@ export default function EventDetail() {
         <TabsContent value="items" className="space-y-6">
           <div className="flex items-center justify-between gap-4">
             <h3 className="font-semibold">{t("المستلزمات المطلوبة", "Required Items")}</h3>
-            <Link href={`/events/${event.id}/items`}>
-              <Button size="sm" data-testid="button-add-items">
-                <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-                {t("إضافة مستلزمات", "Add Items")}
-              </Button>
-            </Link>
+            {event.isOwner && (
+              <Link href={`/events/${event.id}/items`}>
+                <Button size="sm" data-testid="button-add-items">
+                  <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                  {t("إضافة مستلزمات", "Add Items")}
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Fulfilled Contributions Section (TOP) */}
@@ -1741,6 +1749,8 @@ export default function EventDetail() {
                       onUnassign={(id) => unassignContributionMutation.mutate(id)}
                       onReceiptUpload={handleReceiptUpload}
                       isAssigning={assignParticipantMutation.isPending}
+                      isOwner={event.isOwner || false}
+                      currentUserParticipantId={event.currentUserParticipantId || null}
                     />
                   );
                 })}
@@ -1773,6 +1783,8 @@ export default function EventDetail() {
                       onUnassign={(id) => unassignContributionMutation.mutate(id)}
                       onReceiptUpload={handleReceiptUpload}
                       isAssigning={assignParticipantMutation.isPending}
+                      isOwner={event.isOwner || false}
+                      currentUserParticipantId={event.currentUserParticipantId || null}
                     />
                   );
                 })}
@@ -1789,12 +1801,14 @@ export default function EventDetail() {
                 <p className="text-sm text-muted-foreground mb-4">
                   {t("أضف المستلزمات المطلوبة للطلعة", "Add the required items for this event")}
                 </p>
-                <Link href={`/events/${event.id}/items`}>
-                  <Button size="sm">
-                    <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
-                    {t("إضافة مستلزمات", "Add Items")}
-                  </Button>
-                </Link>
+                {event.isOwner && (
+                  <Link href={`/events/${event.id}/items`}>
+                    <Button size="sm">
+                      <Plus className={`h-4 w-4 ${language === "ar" ? "ml-2" : "mr-2"}`} />
+                      {t("إضافة مستلزمات", "Add Items")}
+                    </Button>
+                  </Link>
+                )}
               </CardContent>
             </Card>
           )}
@@ -2132,30 +2146,32 @@ export default function EventDetail() {
                           >
                             {formatCurrency(tx.amount, language)}
                           </Badge>
-                          <Button
-                            size="sm"
-                            variant={tx.isSettled ? "outline" : "default"}
-                            onClick={() => toggleSettlementMutation.mutate({
-                              debtorId: tx.debtorId,
-                              creditorId: tx.creditorId,
-                            })}
-                            disabled={toggleSettlementMutation.isPending}
-                            data-testid={`button-toggle-tx-${tx.debtorId}-${tx.creditorId}`}
-                          >
-                            {toggleSettlementMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : tx.isSettled ? (
-                              <>
-                                <X className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
-                                {t("إلغاء", "Undo")}
-                              </>
-                            ) : (
-                              <>
-                                <Check className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
-                                {t("تم الدفع", "Paid")}
-                              </>
-                            )}
-                          </Button>
+                          {event.isOwner && (
+                            <Button
+                              size="sm"
+                              variant={tx.isSettled ? "outline" : "default"}
+                              onClick={() => toggleSettlementMutation.mutate({
+                                debtorId: tx.debtorId,
+                                creditorId: tx.creditorId,
+                              })}
+                              disabled={toggleSettlementMutation.isPending}
+                              data-testid={`button-toggle-tx-${tx.debtorId}-${tx.creditorId}`}
+                            >
+                              {toggleSettlementMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : tx.isSettled ? (
+                                <>
+                                  <X className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                                  {t("إلغاء", "Undo")}
+                                </>
+                              ) : (
+                                <>
+                                  <Check className={`h-4 w-4 ${language === "ar" ? "ml-1" : "mr-1"}`} />
+                                  {t("تم الدفع", "Paid")}
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
