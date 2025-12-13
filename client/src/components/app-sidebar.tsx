@@ -34,7 +34,7 @@ import { useAuth } from "@/hooks/useAuth";
 export function AppSidebar() {
   const [location] = useLocation();
   const { t, language } = useLanguage();
-  const { isAuthenticated, handleLogout, isLoggingOut } = useAuth();
+  const { user, isAuthenticated, handleLogout, isLoggingOut } = useAuth();
   
   const { data: notificationCount } = useQuery<{ count: number }>({
     queryKey: ["/api/notifications/count"],
@@ -63,21 +63,24 @@ export function AppSidebar() {
       url: "/history",
       icon: History,
     },
-    {
-      title: t("كشف الحساب", "Statement"),
-      url: "/statement",
-      icon: Receipt,
-    },
-    {
-      title: t("محفظة الديون", "Debt Portfolio"),
-      url: "/debt",
-      icon: Wallet,
-    },
-    {
-      title: t("سجل التسويات", "Settlement Log"),
-      url: "/settlement-log",
-      icon: FileText,
-    },
+    // Admin-only items below
+    ...(user?.isAdmin ? [
+      {
+        title: t("كشف الحساب", "Statement"),
+        url: "/statement",
+        icon: Receipt,
+      },
+      {
+        title: t("محفظة الديون", "Debt Portfolio"),
+        url: "/debt",
+        icon: Wallet,
+      },
+      {
+        title: t("سجل التسويات", "Settlement Log"),
+        url: "/settlement-log",
+        icon: FileText,
+      },
+    ] : []),
   ];
 
   return (
