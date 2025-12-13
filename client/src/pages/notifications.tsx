@@ -215,7 +215,7 @@ export default function Notifications() {
               </h2>
               {unreadNotifications.map((notification) => {
                 const actionUrl = getActionUrl(notification);
-                const isEventInvite = notification.type === 'event_invite' && notification.payload?.eventParticipantId;
+                const isEventInvite = notification.type === 'event_invite' && notification.payload?.invitationId;
                 const isPending = loadingNotificationIds.has(notification.id);
                 
                 const content = (
@@ -304,7 +304,7 @@ export default function Notifications() {
               </h2>
               {readNotifications.map((notification) => {
                 const actionUrl = getActionUrl(notification);
-                const isEventInvite = notification.type === 'event_invite' && notification.payload?.eventParticipantId;
+                const isEventInvite = notification.type === 'event_invite' && notification.payload?.invitationId;
                 const isPending = loadingNotificationIds.has(notification.id);
                 
                 const content = (
