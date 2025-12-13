@@ -1,0 +1,311 @@
+-- Kashta Database Initialization Script
+-- This script creates all tables if they don't exist and adds missing columns
+-- Safe to run multiple times (idempotent)
+
+-- ==========================================
+-- SESSIONS TABLE (Required for authentication)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS sessions (
+    sid VARCHAR PRIMARY KEY,
+    sess JSONB NOT NULL,
+    expire TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions(expire);
+
+-- ==========================================
+-- USERS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    email VARCHAR UNIQUE,
+    password_hash VARCHAR,
+    first_name VARCHAR,
+    last_name VARCHAR,
+    phone VARCHAR,
+    profile_image_url VARCHAR,
+    is_admin BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Add missing columns to users
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password_hash') THEN
+        ALTER TABLE users ADD COLUMN password_hash VARCHAR;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'phone') THEN
+        ALTER TABLE users ADD COLUMN phone VARCHAR;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'is_admin') THEN
+        ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+    END IF;
+END $$;
+
+-- ==========================================
+-- CATEGORIES TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS categories (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    name TEXT NOT NULL,
+    name_ar TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    color TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0
+);
+
+-- ==========================================
+-- ITEMS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS items (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    category_id VARCHAR NOT NULL REFERENCES categories(id),
+    owner_id VARCHAR REFERENCES users(id),
+    name TEXT NOT NULL,
+    description TEXT,
+    is_common BOOLEAN DEFAULT TRUE
+);
+
+-- Add missing columns to items
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'items' AND column_name = 'owner_id') THEN
+        ALTER TABLE items ADD COLUMN owner_id VARCHAR REFERENCES users(id);
+    END IF;
+END $$;
+
+-- ==========================================
+-- PARTICIPANTS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS participants (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id VARCHAR REFERENCES users(id),
+    name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    avatar TEXT,
+    is_guest BOOLEAN DEFAULT FALSE,
+    trip_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Add missing columns to participants
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'participants' AND column_name = 'user_id') THEN
+        ALTER TABLE participants ADD COLUMN user_id VARCHAR REFERENCES users(id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'participants' AND column_name = 'is_guest') THEN
+        ALTER TABLE participants ADD COLUMN is_guest BOOLEAN DEFAULT FALSE;
+    END IF;
+END $$;
+
+-- ==========================================
+-- EVENTS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS events (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    location TEXT,
+    latitude DECIMAL(10, 7),
+    longitude DECIMAL(10, 7),
+    date TIMESTAMP NOT NULL,
+    end_date TIMESTAMP,
+    status TEXT DEFAULT 'upcoming',
+    image_url TEXT,
+    weather TEXT,
+    temperature INTEGER,
+    total_budget DECIMAL(10, 2) DEFAULT 0,
+    share_token TEXT UNIQUE,
+    is_share_enabled BOOLEAN DEFAULT FALSE,
+    creator_participant_id VARCHAR REFERENCES participants(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Add missing columns to events
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'share_token') THEN
+        ALTER TABLE events ADD COLUMN share_token TEXT UNIQUE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'is_share_enabled') THEN
+        ALTER TABLE events ADD COLUMN is_share_enabled BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'creator_participant_id') THEN
+        ALTER TABLE events ADD COLUMN creator_participant_id VARCHAR REFERENCES participants(id);
+    END IF;
+END $$;
+
+-- ==========================================
+-- EVENT_PARTICIPANTS TABLE (Junction)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS event_participants (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    participant_id VARCHAR NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+    role TEXT DEFAULT 'member',
+    status TEXT DEFAULT 'active',
+    confirmed_at TIMESTAMP
+);
+
+-- Add missing columns to event_participants
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'role') THEN
+        ALTER TABLE event_participants ADD COLUMN role TEXT DEFAULT 'member';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'status') THEN
+        ALTER TABLE event_participants ADD COLUMN status TEXT DEFAULT 'active';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'confirmed_at') THEN
+        ALTER TABLE event_participants ADD COLUMN confirmed_at TIMESTAMP;
+    END IF;
+END $$;
+
+-- ==========================================
+-- CONTRIBUTIONS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS contributions (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    item_id VARCHAR NOT NULL REFERENCES items(id),
+    participant_id VARCHAR REFERENCES participants(id),
+    quantity INTEGER DEFAULT 1,
+    cost DECIMAL(10, 2) DEFAULT 0,
+    status TEXT DEFAULT 'pending',
+    notes TEXT,
+    receipt_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Add missing columns to contributions
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'contributions' AND column_name = 'receipt_url') THEN
+        ALTER TABLE contributions ADD COLUMN receipt_url TEXT;
+    END IF;
+END $$;
+
+-- ==========================================
+-- ACTIVITY_LOGS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    details TEXT,
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ==========================================
+-- SETTLEMENT_RECORDS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS settlement_records (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    debtor_id VARCHAR NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+    creditor_id VARCHAR NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+    amount DECIMAL(10, 2) NOT NULL,
+    is_settled BOOLEAN DEFAULT FALSE,
+    settled_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ==========================================
+-- SETTLEMENT_ACTIVITY_LOG TABLE (Immutable audit trail)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS settlement_activity_log (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    event_id INTEGER,
+    event_title TEXT NOT NULL,
+    debtor_id VARCHAR,
+    debtor_name TEXT NOT NULL,
+    creditor_id VARCHAR,
+    creditor_name TEXT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    action TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+-- ==========================================
+-- EVENT_INVITATIONS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS event_invitations (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    inviter_participant_id VARCHAR REFERENCES participants(id),
+    invited_participant_id VARCHAR REFERENCES participants(id),
+    status TEXT DEFAULT 'pending',
+    token TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ==========================================
+-- NOTIFICATIONS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT,
+    payload JSONB,
+    is_read BOOLEAN DEFAULT FALSE,
+    action_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ==========================================
+-- SETTLEMENT_CLAIMS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS settlement_claims (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    settlement_record_id VARCHAR REFERENCES settlement_records(id),
+    event_id INTEGER NOT NULL REFERENCES events(id),
+    debtor_participant_id VARCHAR NOT NULL REFERENCES participants(id),
+    creditor_participant_id VARCHAR NOT NULL REFERENCES participants(id),
+    amount DECIMAL(10, 2) NOT NULL,
+    status TEXT DEFAULT 'pending',
+    submitted_by_participant_id VARCHAR REFERENCES participants(id),
+    responded_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ==========================================
+-- USEFUL INDEXES
+-- ==========================================
+CREATE INDEX IF NOT EXISTS idx_items_category_id ON items(category_id);
+CREATE INDEX IF NOT EXISTS idx_items_owner_id ON items(owner_id);
+CREATE INDEX IF NOT EXISTS idx_participants_user_id ON participants(user_id);
+CREATE INDEX IF NOT EXISTS idx_event_participants_event_id ON event_participants(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_participants_participant_id ON event_participants(participant_id);
+CREATE INDEX IF NOT EXISTS idx_contributions_event_id ON contributions(event_id);
+CREATE INDEX IF NOT EXISTS idx_contributions_participant_id ON contributions(participant_id);
+CREATE INDEX IF NOT EXISTS idx_settlement_records_event_id ON settlement_records(event_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+
+-- ==========================================
+-- SEED DEFAULT CATEGORIES (if empty)
+-- ==========================================
+INSERT INTO categories (id, name, name_ar, icon, color, sort_order)
+SELECT * FROM (VALUES
+    ('coffee', 'Coffee & Tea', 'القهوة والشاي', 'Coffee', '#8B4513', 1),
+    ('grilling', 'Grilling & BBQ', 'الشواء والمشاوي', 'Flame', '#FF6B35', 2),
+    ('camping', 'Camping Gear', 'مستلزمات التخييم', 'Tent', '#228B22', 3),
+    ('food', 'Food & Drinks', 'الأكل والمشروبات', 'UtensilsCrossed', '#FF9500', 4),
+    ('lighting', 'Lighting', 'الإضاءة', 'Lightbulb', '#FFD700', 5),
+    ('seating', 'Seating & Comfort', 'الجلسات والراحة', 'Armchair', '#9370DB', 6),
+    ('games', 'Games & Entertainment', 'الألعاب والترفيه', 'Gamepad2', '#FF69B4', 7),
+    ('safety', 'Safety & First Aid', 'السلامة والإسعافات', 'ShieldCheck', '#DC143C', 8)
+) AS v(id, name, name_ar, icon, color, sort_order)
+WHERE NOT EXISTS (SELECT 1 FROM categories LIMIT 1);
+
+-- Done!
+SELECT 'Database initialization complete!' AS status;
