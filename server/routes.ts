@@ -1528,6 +1528,127 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/notifications/:id/accept-invite", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const notificationId = req.params.id;
+      
+      const notification = await storage.getNotification(notificationId);
+      if (!notification) {
+        return res.status(404).json({ error: "الإشعار غير موجود" });
+      }
+      
+      if (notification.userId !== userId) {
+        return res.status(403).json({ error: "غير مصرح لك" });
+      }
+      
+      if (notification.type !== 'event_invite') {
+        return res.status(400).json({ error: "هذا الإشعار ليس دعوة" });
+      }
+      
+      const payload = notification.payload as any;
+      if (!payload?.eventParticipantId || !payload?.invitationId) {
+        return res.status(400).json({ error: "بيانات الدعوة غير صالحة" });
+      }
+      
+      // Idempotency guard: check if event participant exists and is still pending
+      const eventParticipant = await storage.getEventParticipantById(payload.eventParticipantId);
+      if (!eventParticipant) {
+        return res.status(404).json({ error: "المشاركة لم تعد موجودة" });
+      }
+      if (eventParticipant.status !== 'pending') {
+        return res.status(409).json({ error: "تم معالجة هذه الدعوة مسبقاً" });
+      }
+      
+      // Idempotency guard: check if invitation exists and is still pending
+      const invitation = await storage.getInvitationById(payload.invitationId);
+      if (!invitation) {
+        return res.status(404).json({ error: "الدعوة لم تعد موجودة" });
+      }
+      if (invitation.status !== 'pending') {
+        return res.status(409).json({ error: "تم معالجة هذه الدعوة مسبقاً" });
+      }
+      
+      await storage.updateEventParticipantStatus(payload.eventParticipantId, 'active');
+      await storage.updateInvitationStatus(payload.invitationId, 'accepted');
+      await storage.markNotificationRead(notificationId);
+      
+      const event = await storage.getEvent(payload.eventId);
+      const participant = await storage.getParticipantByUserId(userId);
+      
+      await storage.createActivityLog({
+        eventId: payload.eventId,
+        action: "قبول دعوة",
+        details: `قبل ${participant?.name || 'مشارك'} الدعوة للطلعة`,
+      });
+      
+      res.json({ success: true, eventId: payload.eventId, message: "تم قبول الدعوة بنجاح" });
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      res.status(500).json({ error: "حدث خطأ أثناء قبول الدعوة" });
+    }
+  });
+
+  app.post("/api/notifications/:id/decline-invite", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const notificationId = req.params.id;
+      
+      const notification = await storage.getNotification(notificationId);
+      if (!notification) {
+        return res.status(404).json({ error: "الإشعار غير موجود" });
+      }
+      
+      if (notification.userId !== userId) {
+        return res.status(403).json({ error: "غير مصرح لك" });
+      }
+      
+      if (notification.type !== 'event_invite') {
+        return res.status(400).json({ error: "هذا الإشعار ليس دعوة" });
+      }
+      
+      const payload = notification.payload as any;
+      if (!payload?.eventParticipantId || !payload?.invitationId) {
+        return res.status(400).json({ error: "بيانات الدعوة غير صالحة" });
+      }
+      
+      // Idempotency guard: check if event participant exists and is still pending
+      const eventParticipant = await storage.getEventParticipantById(payload.eventParticipantId);
+      if (!eventParticipant) {
+        return res.status(404).json({ error: "المشاركة لم تعد موجودة" });
+      }
+      if (eventParticipant.status !== 'pending') {
+        return res.status(409).json({ error: "تم معالجة هذه الدعوة مسبقاً" });
+      }
+      
+      // Idempotency guard: check if invitation exists and is still pending
+      const invitation = await storage.getInvitationById(payload.invitationId);
+      if (!invitation) {
+        return res.status(404).json({ error: "الدعوة لم تعد موجودة" });
+      }
+      if (invitation.status !== 'pending') {
+        return res.status(409).json({ error: "تم معالجة هذه الدعوة مسبقاً" });
+      }
+      
+      await storage.updateEventParticipantStatus(payload.eventParticipantId, 'declined');
+      await storage.updateInvitationStatus(payload.invitationId, 'declined');
+      await storage.markNotificationRead(notificationId);
+      
+      const participant = await storage.getParticipantByUserId(userId);
+      
+      await storage.createActivityLog({
+        eventId: payload.eventId,
+        action: "رفض دعوة",
+        details: `رفض ${participant?.name || 'مشارك'} الدعوة للطلعة`,
+      });
+      
+      res.json({ success: true, message: "تم رفض الدعوة" });
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+      res.status(500).json({ error: "حدث خطأ أثناء رفض الدعوة" });
+    }
+  });
+
   // ========== Invitations ==========
   app.get("/api/invitations", isAuthenticated, async (req: any, res) => {
     try {
@@ -1607,10 +1728,18 @@ export async function registerRoutes(
       const allParticipants = await storage.getParticipants();
       const participantInEvent = eventParticipantsList.find(ep => {
         const participant = allParticipants.find(p => p.id === ep.participantId);
-        return participant?.email?.toLowerCase() === email.toLowerCase();
+        return participant?.email?.toLowerCase() === email.toLowerCase() && ep.status === 'active';
       });
       if (participantInEvent) {
         return res.status(409).json({ error: "هذا المستخدم مشارك في الفعالية بالفعل", errorCode: "ALREADY_PARTICIPANT" });
+      }
+      
+      const pendingParticipant = eventParticipantsList.find(ep => {
+        const participant = allParticipants.find(p => p.id === ep.participantId);
+        return participant?.email?.toLowerCase() === email.toLowerCase() && ep.status === 'pending';
+      });
+      if (pendingParticipant) {
+        return res.status(409).json({ error: "هذا المستخدم لديه دعوة معلقة بالفعل", errorCode: "PENDING_INVITATION" });
       }
       
       const existingUser = await storage.getUserByEmail(email);
@@ -1637,14 +1766,25 @@ export async function registerRoutes(
         expiresAt,
       });
       
-      if (existingUser) {
+      let eventParticipantId: string | null = null;
+      if (existingUser && invitedParticipantId) {
+        const defaultRole = await storage.getDefaultRole(eventId);
+        const newEp = await storage.addParticipantToEvent({
+          eventId,
+          participantId: invitedParticipantId,
+          status: 'pending',
+          role: 'member',
+          roleId: defaultRole?.id || null,
+        });
+        eventParticipantId = newEp.id;
+        
         await storage.createNotification({
           userId: existingUser.id,
           type: 'event_invite',
           title: 'دعوة للانضمام لفعالية',
           message: `تمت دعوتك للانضمام إلى "${event.title}"`,
-          payload: { eventId, invitationId: invitation.id },
-          actionUrl: `/invitations`,
+          payload: { eventId, invitationId: invitation.id, eventParticipantId },
+          actionUrl: `/notifications`,
         });
       }
       

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/components/language-provider";
@@ -6,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, Calendar, Users, Wallet, Check, Clock } from "lucide-react";
+import { Bell, Calendar, Users, Wallet, Check, Clock, X } from "lucide-react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import type { NotificationWithPayload } from "@shared/schema";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 function NotificationIcon({ type }: { type: string }) {
   switch (type) {
@@ -50,6 +52,21 @@ function NotificationTypeBadge({ type, t }: { type: string; t: (ar: string, en: 
 export default function Notifications() {
   const { t, language } = useLanguage();
   const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [loadingNotificationIds, setLoadingNotificationIds] = useState<Set<string>>(new Set());
+  
+  const addLoadingId = (id: string) => {
+    setLoadingNotificationIds(prev => new Set(prev).add(id));
+  };
+  
+  const removeLoadingId = (id: string) => {
+    setLoadingNotificationIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
   
   const { data: notifications, isLoading } = useQuery<NotificationWithPayload[]>({
     queryKey: ["/api/notifications"],
@@ -63,6 +80,57 @@ export default function Notifications() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
+    },
+  });
+  
+  const acceptInviteMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      addLoadingId(notificationId);
+      return apiRequest("POST", `/api/notifications/${notificationId}/accept-invite`);
+    },
+    onSuccess: (data: any, notificationId: string) => {
+      removeLoadingId(notificationId);
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      toast({
+        title: t("تم قبول الدعوة", "Invitation accepted"),
+        description: t("يمكنك الآن مشاهدة الفعالية", "You can now view the event"),
+      });
+      if (data?.eventId) {
+        setLocation(`/events/${data.eventId}`);
+      }
+    },
+    onError: (_, notificationId: string) => {
+      removeLoadingId(notificationId);
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء قبول الدعوة", "Failed to accept invitation"),
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const declineInviteMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      addLoadingId(notificationId);
+      return apiRequest("POST", `/api/notifications/${notificationId}/decline-invite`);
+    },
+    onSuccess: (_, notificationId: string) => {
+      removeLoadingId(notificationId);
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
+      toast({
+        title: t("تم رفض الدعوة", "Invitation declined"),
+      });
+    },
+    onError: (_, notificationId: string) => {
+      removeLoadingId(notificationId);
+      toast({
+        title: t("خطأ", "Error"),
+        description: t("حدث خطأ أثناء رفض الدعوة", "Failed to decline invitation"),
+        variant: "destructive",
+      });
     },
   });
   
@@ -147,11 +215,13 @@ export default function Notifications() {
               </h2>
               {unreadNotifications.map((notification) => {
                 const actionUrl = getActionUrl(notification);
+                const isEventInvite = notification.type === 'event_invite' && notification.payload?.eventParticipantId;
+                const isPending = loadingNotificationIds.has(notification.id);
+                
                 const content = (
                   <Card
                     key={notification.id}
-                    className="border-primary/30 bg-primary/5 hover-elevate cursor-pointer"
-                    onClick={() => handleNotificationClick(notification)}
+                    className="border-primary/30 bg-primary/5"
                     data-testid={`notification-unread-${notification.id}`}
                   >
                     <CardContent className="p-4">
@@ -172,17 +242,56 @@ export default function Notifications() {
                           <p className="text-xs text-muted-foreground mt-2">
                             {formatDate(notification.createdAt!)}
                           </p>
+                          {isEventInvite && (
+                            <div className="flex gap-2 mt-3 flex-wrap">
+                              <Button
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  acceptInviteMutation.mutate(notification.id);
+                                }}
+                                disabled={isPending}
+                                data-testid={`button-accept-invite-${notification.id}`}
+                              >
+                                <Check className="h-4 w-4 ml-1" />
+                                {t("قبول", "Accept")}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  declineInviteMutation.mutate(notification.id);
+                                }}
+                                disabled={isPending}
+                                data-testid={`button-decline-invite-${notification.id}`}
+                              >
+                                <X className="h-4 w-4 ml-1" />
+                                {t("رفض", "Decline")}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 );
                 
+                if (isEventInvite) {
+                  return <div key={notification.id}>{content}</div>;
+                }
+                
                 return actionUrl ? (
-                  <Link key={notification.id} href={actionUrl}>
-                    {content}
+                  <Link key={notification.id} href={actionUrl} onClick={() => handleNotificationClick(notification)}>
+                    <div className="hover-elevate cursor-pointer">{content}</div>
                   </Link>
-                ) : content;
+                ) : (
+                  <div key={notification.id} className="hover-elevate cursor-pointer" onClick={() => handleNotificationClick(notification)}>
+                    {content}
+                  </div>
+                );
               })}
             </div>
           )}

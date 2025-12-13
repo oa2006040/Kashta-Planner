@@ -168,9 +168,16 @@ export interface IStorage {
   
   // Notifications
   createNotification(data: InsertNotification): Promise<Notification>;
+  getNotification(notificationId: string): Promise<Notification | undefined>;
   getNotificationsForUser(userId: string): Promise<Notification[]>;
   markNotificationRead(notificationId: string): Promise<boolean>;
   getUnreadNotificationCount(userId: string): Promise<number>;
+  
+  // Event Participant Status Updates
+  getEventParticipantById(id: string): Promise<EventParticipant | undefined>;
+  getInvitationById(id: string): Promise<EventInvitation | undefined>;
+  updateEventParticipantStatus(eventParticipantId: string, status: 'pending' | 'active' | 'declined'): Promise<EventParticipant | undefined>;
+  updateInvitationStatus(invitationId: string, status: 'accepted' | 'declined'): Promise<EventInvitation | undefined>;
   
   // Settlement Claims
   createSettlementClaim(data: InsertSettlementClaim): Promise<SettlementClaim>;
@@ -1974,6 +1981,53 @@ export class DatabaseStorage implements IStorage {
         eq(notifications.isRead, false)
       ));
     return result?.count || 0;
+  }
+
+  async getNotification(notificationId: string): Promise<Notification | undefined> {
+    const [notification] = await db.select()
+      .from(notifications)
+      .where(eq(notifications.id, notificationId));
+    return notification;
+  }
+
+  async getEventParticipantById(id: string): Promise<EventParticipant | undefined> {
+    const [ep] = await db.select()
+      .from(eventParticipants)
+      .where(eq(eventParticipants.id, id));
+    return ep;
+  }
+
+  async getInvitationById(id: string): Promise<EventInvitation | undefined> {
+    const [inv] = await db.select()
+      .from(eventInvitations)
+      .where(eq(eventInvitations.id, id));
+    return inv;
+  }
+
+  async updateEventParticipantStatus(
+    eventParticipantId: string, 
+    status: 'pending' | 'active' | 'declined'
+  ): Promise<EventParticipant | undefined> {
+    const updateData: any = { status };
+    if (status === 'active') {
+      updateData.confirmedAt = new Date();
+    }
+    const [updated] = await db.update(eventParticipants)
+      .set(updateData)
+      .where(eq(eventParticipants.id, eventParticipantId))
+      .returning();
+    return updated;
+  }
+
+  async updateInvitationStatus(
+    invitationId: string, 
+    status: 'accepted' | 'declined'
+  ): Promise<EventInvitation | undefined> {
+    const [updated] = await db.update(eventInvitations)
+      .set({ status })
+      .where(eq(eventInvitations.id, invitationId))
+      .returning();
+    return updated;
   }
 
   // Settlement Claims
