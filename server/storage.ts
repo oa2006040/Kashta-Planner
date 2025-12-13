@@ -207,6 +207,7 @@ export interface IStorage {
   getDebtSummaries(): Promise<ParticipantDebtSummary[]>;
   getDebtSummaryForParticipant(participantId: string): Promise<ParticipantDebtSummary | null>;
   getDebtPortfolio(participantId: string): Promise<ParticipantDebtPortfolio | null>;
+  getUserDebtWallet(userId: string): Promise<{ paid: SettlementRecordWithDetails[], unpaid: SettlementRecordWithDetails[], userParticipantId: string | null }>;
   
   // RBAC - Event Roles
   getEventRoles(eventId: number): Promise<EventRoleWithPermissions[]>;
@@ -2344,6 +2345,47 @@ export class DatabaseStorage implements IStorage {
       .where(eq(eventParticipants.id, epId))
       .returning();
     return updated;
+  }
+
+  async getUserDebtWallet(userId: string): Promise<{ paid: SettlementRecordWithDetails[], unpaid: SettlementRecordWithDetails[], userParticipantId: string | null }> {
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) {
+      return { paid: [], unpaid: [], userParticipantId: null };
+    }
+    
+    const records = await db.select()
+      .from(settlementRecords)
+      .where(or(
+        eq(settlementRecords.debtorId, participant.id),
+        eq(settlementRecords.creditorId, participant.id)
+      ))
+      .orderBy(desc(settlementRecords.createdAt));
+    
+    if (records.length === 0) {
+      return { paid: [], unpaid: [], userParticipantId: participant.id };
+    }
+    
+    const eventIds = [...new Set(records.map(r => r.eventId))];
+    const participantIds = [...new Set([
+      ...records.map(r => r.debtorId),
+      ...records.map(r => r.creditorId)
+    ])];
+    
+    const eventsList = await db.select().from(events).where(inArray(events.id, eventIds));
+    const participantsList = await db.select().from(participants).where(inArray(participants.id, participantIds));
+    
+    const recordsWithDetails = records.map(r => ({
+      ...r,
+      debtor: participantsList.find(p => p.id === r.debtorId)!,
+      creditor: participantsList.find(p => p.id === r.creditorId)!,
+      event: eventsList.find(e => e.id === r.eventId),
+    }));
+    
+    return {
+      paid: recordsWithDetails.filter(r => r.isSettled),
+      unpaid: recordsWithDetails.filter(r => !r.isSettled),
+      userParticipantId: participant.id,
+    };
   }
 
   // ============================================

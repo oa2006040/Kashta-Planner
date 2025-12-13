@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { updateProfileSchema, changePasswordSchema, type UpdateProfile, type ChangePassword, type SafeUser, type SettlementClaimWithDetails } from "@shared/schema";
+import { updateProfileSchema, changePasswordSchema, type UpdateProfile, type ChangePassword, type SafeUser, type SettlementClaimWithDetails, type SettlementRecordWithDetails } from "@shared/schema";
 import { formatCurrency } from "@/lib/constants";
 import { useLanguage } from "@/components/language-provider";
 
@@ -54,6 +54,10 @@ export default function Account() {
       </div>
 
       <PaymentClaimsSection />
+
+      <Separator />
+
+      <DebtWalletSection />
 
       <Separator />
 
@@ -600,5 +604,152 @@ function PaymentClaimsSection() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+type DebtWalletResponse = {
+  paid: SettlementRecordWithDetails[];
+  unpaid: SettlementRecordWithDetails[];
+  userParticipantId: string | null;
+};
+
+function DebtWalletSection() {
+  const { t, language } = useLanguage();
+  
+  const { data: wallet, isLoading } = useQuery<DebtWalletResponse>({
+    queryKey: ["/api/my-debt-wallet"],
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">{t("محفظة الديون", "Debt Wallet")}</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasAnyDebts = (wallet?.paid?.length || 0) + (wallet?.unpaid?.length || 0) > 0;
+
+  if (!hasAnyDebts) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">{t("محفظة الديون", "Debt Wallet")}</CardTitle>
+          </div>
+          <CardDescription>{t("عرض جميع ديونك المدفوعة والمتبقية", "View all your paid and remaining debts")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground py-4">
+            {t("لا توجد ديون حالياً", "No debts currently")}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Wallet className="h-5 w-5 text-muted-foreground" />
+          <CardTitle className="text-lg">{t("محفظة الديون", "Debt Wallet")}</CardTitle>
+        </div>
+        <CardDescription>{t("عرض جميع ديونك المدفوعة والمتبقية", "View all your paid and remaining debts")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {wallet?.unpaid && wallet.unpaid.length > 0 && (
+          <div className="space-y-3" id="remaining-debts">
+            <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              {t("ديون متبقية", "Remaining Debts")}
+              <Badge variant="secondary">{wallet.unpaid.length}</Badge>
+            </h4>
+            {wallet.unpaid.map((record) => (
+              <DebtRecordCard key={record.id} record={record} language={language} t={t} userParticipantId={wallet.userParticipantId} />
+            ))}
+          </div>
+        )}
+
+        {wallet?.paid && wallet.paid.length > 0 && (
+          <div className="space-y-3" id="paid-debts">
+            <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
+              <Check className="h-4 w-4" />
+              {t("ديون مسددة", "Paid Debts")}
+              <Badge variant="outline">{wallet.paid.length}</Badge>
+            </h4>
+            {wallet.paid.slice(0, 5).map((record) => (
+              <DebtRecordCard key={record.id} record={record} language={language} t={t} isPaid userParticipantId={wallet.userParticipantId} />
+            ))}
+            {wallet.paid.length > 5 && (
+              <p className="text-sm text-muted-foreground text-center">
+                {t(`+ ${wallet.paid.length - 5} ديون أخرى`, `+ ${wallet.paid.length - 5} more debts`)}
+              </p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function DebtRecordCard({ 
+  record, 
+  language, 
+  t, 
+  isPaid = false,
+  userParticipantId
+}: { 
+  record: SettlementRecordWithDetails; 
+  language: string; 
+  t: (ar: string, en: string) => string;
+  isPaid?: boolean;
+  userParticipantId: string | null;
+}) {
+  const isDebtor = userParticipantId === record.debtorId;
+  const counterparty = isDebtor ? record.creditor : record.debtor;
+  const roleLabel = isDebtor 
+    ? t("أنت مدين لـ", "You owe")
+    : t("مستحق لك من", "Owed to you by");
+
+  return (
+    <div
+      className={`border rounded-md p-3 flex items-center justify-between gap-4 flex-wrap ${isPaid ? 'opacity-70' : ''}`}
+      data-testid={`debt-record-${record.id}`}
+    >
+      <div className="space-y-1">
+        <p className="text-sm">
+          {roleLabel} <span className="font-medium">{counterparty?.name || t("مشارك", "Participant")}</span>
+        </p>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Calendar className="h-3 w-3" />
+          <Link href={`/events/${record.eventId}`}>
+            <span className="hover:underline cursor-pointer">{record.event?.title || t("طلعة", "Event")}</span>
+          </Link>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className={`font-bold ${isPaid ? 'text-muted-foreground' : 'text-primary'}`}>
+          {formatCurrency(parseFloat(record.amount), language)}
+        </span>
+        {isPaid && (
+          <Badge variant="outline" className="text-xs">
+            <Check className="h-3 w-3 me-1" />
+            {t("مسدد", "Paid")}
+          </Badge>
+        )}
+      </div>
+    </div>
   );
 }

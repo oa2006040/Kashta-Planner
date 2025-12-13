@@ -1443,6 +1443,18 @@ export async function registerRoutes(
     }
   });
 
+  // User's debt wallet - shows their paid/unpaid settlements
+  app.get("/api/my-debt-wallet", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const wallet = await storage.getUserDebtWallet(userId);
+      res.json(wallet);
+    } catch (error) {
+      console.error("Error fetching debt wallet:", error);
+      res.status(500).json({ error: "Failed to fetch debt wallet" });
+    }
+  });
+
   // Settlement Activity Log - admins see all, users see only their events
   app.get("/api/settlement-activity-log", isAuthenticated, async (req: any, res) => {
     try {
