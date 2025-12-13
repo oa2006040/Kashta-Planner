@@ -25,9 +25,20 @@ export async function registerRoutes(
   // Participant invitation is now done via email only
 
   // Stats
-  app.get("/api/stats", async (req, res) => {
+  app.get("/api/stats", isAuthenticated, async (req: any, res) => {
     try {
-      const stats = await storage.getStats();
+      const userId = req.session!.userId!;
+      
+      // Check if user is admin
+      const user = await storage.getUser(userId);
+      if (user?.isAdmin) {
+        // Admins see global stats
+        const stats = await storage.getStats();
+        return res.json(stats);
+      }
+      
+      // Regular users see only their stats
+      const stats = await storage.getStatsForUser(userId);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching stats:", error);

@@ -722,6 +722,105 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // User-specific stats (for non-admin users)
+  async getStatsForUser(userId: string) {
+    // Get user's participant record
+    const participant = await this.getParticipantByUserId(userId);
+    if (!participant) {
+      return {
+        totalEvents: 0,
+        upcomingEvents: 0,
+        ongoingEvents: 0,
+        completedEvents: 0,
+        cancelledEvents: 0,
+        totalParticipants: 0,
+        totalItems: 0,
+        totalBudget: 0,
+        paidAmount: 0,
+        unpaidAmount: 0,
+      };
+    }
+
+    // Get user's events
+    const userEvents = await this.getEventsForUser(userId);
+    const userEventIds = userEvents.map(e => e.id);
+
+    if (userEventIds.length === 0) {
+      return {
+        totalEvents: 0,
+        upcomingEvents: 0,
+        ongoingEvents: 0,
+        completedEvents: 0,
+        cancelledEvents: 0,
+        totalParticipants: 0,
+        totalItems: 0,
+        totalBudget: 0,
+        paidAmount: 0,
+        unpaidAmount: 0,
+      };
+    }
+
+    // Count events by status
+    const upcomingEvents = userEvents.filter(e => e.status === 'upcoming').length;
+    const ongoingEvents = userEvents.filter(e => e.status === 'ongoing').length;
+    const completedEvents = userEvents.filter(e => e.status === 'completed').length;
+    const cancelledEvents = userEvents.filter(e => e.status === 'cancelled').length;
+
+    // Get budget from user's events only
+    const [budgetResult] = await db
+      .select({ total: sql<number>`COALESCE(SUM(cost::numeric), 0)::float` })
+      .from(contributions)
+      .where(inArray(contributions.eventId, userEventIds));
+
+    // Get user's paid debts (where user is debtor or creditor)
+    const [paidResult] = await db
+      .select({ total: sql<number>`COALESCE(SUM(amount::numeric), 0)::float` })
+      .from(settlementRecords)
+      .where(and(
+        inArray(settlementRecords.eventId, userEventIds),
+        eq(settlementRecords.isSettled, true),
+        or(
+          eq(settlementRecords.debtorId, participant.id),
+          eq(settlementRecords.creditorId, participant.id)
+        )
+      ));
+
+    // Get user's unpaid debts
+    const [unpaidResult] = await db
+      .select({ total: sql<number>`COALESCE(SUM(amount::numeric), 0)::float` })
+      .from(settlementRecords)
+      .where(and(
+        inArray(settlementRecords.eventId, userEventIds),
+        eq(settlementRecords.isSettled, false),
+        or(
+          eq(settlementRecords.debtorId, participant.id),
+          eq(settlementRecords.creditorId, participant.id)
+        )
+      ));
+
+    // Count unique participants in user's events
+    const participantIds = new Set<string>();
+    for (const eventId of userEventIds) {
+      const eps = await db.select()
+        .from(eventParticipants)
+        .where(eq(eventParticipants.eventId, eventId));
+      eps.forEach(ep => participantIds.add(ep.participantId));
+    }
+
+    return {
+      totalEvents: userEvents.length,
+      upcomingEvents,
+      ongoingEvents,
+      completedEvents,
+      cancelledEvents,
+      totalParticipants: participantIds.size,
+      totalItems: 0, // Not relevant for user-specific view
+      totalBudget: budgetResult?.total || 0,
+      paidAmount: paidResult?.total || 0,
+      unpaidAmount: unpaidResult?.total || 0,
+    };
+  }
+
   // Users (for Replit Auth and manual auth)
   async getAllUsers(): Promise<User[]> {
     return db.select().from(users).orderBy(users.firstName);
