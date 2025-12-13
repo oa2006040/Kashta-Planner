@@ -210,6 +210,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'role') THEN
         ALTER TABLE event_participants ADD COLUMN role TEXT DEFAULT 'member';
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'role_id') THEN
+        ALTER TABLE event_participants ADD COLUMN role_id VARCHAR REFERENCES event_roles(id);
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'status') THEN
         ALTER TABLE event_participants ADD COLUMN status TEXT DEFAULT 'active';
     END IF;

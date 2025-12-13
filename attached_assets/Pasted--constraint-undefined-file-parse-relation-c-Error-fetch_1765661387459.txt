@@ -1,0 +1,78 @@
+  constraint: undefined,
+  file: 'parse_relation.c',
+Error fetching events: error: column "role_id" does not exist
+  line: '3723',
+  routine: 'errorMissingColumn'
+    at /app/dist/index.cjs:70:13326
+}
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+9:27:50 PM [express] GET /api/events 500 in 8ms :: {"error":"Failed to fetch events"}
+    at async /app/dist/index.cjs:76:111936
+    at async Rm.getEventsForUser (/app/dist/index.cjs:76:138267)
+    at async /app/dist/index.cjs:76:165081 {
+  length: 177,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "event_participants.role".',
+  position: '44',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  position: '44',
+  internalPosition: undefined,
+  internalQuery: undefined,
+Error fetching stats: error: column "role_id" does not exist
+  where: undefined,
+    at /app/dist/index.cjs:70:13326
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  schema: undefined,
+  table: undefined,
+    at async /app/dist/index.cjs:76:111936
+    at async Rm.getEventsForUser (/app/dist/index.cjs:76:138267)
+  column: undefined,
+  dataType: undefined,
+    at async Rm.getStatsForUser (/app/dist/index.cjs:76:124518)
+  constraint: undefined,
+    at async /app/dist/index.cjs:76:157633 {
+  length: 177,
+  severity: 'ERROR',
+  file: 'parse_relation.c',
+  code: '42703',
+  line: '3723',
+  detail: undefined,
+  routine: 'errorMissingColumn'
+  hint: 'Perhaps you meant to reference the column "event_participants.role".',
+}
+9:27:50 PM [express] GET /api/stats 500 in 15ms :: {"error":"Failed to fetch stats"}
+Error fetching settlement activity logs: error: column "role_id" does not exist
+}
+    at /app/dist/index.cjs:70:13326
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:76:111936
+    at async Rm.getSettlementActivityLogsForUser (/app/dist/index.cjs:76:131408)
+    at async /app/dist/index.cjs:76:183144 {
+  length: 177,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "event_participants.role".',
+  position: '44',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3723',
+  routine: 'errorMissingColumn'
+9:27:52 PM [express] GET /api/settlement-activity-log 500 in 38ms :: {"error":"Failed to fetch settlement activity logs"}
+9:27:53 PM [express] GET /api/auth/status 304 in 17ms :: {"authenticated":true,"user":{"id":"1e5eea84-2609-4110-914c-0bebd0c4b880","email":"osamamotea1@gmail.com","firstName":"Aiman","lastName":"Alsumaitti","phone":"+97477704344","profileImageUrl":null,"isAdmin":false,"createdAt":"2025-12-13T21:27:50.136Z","updatedAt":"2025-12-13T21:27:50.136Z"},"logoutUrl":"/api/auth/logout"}
+9:27:57 PM [express] GET /api/auth/status 304 in 5ms :: {"authenticated":true,"user":{"id":"1e5eea84-2609-4110-914c-0bebd0c4b880","email":"osamamotea1@gmail.com","firstName":"Aiman","lastName":"Alsumaitti","phone":"+97477704344","profileImageUrl":null,"isAdmin":false,"createdAt":"2025-12-13T21:27:50.136Z","updatedAt":"2025-12-13T21:27:50.136Z"},"logoutUrl":"/api/auth/logout"}
