@@ -53,7 +53,7 @@ import { eq, desc, and, sql, inArray, or } from "drizzle-orm";
 export interface IStorage {
   // Categories
   getCategories(): Promise<Category[]>;
-  getCategoriesWithItems(): Promise<CategoryWithItems[]>;
+  getCategoriesWithItems(userId?: string, isAdmin?: boolean): Promise<CategoryWithItems[]>;
   getCategory(id: string): Promise<Category | undefined>;
   createCategory(category: InsertCategory): Promise<Category>;
   updateCategory(id: string, category: Partial<InsertCategory>): Promise<Category | undefined>;
@@ -178,19 +178,36 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(categories).orderBy(categories.sortOrder);
   }
 
-  async getCategoriesWithItems(): Promise<CategoryWithItems[]> {
+  async getCategoriesWithItems(userId?: string, isAdmin?: boolean): Promise<CategoryWithItems[]> {
     const allCategories = await db.select().from(categories).orderBy(categories.sortOrder);
-    const allItems = await db.select().from(items);
     
-    // Get all unique owner IDs
-    const ownerIds = Array.from(new Set(allItems.filter(i => i.ownerId).map(i => i.ownerId!)));
+    // Get items based on user permissions:
+    // - Admins see all items
+    // - Regular users see system items (ownerId = null) + their own items
+    let filteredItems;
+    if (isAdmin) {
+      filteredItems = await db.select().from(items);
+    } else if (userId) {
+      filteredItems = await db.select().from(items).where(
+        or(
+          sql`${items.ownerId} IS NULL`,
+          eq(items.ownerId, userId)
+        )
+      );
+    } else {
+      // Not logged in - show only system items
+      filteredItems = await db.select().from(items).where(sql`${items.ownerId} IS NULL`);
+    }
+    
+    // Get all unique owner IDs from filtered items
+    const ownerIds = Array.from(new Set(filteredItems.filter(i => i.ownerId).map(i => i.ownerId!)));
     const ownersList = ownerIds.length > 0
       ? await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
           .from(users).where(inArray(users.id, ownerIds))
       : [];
     
     // Map items with owner info
-    const itemsWithOwner = allItems.map(item => ({
+    const itemsWithOwner = filteredItems.map(item => ({
       ...item,
       owner: item.ownerId ? ownersList.find(u => u.id === item.ownerId) || null : null,
     }));

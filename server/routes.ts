@@ -47,11 +47,18 @@ export async function registerRoutes(
   });
 
   // Categories
-  app.get("/api/categories", async (req, res) => {
+  app.get("/api/categories", async (req: any, res) => {
     try {
       const withItems = req.query.withItems === "true";
       if (withItems) {
-        const categories = await storage.getCategoriesWithItems();
+        // Get user info for filtering items
+        const userId = req.session?.userId;
+        let isAdmin = false;
+        if (userId) {
+          const user = await storage.getUser(userId);
+          isAdmin = user?.isAdmin ?? false;
+        }
+        const categories = await storage.getCategoriesWithItems(userId, isAdmin);
         res.json(categories);
       } else {
         const categories = await storage.getCategories();

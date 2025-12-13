@@ -583,6 +583,8 @@ function CategorySection({
   const [editColor, setEditColor] = useState(category.color);
   const [iconSearch, setIconSearch] = useState("");
   const { t, language } = useLanguage();
+  
+  const isAdmin = user?.isAdmin ?? false;
 
   const filteredIcons = AVAILABLE_ICON_NAMES.filter(icon => {
     const searchLower = iconSearch.toLowerCase();
@@ -623,6 +625,7 @@ function CategorySection({
           <div className="flex items-center gap-2">
             <Badge variant="outline">{items.length}</Badge>
             
+            {isAdmin && (
             <Dialog open={editDialogOpen} onOpenChange={(open) => {
               setEditDialogOpen(open);
               if (open) {
@@ -741,7 +744,9 @@ function CategorySection({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            )}
 
+            {isAdmin && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button 
@@ -774,6 +779,7 @@ function CategorySection({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            )}
             <Button 
               variant="ghost" 
               size="icon"
