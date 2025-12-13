@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { storage } from "./storage";
 import { 
   registerUserSchema, 
@@ -11,16 +12,47 @@ import {
 import { z } from "zod";
 
 const SALT_ROUNDS = 10;
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const REFRESH_TOKEN_EXPIRY_DAYS = 30;
+const REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
 
 declare module 'express-session' {
   interface SessionData {
     userId?: string;
+    lastActivity?: number;
   }
+}
+
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function generateRefreshToken(): string {
+  return crypto.randomBytes(32).toString("hex");
 }
 
 function excludePassword(user: any): SafeUser {
   const { passwordHash, ...safeUser } = user;
   return safeUser;
+}
+
+export function sessionActivityMiddleware(req: Request, res: Response, next: NextFunction) {
+  if (!req.session?.userId) {
+    return next();
+  }
+  
+  const lastActivity = req.session.lastActivity || Date.now();
+  const now = Date.now();
+  
+  if (now - lastActivity > INACTIVITY_TIMEOUT) {
+    req.session.destroy((err) => {
+      if (err) console.error("Session destroy error:", err);
+    });
+    return res.status(401).json({ message: "انتهت الجلسة بسبب عدم النشاط" });
+  }
+  
+  req.session.lastActivity = now;
+  next();
 }
 
 export function isManualAuthenticated(req: Request, res: Response, next: NextFunction) {
@@ -89,6 +121,33 @@ export function setupManualAuth(app: Express) {
       }
 
       req.session.userId = user.id;
+      req.session.lastActivity = Date.now();
+      
+      // Handle "Remember Me" - create refresh token
+      if (data.rememberMe) {
+        const rawToken = generateRefreshToken();
+        const tokenHash = hashToken(rawToken);
+        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+        
+        await storage.createRefreshToken({
+          userId: user.id,
+          tokenHash,
+          deviceName: req.get("User-Agent")?.substring(0, 50) || "Unknown Device",
+          userAgent: req.get("User-Agent") || null,
+          ipAddress: req.ip || null,
+          expiresAt,
+          lastUsedAt: new Date(),
+          revokedAt: null,
+        });
+        
+        res.cookie(REFRESH_TOKEN_COOKIE_NAME, rawToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+          path: "/",
+        });
+      }
       
       res.json(excludePassword(user));
     } catch (error) {
@@ -100,15 +159,73 @@ export function setupManualAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
+  app.post("/api/auth/logout", async (req: Request, res: Response) => {
+    const userId = req.session?.userId;
+    
+    // Revoke refresh token from cookie
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME];
+    if (refreshToken) {
+      const tokenHash = hashToken(refreshToken);
+      const token = await storage.getRefreshTokenByHash(tokenHash);
+      if (token) {
+        await storage.revokeRefreshToken(token.id);
+      }
+    }
+    
     req.session.destroy((err) => {
       if (err) {
         console.error("Logout error:", err);
         return res.status(500).json({ message: "حدث خطأ أثناء تسجيل الخروج" });
       }
       res.clearCookie("connect.sid");
+      res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, { path: "/" });
       res.json({ message: "تم تسجيل الخروج بنجاح" });
     });
+  });
+
+  // Refresh session using refresh token
+  app.post("/api/auth/refresh", async (req: Request, res: Response) => {
+    try {
+      const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME];
+      
+      if (!refreshToken) {
+        return res.status(401).json({ message: "لا يوجد رمز تحديث" });
+      }
+      
+      const tokenHash = hashToken(refreshToken);
+      const storedToken = await storage.getRefreshTokenByHash(tokenHash);
+      
+      if (!storedToken) {
+        res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, { path: "/" });
+        return res.status(401).json({ message: "رمز التحديث غير صالح" });
+      }
+      
+      // Check if token is expired or revoked
+      if (storedToken.revokedAt || new Date(storedToken.expiresAt) < new Date()) {
+        res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, { path: "/" });
+        return res.status(401).json({ message: "رمز التحديث منتهي الصلاحية" });
+      }
+      
+      // Get user
+      const user = await storage.getUser(storedToken.userId);
+      if (!user) {
+        await storage.revokeRefreshToken(storedToken.id);
+        res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, { path: "/" });
+        return res.status(401).json({ message: "المستخدم غير موجود" });
+      }
+      
+      // Update last used timestamp
+      await storage.updateRefreshTokenLastUsed(storedToken.id);
+      
+      // Create new session
+      req.session.userId = user.id;
+      req.session.lastActivity = Date.now();
+      
+      res.json(excludePassword(user));
+    } catch (error) {
+      console.error("Refresh error:", error);
+      res.status(500).json({ message: "حدث خطأ أثناء تحديث الجلسة" });
+    }
   });
 
   app.get("/api/auth/status", async (req: Request, res: Response) => {

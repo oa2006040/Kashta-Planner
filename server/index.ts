@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import cookieParser from "cookie-parser";
 import connectPg from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -28,6 +29,7 @@ const sessionStore = new pgStore({
 });
 
 app.set("trust proxy", 1);
+app.use(cookieParser());
 app.use(session({
   secret: sessionSecret,
   store: sessionStore,

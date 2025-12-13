@@ -11,7 +11,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { setupManualAuth, isManualAuthenticated as isAuthenticated } from "./manualAuth";
+import { setupManualAuth, isManualAuthenticated as isAuthenticated, sessionActivityMiddleware } from "./manualAuth";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -20,6 +20,9 @@ export async function registerRoutes(
   
   // Setup manual authentication routes
   setupManualAuth(app);
+  
+  // Apply session activity middleware for inactivity timeout
+  app.use(sessionActivityMiddleware);
 
   // Users endpoint removed for privacy - users should not see other users
   // Participant invitation is now done via email only
