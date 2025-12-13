@@ -425,7 +425,7 @@ export async function registerRoutes(
         // Regular users - check if they have access to this event
         const canAccess = await storage.canUserAccessEvent(eventId, userId);
         if (!canAccess) {
-          return res.status(403).json({ error: "Access denied" });
+          return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
         }
       }
       
@@ -506,7 +506,7 @@ export async function registerRoutes(
         // Regular users need edit permission
         const canEdit = await storage.canUserEditEvent(eventId, userId);
         if (!canEdit) {
-          return res.status(403).json({ error: "Access denied - you don't have permission to edit this event" });
+          return res.status(403).json({ error: "ليس لديك صلاحية تعديل هذه الطلعة" });
         }
       }
       
@@ -562,7 +562,7 @@ export async function registerRoutes(
         // Regular users need edit permission to delete
         const canEdit = await storage.canUserEditEvent(eventId, userId);
         if (!canEdit) {
-          return res.status(403).json({ error: "Access denied - you don't have permission to delete this event" });
+          return res.status(403).json({ error: "ليس لديك صلاحية حذف هذه الطلعة" });
         }
       }
       
@@ -602,7 +602,7 @@ export async function registerRoutes(
       if (!user?.isAdmin) {
         const canEdit = await storage.canUserEditEvent(eventId, userId);
         if (!canEdit) {
-          return res.status(403).json({ error: "Access denied - only event organizers can enable sharing" });
+          return res.status(403).json({ error: "ليس لديك صلاحية تعديل إعدادات المشاركة" });
         }
       }
       
@@ -638,7 +638,7 @@ export async function registerRoutes(
       if (!user?.isAdmin) {
         const canEdit = await storage.canUserEditEvent(eventId, userId);
         if (!canEdit) {
-          return res.status(403).json({ error: "Access denied - only event organizers can disable sharing" });
+          return res.status(403).json({ error: "ليس لديك صلاحية تعديل إعدادات المشاركة" });
         }
       }
       
@@ -745,7 +745,7 @@ export async function registerRoutes(
           ep => ep.participantId === participantId
         );
         if (!isValidParticipant) {
-          return res.status(403).json({ error: "Participant is not part of this event" });
+          return res.status(403).json({ error: "المشارك ليس جزءاً من هذه الطلعة" });
         }
       }
       
@@ -777,7 +777,7 @@ export async function registerRoutes(
       // Verify contribution belongs to this event
       const contribution = await storage.getContribution(req.params.id);
       if (!contribution || contribution.eventId !== event.id) {
-        return res.status(403).json({ error: "Contribution does not belong to this event" });
+        return res.status(403).json({ error: "المساهمة لا تنتمي لهذه الطلعة" });
       }
       
       // Validate participantId if being changed - must be part of this event or null/empty
@@ -790,7 +790,7 @@ export async function registerRoutes(
             ep => ep.participantId === participantId
           );
           if (!isValidParticipant) {
-            return res.status(403).json({ error: "Participant is not part of this event" });
+            return res.status(403).json({ error: "المشارك ليس جزءاً من هذه الطلعة" });
           }
         }
       }
@@ -829,7 +829,7 @@ export async function registerRoutes(
       // Verify contribution belongs to this event
       const contribution = await storage.getContribution(req.params.id);
       if (!contribution || contribution.eventId !== event.id) {
-        return res.status(403).json({ error: "Contribution does not belong to this event" });
+        return res.status(403).json({ error: "المساهمة لا تنتمي لهذه الطلعة" });
       }
       
       await storage.deleteContribution(req.params.id);
@@ -851,7 +851,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       const result = await storage.canDeleteEvent(eventId);
@@ -873,7 +873,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       const result = await storage.canCancelEvent(eventId);
@@ -900,7 +900,7 @@ export async function registerRoutes(
       if (!user?.isAdmin) {
         const canAccess = await storage.canUserAccessEvent(eventId, userId);
         if (!canAccess) {
-          return res.status(403).json({ error: "Access denied" });
+          return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
         }
       }
       
@@ -927,7 +927,7 @@ export async function registerRoutes(
       if (!user?.isAdmin) {
         const canManage = await storage.canUserManageParticipants(eventId, userId);
         if (!canManage) {
-          return res.status(403).json({ error: "Access denied - you don't have permission to manage participants" });
+          return res.status(403).json({ error: "ليس لديك صلاحية إدارة المشاركين" });
         }
       }
       
@@ -960,7 +960,7 @@ export async function registerRoutes(
       if (!user?.isAdmin) {
         const canManage = await storage.canUserManageParticipants(eventId, userId);
         if (!canManage) {
-          return res.status(403).json({ error: "Access denied - you don't have permission to manage participants" });
+          return res.status(403).json({ error: "ليس لديك صلاحية إدارة المشاركين" });
         }
       }
       
@@ -988,7 +988,7 @@ export async function registerRoutes(
       if (!user?.isAdmin) {
         const canManage = await storage.canUserManageParticipants(eventId, userId);
         if (!canManage) {
-          return res.status(403).json({ error: "Access denied - you don't have permission to manage participants" });
+          return res.status(403).json({ error: "ليس لديك صلاحية إدارة المشاركين" });
         }
       }
       
@@ -1027,7 +1027,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       const contributions = await storage.getContributions(eventId);
@@ -1048,7 +1048,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       const data = insertContributionSchema.parse({
@@ -1077,7 +1077,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       const data = insertContributionSchema.partial().parse(req.body);
@@ -1106,7 +1106,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       // Unassign contribution (reset to pending) and prune participant if no other contributions
@@ -1129,7 +1129,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(existing.eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       // Use cascade delete to auto-remove participant if no contributions remain
@@ -1208,7 +1208,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       const settlement = await storage.getEventSettlement(eventId);
@@ -1232,7 +1232,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       const { debtorId, creditorId } = req.params;
@@ -1285,7 +1285,7 @@ export async function registerRoutes(
       if (!user?.isAdmin) {
         const userParticipant = await storage.getParticipantByUserId(userId);
         if (!userParticipant || userParticipant.id !== participantId) {
-          return res.status(403).json({ error: "Access denied" });
+          return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
         }
       }
       
@@ -1714,7 +1714,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       const invitations = await storage.getEventInvitations(eventId);
@@ -1931,7 +1931,7 @@ export async function registerRoutes(
       }
       
       if (participant.id !== debtorId && participant.id !== creditorId) {
-        return res.status(403).json({ error: "Can only create claims for your own debts" });
+        return res.status(403).json({ error: "يمكنك فقط إنشاء مطالبات لديونك الخاصة" });
       }
       
       const claim = await storage.createSettlementClaim({
@@ -2026,7 +2026,7 @@ export async function registerRoutes(
       // Check if user has permission to manage roles
       const hasPermission = await storage.hasPermission(eventId, userId, 'edit_roles');
       if (!hasPermission) {
-        return res.status(403).json({ error: "Permission denied: Cannot view role management" });
+        return res.status(403).json({ error: "ليس لديك صلاحية عرض إدارة الأدوار" });
       }
       
       const roles = await storage.getEventRoles(eventId);
@@ -2049,7 +2049,7 @@ export async function registerRoutes(
       const userId = req.session!.userId!;
       const canAccess = await storage.canUserAccessEvent(role.eventId, userId);
       if (!canAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: "ليس لديك صلاحية الوصول" });
       }
       
       res.json(role);
@@ -2068,7 +2068,7 @@ export async function registerRoutes(
       // Check if user has permission to manage roles (needs manage_roles permission)
       const hasPermission = await storage.hasPermission(eventId, userId, 'edit_roles');
       if (!hasPermission) {
-        return res.status(403).json({ error: "Permission denied: Cannot manage roles" });
+        return res.status(403).json({ error: "ليس لديك صلاحية إدارة الأدوار" });
       }
       
       const { name, nameAr, description, isDefault, permissions } = req.body;
@@ -2115,7 +2115,7 @@ export async function registerRoutes(
       // Check if user has permission to manage roles
       const hasPermission = await storage.hasPermission(existingRole.eventId, userId, 'edit_roles');
       if (!hasPermission) {
-        return res.status(403).json({ error: "Permission denied: Cannot manage roles" });
+        return res.status(403).json({ error: "ليس لديك صلاحية إدارة الأدوار" });
       }
       
       // Cannot modify creator role name/flags
@@ -2162,7 +2162,7 @@ export async function registerRoutes(
       // Check if user has permission to manage roles
       const hasPermission = await storage.hasPermission(existingRole.eventId, userId, 'edit_roles');
       if (!hasPermission) {
-        return res.status(403).json({ error: "Permission denied: Cannot manage roles" });
+        return res.status(403).json({ error: "ليس لديك صلاحية إدارة الأدوار" });
       }
       
       // Cannot delete creator role
@@ -2209,7 +2209,7 @@ export async function registerRoutes(
       // Check if user has permission to assign roles
       const hasPermission = await storage.hasPermission(role.eventId, userId, 'edit_roles');
       if (!hasPermission) {
-        return res.status(403).json({ error: "Permission denied: Cannot assign roles" });
+        return res.status(403).json({ error: "ليس لديك صلاحية تعيين الأدوار" });
       }
       
       const updated = await storage.assignRoleToParticipant(epId, roleId);
@@ -2241,7 +2241,7 @@ export async function registerRoutes(
       const user = await storage.getUser(userId);
       
       if (!user?.isAdmin) {
-        return res.status(403).json({ error: "Admin access required" });
+        return res.status(403).json({ error: "مطلوب صلاحية المسؤول" });
       }
       
       const result = await storage.backfillRolesForExistingEvents();
