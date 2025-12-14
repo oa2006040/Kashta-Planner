@@ -440,9 +440,43 @@ export async function registerRoutes(
       const isOwner = await storage.isEventCreator(eventId, userId);
       const userParticipant = await storage.getParticipantByUserId(userId);
       
+      // Determine if user can view budget based on budgetVisibility setting
+      let userCanViewBudget = true;
+      if (event.budgetVisibility === 'hidden') {
+        // Only owner can view budget
+        userCanViewBudget = isOwner;
+      } else if (event.budgetVisibility === 'selected') {
+        // Check if user's event participant has canViewBudget flag
+        if (isOwner) {
+          userCanViewBudget = true;
+        } else if (userParticipant) {
+          const userEp = event.eventParticipants?.find(
+            (ep: any) => ep.participantId === userParticipant.id
+          );
+          userCanViewBudget = userEp?.canViewBudget ?? false;
+        } else {
+          userCanViewBudget = false;
+        }
+      }
+      // 'everyone' means everyone can view budget (default)
+      
+      // Filter out costs from contributions if user cannot view budget
+      let filteredEvent = event;
+      if (!userCanViewBudget) {
+        filteredEvent = {
+          ...event,
+          contributions: event.contributions?.map((c: any) => ({
+            ...c,
+            cost: null, // Hide cost
+          })),
+          totalBudget: null, // Hide total budget
+        };
+      }
+      
       res.json({ 
-        ...event, 
+        ...filteredEvent, 
         isOwner,
+        userCanViewBudget,
         currentUserParticipantId: userParticipant?.id || null
       });
     } catch (error) {
