@@ -59,6 +59,7 @@ import {
   type InsertRefreshToken,
   type EventWithCreatorInfo,
   DEFAULT_EVENT_ROLES,
+  PERMISSION_KEYS,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, or } from "drizzle-orm";
@@ -544,6 +545,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async canUserEditEvent(eventId: number, userId: string): Promise<boolean> {
+    // Admin users can edit any event
+    const user = await this.getUser(userId);
+    if (user?.isAdmin) return true;
+    
     const participant = await this.getParticipantByUserId(userId);
     if (!participant) return false;
     
@@ -560,6 +565,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async canUserManageParticipants(eventId: number, userId: string): Promise<boolean> {
+    // Admin users can manage participants in any event
+    const user = await this.getUser(userId);
+    if (user?.isAdmin) return true;
+    
     const participant = await this.getParticipantByUserId(userId);
     if (!participant) return false;
     
@@ -1615,6 +1624,10 @@ export class DatabaseStorage implements IStorage {
 
   // Creator leave/delete event methods
   async isEventCreator(eventId: number, userId: string): Promise<boolean> {
+    // Admin users are treated as creators of all events
+    const user = await this.getUser(userId);
+    if (user?.isAdmin) return true;
+    
     const event = await this.getEvent(eventId);
     if (!event || !event.creatorParticipantId) return false;
     
@@ -2133,6 +2146,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async canUserAccessEvent(eventId: number, userId: string): Promise<boolean> {
+    // Admin users can access any event
+    const user = await this.getUser(userId);
+    if (user?.isAdmin) return true;
+    
     const role = await this.getUserEventRole(eventId, userId);
     return role !== null;
   }
@@ -2536,11 +2553,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async hasPermission(eventId: number, userId: string, permission: PermissionKey): Promise<boolean> {
+    // Admin users have all permissions on any event
+    const user = await this.getUser(userId);
+    if (user?.isAdmin) return true;
+    
     const effectivePerms = await this.getEffectivePermissions(eventId, userId);
     return effectivePerms.includes(permission);
   }
 
   async getEffectivePermissions(eventId: number, userId: string): Promise<PermissionKey[]> {
+    // Admin users get all permissions on any event
+    const user = await this.getUser(userId);
+    if (user?.isAdmin) {
+      return [...PERMISSION_KEYS];
+    }
+    
     // Get participant for this user
     const participant = await this.getParticipantByUserId(userId);
     if (!participant) return [];

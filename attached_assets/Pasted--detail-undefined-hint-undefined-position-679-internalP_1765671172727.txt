@@ -1,0 +1,121 @@
+  detail: undefined,
+  hint: undefined,
+  position: '679',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+12:09:32 AM [express] GET /api/debt/fde4bf36-13e1-4ae7-948e-ee4510876f93 500 in 13ms :: {"error":"Failed to fetch debt portfolio"}
+12:09:35 AM [express] GET /api/auth/status 304 in 35ms :: {"authenticated":true,"user":{"id":"72370915-d488-4fa0-9a36-b4278ea5519f","email":"osamamotea2@gmail.com","firstName":"Amani","lastName":"Alsumaitti","phone":"+97430882877","profileImageUrl":null,"isAdmin":false,"createdAt":"2025-12-13T21:59:03.060Z","updatedAt":"2025-12-13T21:59:03.060Z"},"logoutUrl":"/api/auth/logout"}
+Error fetching debt portfolio: error: column events.budget_visibility does not exist
+    at /app/dist/index.cjs:70:13326
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:76:113910
+    at async Rm.getDebtPortfolio (/app/dist/index.cjs:76:140903)
+    at async /app/dist/index.cjs:76:195261 {
+  length: 123,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '679',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+12:09:37 AM [express] GET /api/debt/fde4bf36-13e1-4ae7-948e-ee4510876f93 500 in 10ms :: {"error":"Failed to fetch debt portfolio"}
+12:09:38 AM [express] GET /api/auth/status 304 in 38ms :: {"authenticated":true,"user":{"id":"72370915-d488-4fa0-9a36-b4278ea5519f","email":"osamamotea2@gmail.com","firstName":"Amani","lastName":"Alsumaitti","phone":"+97430882877","profileImageUrl":null,"isAdmin":false,"createdAt":"2025-12-13T21:59:03.060Z","updatedAt":"2025-12-13T21:59:03.060Z"},"logoutUrl":"/api/auth/logout"}
+12:09:42 AM [express] GET /api/auth/status 304 in 4ms :: {"authenticated":true,"user":{"id":"72370915-d488-4fa0-9a36-b4278ea5519f","email":"osamamotea2@gmail.com","firstName":"Amani","lastName":"Alsumaitti","phone":"+97430882877","profileImageUrl":null,"isAdmin":false,"createdAt":"2025-12-13T21:59:03.060Z","updatedAt":"2025-12-13T21:59:03.060Z"},"logoutUrl":"/api/auth/logout"}
+Error fetching debt portfolio: error: column events.budget_visibility does not exist
+    at /app/dist/index.cjs:70:13326
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:76:113910
+    at async Rm.getDebtPortfolio (/app/dist/index.cjs:76:140903)
+    at async /app/dist/index.cjs:76:195261 {
+  length: 123,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '679',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+12:09:42 AM [express] GET /api/debt/fde4bf36-13e1-4ae7-948e-ee4510876f93 500 in 19ms :: {"error":"Failed to fetch debt portfolio"}
+  internalQuery: undefined,
+Error fetching debt portfolio: error: column events.budget_visibility does not exist
+  where: undefined,
+    at /app/dist/index.cjs:70:13326
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+  schema: undefined,
+    at async /app/dist/index.cjs:76:113910
+  table: undefined,
+    at async Rm.getDebtPortfolio (/app/dist/index.cjs:76:140903)
+    at async /app/dist/index.cjs:76:195261 {
+  column: undefined,
+  length: 123,
+  dataType: undefined,
+  severity: 'ERROR',
+  constraint: undefined,
+  file: 'parse_relation.c',
+  code: '42703',
+  line: '3716',
+  detail: undefined,
+  routine: 'errorMissingColumn'
+}
+  hint: undefined,
+  position: '679',
+  internalPosition: undefined,
+  routine: 'errorMissingColumn'
+}
+12:09:44 AM [express] GET /api/debt/fde4bf36-13e1-4ae7-948e-ee4510876f93 500 in 51ms :: {"error":"Failed to fetch debt portfolio"}
+12:09:45 AM [express] GET /api/auth/status 304 in 15ms :: {"authenticated":true,"user":{"id":"72370915-d488-4fa0-9a36-b4278ea5519f","email":"osamamotea2@gmail.com","firstName":"Amani","lastName":"Alsumaitti","phone":"+97430882877","profileImageUrl":null,"isAdmin":false,"createdAt":"2025-12-13T21:59:03.060Z","updatedAt":"2025-12-13T21:59:03.060Z"},"logoutUrl":"/api/auth/logout"}
+    at /app/dist/index.cjs:70:13326
+12:09:57 AM [express] GET /api/auth/status 304 in 18ms :: {"authenticated":true,"user":{"id":"72370915-d488-4fa0-9a36-b4278ea5519f","email":"osamamotea2@gmail.com","firstName":"Amani","lastName":"Alsumaitti","phone":"+97430882877","profileImageUrl":null,"isAdmin":false,"createdAt":"2025-12-13T21:59:03.060Z","updatedAt":"2025-12-13T21:59:03.060Z"},"logoutUrl":"/api/auth/logout"}
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+12:09:57 AM [express] GET /api/notifications/count 304 in 21ms :: {"count":0}
+  code: '42703',
+    at async /app/dist/index.cjs:76:113910
+Error fetching debt portfolio: error: column events.budget_visibility does not exist
+  detail: undefined,
+    at async Rm.getDebtPortfolio (/app/dist/index.cjs:76:140903)
+  column: undefined,
+    at async /app/dist/index.cjs:76:195261 {
+  internalQuery: undefined,
+  hint: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  where: undefined,
+  length: 123,
+  position: '679',
+  severity: 'ERROR',
+  schema: undefined,
+  internalPosition: undefined,
+  table: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
