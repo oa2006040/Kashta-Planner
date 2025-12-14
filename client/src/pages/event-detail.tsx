@@ -148,6 +148,7 @@ interface ContributionItemProps {
   isAssigning: boolean;
   isOwner: boolean;
   currentUserParticipantId: string | null;
+  userCanViewBudget: boolean;
 }
 
 function ContributionItem({ 
@@ -161,7 +162,8 @@ function ContributionItem({
   onReceiptUpload,
   isAssigning,
   isOwner,
-  currentUserParticipantId
+  currentUserParticipantId,
+  userCanViewBudget
 }: ContributionItemProps) {
   const { t, language } = useLanguage();
   const [showAssign, setShowAssign] = useState(false);
@@ -175,6 +177,7 @@ function ContributionItem({
   const hasParticipant = !!contribution.participantId;
   const hasCost = parseFloat(contribution.cost || "0") > 0;
   const hasReceipt = !!contribution.receiptUrl;
+  const canViewBudget = Boolean(userCanViewBudget);
 
   const handleReceiptUpload = async (uploadedUrls: string[]) => {
     if (uploadedUrls.length > 0) {
@@ -287,7 +290,7 @@ function ContributionItem({
               {formatNumber(contribution.quantity, language)}×
             </Badge>
           )}
-          {parseFloat(contribution.cost || "0") > 0 && (
+          {canViewBudget && parseFloat(contribution.cost || "0") > 0 && (
             <Badge variant="secondary" className="text-xs">
               {(contribution.quantity && contribution.quantity > 1) ? (
                 <span>{formatNumber(contribution.quantity, language)} × {formatCurrency(contribution.cost || 0, language)} = {formatCurrency((contribution.quantity * parseFloat(contribution.cost || "0")), language)}</span>
@@ -296,7 +299,7 @@ function ContributionItem({
               )}
             </Badge>
           )}
-          {hasCost && hasReceipt && (
+          {canViewBudget && hasCost && hasReceipt && (
             <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
               <DialogTrigger asChild>
                 <Button
@@ -330,7 +333,7 @@ function ContributionItem({
               </DialogContent>
             </Dialog>
           )}
-          {hasCost && !hasReceipt && (
+          {canViewBudget && hasCost && !hasReceipt && (
             <ObjectUploader
               onGetUploadParameters={getUploadParameters}
               onComplete={handleReceiptUpload}
@@ -482,39 +485,43 @@ function ContributionItem({
                 data-testid={`input-quantity-${contribution.id}`}
               />
             </div>
-            <div className="flex items-center gap-3">
-              <Checkbox
-                id={`cost-toggle-${contribution.id}`}
-                checked={includeCost}
-                onCheckedChange={(checked) => setIncludeCost(!!checked)}
-                data-testid={`checkbox-include-cost-${contribution.id}`}
-              />
-              <Label htmlFor={`cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
-                {t("إضافة سعر", "Add price")}
-              </Label>
-            </div>
-            {includeCost && (
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground">{t("سعر الوحدة", "Unit price")}</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={cost}
-                    onChange={(e) => setCost(e.target.value)}
-                    className="w-24"
-                    data-testid={`input-cost-${contribution.id}`}
+            {canViewBudget && (
+              <>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id={`cost-toggle-${contribution.id}`}
+                    checked={includeCost}
+                    onCheckedChange={(checked) => setIncludeCost(!!checked)}
+                    data-testid={`checkbox-include-cost-${contribution.id}`}
                   />
-                  <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
+                  <Label htmlFor={`cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
+                    {t("إضافة سعر", "Add price")}
+                  </Label>
                 </div>
-                {(parseInt(quantity) || 1) > 1 && parseFloat(cost) > 0 && (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <span>=</span>
-                    <span className="font-medium">{((parseInt(quantity) || 1) * parseFloat(cost || "0")).toFixed(2)}</span>
-                    <span>{t("ر.ق", "QAR")}</span>
+                {includeCost && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground">{t("سعر الوحدة", "Unit price")}</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={cost}
+                        onChange={(e) => setCost(e.target.value)}
+                        className="w-24"
+                        data-testid={`input-cost-${contribution.id}`}
+                      />
+                      <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
+                    </div>
+                    {(parseInt(quantity) || 1) > 1 && parseFloat(cost) > 0 && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <span>=</span>
+                        <span className="font-medium">{((parseInt(quantity) || 1) * parseFloat(cost || "0")).toFixed(2)}</span>
+                        <span>{t("ر.ق", "QAR")}</span>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -584,39 +591,43 @@ function ContributionItem({
                 data-testid={`input-edit-quantity-${contribution.id}`}
               />
             </div>
-            <div className="flex items-center gap-3">
-              <Checkbox
-                id={`edit-cost-toggle-${contribution.id}`}
-                checked={includeCost}
-                onCheckedChange={(checked) => setIncludeCost(!!checked)}
-                data-testid={`checkbox-edit-include-cost-${contribution.id}`}
-              />
-              <Label htmlFor={`edit-cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
-                {t("إضافة سعر", "Add price")}
-              </Label>
-            </div>
-            {includeCost && (
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground">{t("سعر الوحدة", "Unit price")}</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={cost}
-                    onChange={(e) => setCost(e.target.value)}
-                    className="w-24"
-                    data-testid={`input-edit-cost-${contribution.id}`}
+            {canViewBudget && (
+              <>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id={`edit-cost-toggle-${contribution.id}`}
+                    checked={includeCost}
+                    onCheckedChange={(checked) => setIncludeCost(!!checked)}
+                    data-testid={`checkbox-edit-include-cost-${contribution.id}`}
                   />
-                  <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
+                  <Label htmlFor={`edit-cost-toggle-${contribution.id}`} className="text-sm cursor-pointer">
+                    {t("إضافة سعر", "Add price")}
+                  </Label>
                 </div>
-                {(parseInt(quantity) || 1) > 1 && parseFloat(cost) > 0 && (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <span>=</span>
-                    <span className="font-medium">{((parseInt(quantity) || 1) * parseFloat(cost || "0")).toFixed(2)}</span>
-                    <span>{t("ر.ق", "QAR")}</span>
+                {includeCost && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground">{t("سعر الوحدة", "Unit price")}</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={cost}
+                        onChange={(e) => setCost(e.target.value)}
+                        className="w-24"
+                        data-testid={`input-edit-cost-${contribution.id}`}
+                      />
+                      <span className="text-sm text-muted-foreground">{t("ر.ق", "QAR")}</span>
+                    </div>
+                    {(parseInt(quantity) || 1) > 1 && parseFloat(cost) > 0 && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <span>=</span>
+                        <span className="font-medium">{((parseInt(quantity) || 1) * parseFloat(cost || "0")).toFixed(2)}</span>
+                        <span>{t("ر.ق", "QAR")}</span>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -1817,17 +1828,19 @@ export default function EventDetail() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
-              <DollarSign className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{formatCurrency(totalBudget, language)}</p>
-              <p className="text-sm text-muted-foreground">{t("الميزانية", "Budget")}</p>
-            </div>
-          </CardContent>
-        </Card>
+        {event.userCanViewBudget !== false && (
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                <DollarSign className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{formatCurrency(totalBudget, language)}</p>
+                <p className="text-sm text-muted-foreground">{t("الميزانية", "Budget")}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Tabs */}
@@ -1844,16 +1857,20 @@ export default function EventDetail() {
               <span className="hidden sm:inline">{t("المشاركين", "Participants")}</span>
               <span className="sm:hidden">{t("مشاركين", "People")}</span>
             </TabsTrigger>
-            <TabsTrigger value="budget" data-testid="tab-budget" className="text-xs sm:text-sm">
-              <DollarSign className={`h-4 w-4 ${language === "ar" ? "ml-1 sm:ml-2" : "mr-1 sm:mr-2"}`} />
-              <span className="hidden sm:inline">{t("الميزانية", "Budget")}</span>
-              <span className="sm:hidden">{t("ميزانية", "Cost")}</span>
-            </TabsTrigger>
-            <TabsTrigger value="settlement" data-testid="tab-settlement" className="text-xs sm:text-sm">
-              <Receipt className={`h-4 w-4 ${language === "ar" ? "ml-1 sm:ml-2" : "mr-1 sm:mr-2"}`} />
-              <span className="hidden sm:inline">{t("التسوية", "Settlement")}</span>
-              <span className="sm:hidden">{t("تسوية", "Settle")}</span>
-            </TabsTrigger>
+            {event.userCanViewBudget !== false && (
+              <TabsTrigger value="budget" data-testid="tab-budget" className="text-xs sm:text-sm">
+                <DollarSign className={`h-4 w-4 ${language === "ar" ? "ml-1 sm:ml-2" : "mr-1 sm:mr-2"}`} />
+                <span className="hidden sm:inline">{t("الميزانية", "Budget")}</span>
+                <span className="sm:hidden">{t("ميزانية", "Cost")}</span>
+              </TabsTrigger>
+            )}
+            {event.userCanViewBudget !== false && (
+              <TabsTrigger value="settlement" data-testid="tab-settlement" className="text-xs sm:text-sm">
+                <Receipt className={`h-4 w-4 ${language === "ar" ? "ml-1 sm:ml-2" : "mr-1 sm:mr-2"}`} />
+                <span className="hidden sm:inline">{t("التسوية", "Settlement")}</span>
+                <span className="sm:hidden">{t("تسوية", "Settle")}</span>
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -1896,6 +1913,7 @@ export default function EventDetail() {
                       isAssigning={assignParticipantMutation.isPending}
                       isOwner={event.isOwner || false}
                       currentUserParticipantId={event.currentUserParticipantId || null}
+                      userCanViewBudget={event.userCanViewBudget !== false}
                     />
                   );
                 })}
@@ -1930,6 +1948,7 @@ export default function EventDetail() {
                       isAssigning={assignParticipantMutation.isPending}
                       isOwner={event.isOwner || false}
                       currentUserParticipantId={event.currentUserParticipantId || null}
+                      userCanViewBudget={event.userCanViewBudget !== false}
                     />
                   );
                 })}
