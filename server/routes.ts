@@ -2397,7 +2397,7 @@ export async function registerRoutes(
       }
       
       const userId = req.session!.userId!;
-      const { visibility, participantAccess } = req.body;
+      const { budgetVisibility, participantAccess } = req.body;
       
       // Only event owner can change visibility
       const isOwner = await storage.isEventCreator(eventId, userId);
@@ -2407,16 +2407,21 @@ export async function registerRoutes(
       
       // Validate visibility value
       const validOptions = ['everyone', 'selected', 'hidden'];
-      if (!validOptions.includes(visibility)) {
+      if (!validOptions.includes(budgetVisibility)) {
         return res.status(400).json({ error: "قيمة غير صالحة للرؤية" });
       }
       
       // Update the event
-      await storage.updateEvent(eventId, { budgetVisibility: visibility });
+      await storage.updateEvent(eventId, { budgetVisibility });
       
       // If "selected", update participant access
-      if (visibility === 'selected' && participantAccess && Array.isArray(participantAccess)) {
-        await storage.updateBudgetAccess(eventId, participantAccess);
+      if (budgetVisibility === 'selected' && participantAccess && Array.isArray(participantAccess)) {
+        // Update canViewBudget for each participant
+        for (const access of participantAccess) {
+          if (access.eventParticipantId) {
+            await storage.updateEventParticipantBudgetAccess(access.eventParticipantId, access.canViewBudget);
+          }
+        }
       }
       
       res.json({ success: true });
