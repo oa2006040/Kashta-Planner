@@ -1190,18 +1190,25 @@ export async function registerRoutes(
         const isUnassigning = data.participantId === null;
         const isContributionUnassigned = existing.participantId === null;
         
-        // Case: Trying to modify someone else's already-assigned contribution (not unassigning)
-        if (!isContributionUnassigned && !isSelfAssigned && !isUnassigning) {
+        // Case: Trying to modify someone else's contribution
+        if (!isContributionUnassigned && !isSelfAssigned) {
           return res.status(403).json({ error: "لا يمكنك تعديل مستلزمات الآخرين" });
         }
         
-        // Case: Unassigning - must be self-unassignment (only you can remove yourself)
+        // Case: Trying to assign to someone other than self
+        if (data.participantId !== undefined && !isTargetingSelf && !isUnassigning) {
+          return res.status(403).json({ error: "يمكنك فقط تعيين نفسك للمستلزمات" });
+        }
+        
+        // Case: Unassigning - must be self-unassignment
         if (isUnassigning && !isSelfAssigned) {
           return res.status(403).json({ error: "يمكنك فقط إلغاء تعيين نفسك" });
         }
         
-        // ALLOWED: Anyone can assign any participant to an unassigned contribution
-        // (removed restriction that only allowed self-assignment)
+        // Case: Modifying unassigned contribution without assigning self
+        if (isContributionUnassigned && !isTargetingSelf && data.participantId === undefined) {
+          return res.status(403).json({ error: "يجب تعيين نفسك أولاً لتعديل المستلزم" });
+        }
       }
       
       const contribution = await storage.updateContribution(req.params.id, allowedData);
