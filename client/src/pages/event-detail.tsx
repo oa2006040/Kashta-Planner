@@ -413,26 +413,40 @@ function ContributionItem({
       {showAssign && !hasParticipant && (
         <div className="flex flex-col gap-3 pt-3 border-t">
           <div className="flex flex-col sm:flex-row gap-2">
-            <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
-              <SelectTrigger className="flex-1" data-testid={`select-participant-${contribution.id}`}>
-                <SelectValue placeholder={t("اختر المشارك", "Select participant")} />
-              </SelectTrigger>
-              <SelectContent>
-                {(isOwner ? participants : participants.filter(p => p.id === currentUserParticipantId)).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <div className="flex items-center gap-2">
-                      <AvatarIcon icon={p.avatar} className="h-4 w-4" />
-                      {p.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isOwner ? (
+              <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
+                <SelectTrigger className="flex-1" data-testid={`select-participant-${contribution.id}`}>
+                  <SelectValue placeholder={t("اختر المشارك", "Select participant")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {participants.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <div className="flex items-center gap-2">
+                        <AvatarIcon icon={p.avatar} className="h-4 w-4" />
+                        {p.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50">
+                <AvatarIcon icon={participants.find(p => p.id === currentUserParticipantId)?.avatar} className="h-5 w-5" />
+                <span className="text-sm font-medium">{participants.find(p => p.id === currentUserParticipantId)?.name}</span>
+              </div>
+            )}
             <div className="flex gap-2">
               <Button 
                 size="sm" 
-                onClick={handleAssign} 
-                disabled={!selectedParticipant || isAssigning}
+                onClick={() => {
+                  if (!isOwner && currentUserParticipantId) {
+                    setSelectedParticipant(currentUserParticipantId);
+                    setTimeout(() => handleAssign(), 0);
+                  } else {
+                    handleAssign();
+                  }
+                }} 
+                disabled={isOwner ? (!selectedParticipant || isAssigning) : isAssigning}
                 data-testid={`button-confirm-assign-${contribution.id}`}
               >
                 {isAssigning ? (
@@ -513,21 +527,28 @@ function ContributionItem({
             <span className="text-sm font-medium">{t("تعديل المستلزم", "Edit Item")}</span>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
-              <SelectTrigger className="flex-1" data-testid={`select-edit-participant-${contribution.id}`}>
-                <SelectValue placeholder={t("اختر المشارك", "Select participant")} />
-              </SelectTrigger>
-              <SelectContent>
-                {(isOwner ? participants : participants.filter(p => p.id === currentUserParticipantId)).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <div className="flex items-center gap-2">
-                      <AvatarIcon icon={p.avatar} className="h-4 w-4" />
-                      {p.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isOwner ? (
+              <Select value={selectedParticipant} onValueChange={setSelectedParticipant}>
+                <SelectTrigger className="flex-1" data-testid={`select-edit-participant-${contribution.id}`}>
+                  <SelectValue placeholder={t("اختر المشارك", "Select participant")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {participants.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <div className="flex items-center gap-2">
+                        <AvatarIcon icon={p.avatar} className="h-4 w-4" />
+                        {p.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-green-50/50 dark:bg-green-900/10">
+                <AvatarIcon icon={participants.find(p => p.id === currentUserParticipantId)?.avatar} className="h-5 w-5" />
+                <span className="text-sm font-medium">{participants.find(p => p.id === currentUserParticipantId)?.name}</span>
+              </div>
+            )}
             <div className="flex gap-2">
               <Button 
                 size="sm" 
