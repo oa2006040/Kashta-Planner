@@ -1172,9 +1172,9 @@ export async function registerRoutes(
       // Permission checks for non-owners
       let allowedData = data;
       if (!isOwner) {
-        // Non-owners can ONLY modify: participantId, cost, quantity, receiptUrl
+        // Non-owners can ONLY modify: participantId, cost, quantity, receiptUrl, status
         // Filter out disallowed fields
-        const allowedFields = ['participantId', 'cost', 'quantity', 'receiptUrl'];
+        const allowedFields = ['participantId', 'cost', 'quantity', 'receiptUrl', 'status'];
         const disallowedFields = Object.keys(data).filter(k => !allowedFields.includes(k));
         if (disallowedFields.length > 0) {
           return res.status(403).json({ error: "ليس لديك صلاحية تعديل هذه الحقول" });
