@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useEffect } from "react";
 import { 
   Users, 
   ArrowLeft,
@@ -10,7 +11,8 @@ import {
   Equal,
   Wallet,
   Calendar,
-  ShieldAlert
+  ShieldAlert,
+  User
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,14 +26,23 @@ import type { ParticipantDebtSummary } from "@shared/schema";
 export default function DebtPage() {
   const { t, language } = useLanguage();
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   
   const isAdmin = user?.isAdmin ?? false;
   
+  // Fetch debt summaries - for admins shows all, for regular users shows only their own
   const { data: summaries, isLoading, error } = useQuery<ParticipantDebtSummary[]>({
     queryKey: ['/api/debt'],
     refetchInterval: 5000,
-    enabled: !authLoading && isAuthenticated && isAdmin,
+    enabled: !authLoading && isAuthenticated,
   });
+
+  // For regular users: if they have exactly one participant (their own), redirect to their detail page
+  useEffect(() => {
+    if (!isAdmin && summaries && summaries.length === 1) {
+      setLocation(`/debt/${summaries[0].participant.id}`);
+    }
+  }, [isAdmin, summaries, setLocation]);
 
   // Show loading while auth is loading
   if (authLoading) {
@@ -53,18 +64,18 @@ export default function DebtPage() {
     );
   }
 
-  // Admin-only page
-  if (!isAdmin) {
+  // For regular users with no linked participant, show a friendly message
+  if (!isAdmin && summaries && summaries.length === 0) {
     return (
       <div className="p-6">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <ShieldAlert className="h-16 w-16 text-muted-foreground mb-4" />
+            <User className="h-16 w-16 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">
-              {t("الوصول مقيد", "Access Restricted")}
+              {t("لا يوجد ملف مشارك مرتبط", "No participant profile linked")}
             </h3>
             <p className="text-muted-foreground">
-              {t("هذه الصفحة متاحة للمسؤولين فقط", "This page is only available to administrators")}
+              {t("حسابك غير مرتبط بملف مشارك حتى الآن. تواصل مع المسؤول.", "Your account is not linked to a participant profile yet. Contact an admin.")}
             </p>
           </CardContent>
         </Card>

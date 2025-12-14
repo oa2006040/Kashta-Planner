@@ -396,8 +396,8 @@ export default function Dashboard() {
               </Card>
             )}
             
-            {/* Paid Debts - clickable to account debt wallet */}
-            <Link href="/account?section=paid">
+            {/* Paid Debts - clickable to user's debt page */}
+            <Link href="/debt">
               <Card className="relative overflow-visible hover-elevate cursor-pointer" data-testid="card-stat-paid-debts">
                 <CardContent className="p-3 sm:p-6">
                   <div className="flex items-start justify-between gap-2 sm:gap-4">
@@ -413,8 +413,8 @@ export default function Dashboard() {
               </Card>
             </Link>
             
-            {/* Unpaid Debts - clickable to account debt wallet */}
-            <Link href="/account?section=remaining">
+            {/* Unpaid Debts - clickable to user's debt page */}
+            <Link href="/debt">
               <Card className="relative overflow-visible hover-elevate cursor-pointer" data-testid="card-stat-remaining-debts">
                 <CardContent className="p-3 sm:p-6">
                   <div className="flex items-start justify-between gap-2 sm:gap-4">

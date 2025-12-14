@@ -10,7 +10,8 @@ import {
   Wallet,
   Calendar,
   Users,
-  MapPin
+  MapPin,
+  ShieldAlert
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,10 @@ export default function DebtDetailPage() {
     queryKey: ['/api/debt', participantId],
     enabled: !!participantId,
     refetchInterval: 5000,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 403) return false;
+      return failureCount < 3;
+    },
   });
 
   const BackArrow = language === "ar" ? ArrowLeft : ArrowRight;
@@ -50,6 +55,34 @@ export default function DebtDetailPage() {
           ))}
         </div>
         <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  const is403Error = (error as any)?.status === 403;
+
+  if (is403Error) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <Link href="/">
+            <Button variant="ghost" size="icon">
+              <BackArrow className="h-5 w-5" />
+            </Button>
+          </Link>
+          <h1 className="text-xl font-bold">{t("الوصول مقيد", "Access Restricted")}</h1>
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <ShieldAlert className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">
+              {t("لا يمكنك الوصول لهذه الصفحة", "You cannot access this page")}
+            </h3>
+            <p className="text-muted-foreground">
+              {t("يمكنك فقط عرض ديونك الخاصة. للوصول لديون الآخرين، تواصل مع المسؤول.", "You can only view your own debts. To access others' debts, contact an admin.")}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
