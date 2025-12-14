@@ -225,6 +225,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'can_manage_participants') THEN
         ALTER TABLE event_participants ADD COLUMN can_manage_participants BOOLEAN DEFAULT FALSE;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'event_participants' AND column_name = 'can_view_budget') THEN
+        ALTER TABLE event_participants ADD COLUMN can_view_budget BOOLEAN DEFAULT TRUE;
+    END IF;
 END $$;
 
 -- ==========================================
