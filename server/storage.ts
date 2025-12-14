@@ -834,30 +834,7 @@ export class DatabaseStorage implements IStorage {
       return { unassigned: true, participantPruned: false };
     }
     
-    // Check if this participant has any remaining fulfilled contributions for this event
-    const remainingContributions = await db.select()
-      .from(contributions)
-      .where(and(
-        eq(contributions.eventId, eventId),
-        eq(contributions.participantId, participantId)
-      ));
-    
-    // If no more contributions, remove participant from event
-    if (remainingContributions.length === 0) {
-      await db.delete(eventParticipants)
-        .where(and(
-          eq(eventParticipants.eventId, eventId),
-          eq(eventParticipants.participantId, participantId)
-        ));
-      
-      // Decrement trip count
-      await db.update(participants)
-        .set({ tripCount: sql`GREATEST(${participants.tripCount} - 1, 0)` })
-        .where(eq(participants.id, participantId));
-      
-      return { unassigned: true, participantPruned: true };
-    }
-    
+    // Participant stays in event even with 0 assigned contributions
     return { unassigned: true, participantPruned: false };
   }
 
@@ -881,30 +858,7 @@ export class DatabaseStorage implements IStorage {
       return { deleted: true, participantPruned: false };
     }
     
-    // Check if this participant has any remaining contributions for this event
-    const remainingContributions = await db.select()
-      .from(contributions)
-      .where(and(
-        eq(contributions.eventId, eventId),
-        eq(contributions.participantId, participantId)
-      ));
-    
-    // If no more contributions, remove participant from event
-    if (remainingContributions.length === 0) {
-      await db.delete(eventParticipants)
-        .where(and(
-          eq(eventParticipants.eventId, eventId),
-          eq(eventParticipants.participantId, participantId)
-        ));
-      
-      // Decrement trip count
-      await db.update(participants)
-        .set({ tripCount: sql`GREATEST(${participants.tripCount} - 1, 0)` })
-        .where(eq(participants.id, participantId));
-      
-      return { deleted: true, participantPruned: true };
-    }
-    
+    // Participant stays in event even with 0 assigned contributions
     return { deleted: true, participantPruned: false };
   }
 
