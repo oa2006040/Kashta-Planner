@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS events (
     total_budget DECIMAL(10, 2) DEFAULT 0,
     share_token TEXT UNIQUE,
     is_share_enabled BOOLEAN DEFAULT FALSE,
+    budget_visibility TEXT DEFAULT 'everyone',
     creator_participant_id VARCHAR REFERENCES participants(id),
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -186,6 +187,9 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'is_share_enabled') THEN
         ALTER TABLE events ADD COLUMN is_share_enabled BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'budget_visibility') THEN
+        ALTER TABLE events ADD COLUMN budget_visibility TEXT DEFAULT 'everyone';
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'creator_participant_id') THEN
         ALTER TABLE events ADD COLUMN creator_participant_id VARCHAR REFERENCES participants(id);
